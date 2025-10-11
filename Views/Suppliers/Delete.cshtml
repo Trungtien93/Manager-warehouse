@@ -1,0 +1,32 @@
+@model MNBEMART.Models.Supplier
+@{
+    ViewData["Title"] = "Xoá nhà cung cấp";
+}
+<h5 class="mb-3">@ViewData["Title"]</h5>
+
+<div class="alert alert-warning">
+  Bạn có chắc muốn xoá nhà cung cấp <strong>@Model.Name</strong>?
+  <div class="small text-muted mt-1">
+    @if ((Model.Materials?.Count ?? 0) > 0)
+    {
+      <text>Các vật tư đang gán NCC này sẽ được bỏ liên kết (SupplierId = null).</text>
+    }
+    else
+    {
+      <text>Thao tác không thể hoàn tác.</text>
+    }
+  </div>
+</div>
+
+<dl class="row">
+  <dt class="col-sm-2">SĐT</dt><dd class="col-sm-10">@Model.PhoneNumber</dd>
+  <dt class="col-sm-2">Email</dt><dd class="col-sm-10">@Model.Email</dd>
+  <dt class="col-sm-2">Địa chỉ</dt><dd class="col-sm-10">@Model.Address</dd>
+</dl>
+
+<form asp-action="Delete" method="post">
+  @Html.AntiForgeryToken()
+  <input type="hidden" asp-for="Id" />
+  <a asp-action="Index" class="btn btn-outline-secondary">Huỷ</a>
+  <button class="btn btn-danger" type="submit">Xoá</button>
+</form>

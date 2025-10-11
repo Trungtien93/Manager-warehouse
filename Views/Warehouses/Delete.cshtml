@@ -1,0 +1,29 @@
+@model MNBEMART.Models.Warehouse
+@{
+    ViewData["Title"] = "Xoá kho";
+}
+<h5 class="mb-3">@ViewData["Title"]</h5>
+
+@if (TempData["Error"] != null)
+{
+  <div class="alert alert-warning">@TempData["Error"]</div>
+}
+
+<div class="alert alert-warning">
+  Bạn có chắc muốn xoá kho <strong>@Model.Name</strong>?
+  <div class="small text-muted mt-1">
+    Nếu kho đang có chứng từ nhập/xuất hoặc còn tồn, bạn cần xử lý hết trước khi xoá.
+  </div>
+</div>
+
+<dl class="row">
+  <dt class="col-sm-2">Tên kho</dt><dd class="col-sm-10">@Model.Name</dd>
+  <dt class="col-sm-2">Địa chỉ</dt><dd class="col-sm-10">@Model.Address</dd>
+</dl>
+
+<form asp-action="Delete" method="post">
+  @Html.AntiForgeryToken()
+  <input type="hidden" asp-for="Id" />
+  <a asp-action="Index" class="btn btn-outline-secondary">Huỷ</a>
+  <button class="btn btn-danger" type="submit">Xoá</button>
+</form>

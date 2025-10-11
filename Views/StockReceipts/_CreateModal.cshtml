@@ -1,0 +1,252 @@
+@model MNBEMART.Models.StockReceipt
+@using MNBEMART.Models
+@{
+    var materials = (IEnumerable<MNBEMART.Models.Material>)(ViewBag.Materials ?? Enumerable.Empty<MNBEMART.Models.Material>());
+}
+<div class="modal fade" id="srCreateModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-fullscreen-md-down">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Tạo phiếu nhập</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+      </div>
+
+      <!-- Chỉ 1 form -->
+      <form asp-action="CreateReceipt" method="post" id="receiptForm">
+        @Html.AntiForgeryToken()
+
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-lg-3">
+              <div class="border rounded p-3 bg-light">
+                <div class="mb-3">
+                  <label class="form-label">Kho chứa hàng</label>
+                  <select asp-for="WarehouseId" class="form-select" asp-items="ViewBag.WarehouseOptions">
+                    <option value="">-- Chọn kho --</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Người giao</label>
+                  <input asp-for="DeliveredByName" class="form-control"/>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Số chứng từ gốc</label>
+                  <input asp-for="ReferenceDocumentNumber" class="form-control"/>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Ngày chứng từ</label>
+                  <input asp-for="ReferenceDate" type="date" class="form-control"/>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Ghi chú</label>
+                  <textarea asp-for="Note" rows="3" class="form-control"></textarea>
+                </div>
+                <div class="small text-muted">Người lập: @User.Identity?.Name</div>
+              </div>
+            </div>
+
+            <div class="col-lg-9">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="input-group input-group-sm" style="max-width:520px">
+                  <span class="input-group-text">🔍</span>
+                  <input id="matSearch" class="form-control" placeholder="Nhập tên, mã vật tư...">
+                </div>
+                <button type="button" id="btnAddEmpty" class="btn btn-outline-secondary btn-sm">+ Thêm dòng trống</button>
+              </div>
+
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered align-middle" id="detailsTable">
+                  <thead class="table-light">
+                    <tr>
+                      <th style="width:30%">Sản phẩm</th>
+                      <th>Ghi chú</th>
+                      <th style="width:10%" class="text-end">SL</th>
+                      <th style="width:12%" class="text-end">Giá nhập</th>
+                      <th style="width:10%">ĐVT</th>
+                      <th style="width:8%"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="detailBody"></tbody>
+                </table>
+              </div>
+
+              <div class="d-flex justify-content-end mt-2">
+                <div class="text-end">
+                  <div><strong>SL sản phẩm:</strong> <span id="sumItems">0</span></div>
+                  <div><strong>Tổng tiền nhập:</strong> <span id="sumAmount">0 đ</span></div>
+                </div>
+              </div>
+
+              <div class="text-muted small mt-1">* Enter trong ô tìm kiếm để thêm dòng nhanh</div>
+              <div class="text-muted small">* Ctrl+V để dán nhiều dòng (Mã, SL, Giá nhập)</div>
+
+              <!-- Footer dính LUÔN THẤY -->
+              <div class="sticky-actions">
+                <div class="me-auto text-danger" id="formError"></div>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Đóng</button>
+                <button type="submit" class="btn btn-primary" id="btnSubmit">Tạo</button>
+              </div>
+              
+            </div>
+          </div>
+        </div> <!-- /modal-body -->
+      </form>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Action bar dính cuối cột phải, không bị CSS global ẩn */
+  #srCreateModal .sticky-actions{
+    position: sticky;
+    bottom: 0;
+    background: #fff;
+    border-top: 1px solid #e9ecef;
+    padding: .75rem;
+    display: flex;
+    gap: .5rem;
+    justify-content: flex-end;
+    z-index: 2;
+  }
+</style>
+
+
+<script>
+(function(){
+  // LẤY MODAL: ưu tiên srCreateModal, fallback createReceiptModal
+  const modal = document.getElementById('srCreateModal') || document.getElementById('createReceiptModal');
+  if(!modal){ console.warn('Không tìm thấy modal srCreateModal/createReceiptModal'); return; }
+
+  // DATA vật tư từ server
+  const mats = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+    materials.Select(m => new { m.Id, m.Code, m.Name, m.Unit, m.Specification, m.PurchasePrice })
+  ));
+
+  // GETTER nhanh
+  const tbody      = () => modal.querySelector('#detailBody');
+  const search     = () => modal.querySelector('#matSearch');
+  const sumItemsEl = () => modal.querySelector('#sumItems');
+  const sumAmtEl   = () => modal.querySelector('#sumAmount');
+
+  // Tạo key cho prefixer của MVC (Details[index].Field)
+  function uid(){ return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'k'+Date.now()+Math.random().toString(16).slice(2); }
+
+  // Disable option đã chọn ở dòng khác
+  function refreshOptionStates(){
+    const selects = modal.querySelectorAll('.mat-select');
+    const chosen  = new Set([...selects].map(s => s.value).filter(Boolean));
+    selects.forEach(sel => {
+      const keep = sel.value;
+      [...sel.options].forEach(opt => {
+        if(!opt.value) return;
+        opt.disabled = (chosen.has(opt.value) && opt.value !== keep);
+      });
+    });
+  }
+
+  function notifyDup(){
+    alert('Sản phẩm này đã được chọn ở dòng khác. Vui lòng chọn sản phẩm khác.');
+  }
+
+  function renderRow(prefill){
+    const key = uid();
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>
+        <input type="hidden" name="Details.index" value="${key}" />
+        <select name="Details[${key}].MaterialId" class="form-select form-select-sm mat-select">
+          <option value="">-- Chọn --</option>
+          ${mats.map(m => `<option value="${m.Id}">${(m.Code ?? '').trim()} ${m.Name}</option>`).join('')}
+        </select>
+      </td>
+      <td><input name="Details[${key}].Specification" class="form-control form-control-sm" placeholder="Ghi chú dòng"/></td>
+      <td><input name="Details[${key}].Quantity" type="number" min="1" step="1" class="form-control form-control-sm text-end qty" value="${prefill?.q ?? 1}"/></td>
+      <td><input name="Details[${key}].UnitPrice" type="number" min="0" step="0.01" class="form-control form-control-sm text-end price" value="${prefill?.p ?? 0}"/></td>
+      <td><input name="Details[${key}].Unit" class="form-control form-control-sm unit"/></td>
+      <td class="text-center">
+        <button type="button" class="btn btn-outline-danger btn-sm del">✕</button>
+      </td>`;
+    tbody().appendChild(tr);
+
+    // Chọn vật tư
+    const sel = tr.querySelector('.mat-select');
+    sel.addEventListener('change', (e)=>{
+      const val = e.target.value;
+      if(!val){ refreshOptionStates(); return; }
+
+      // Kiểm tra TRÙNG
+      const dup = [...modal.querySelectorAll('.mat-select')].some(s => s !== sel && s.value === val);
+      if(dup){
+        notifyDup();
+        sel.value = "";
+        tr.querySelector('.unit').value = '';
+        tr.querySelector('.qty').value = 1;
+        tr.querySelector('input[name$=".Specification"]').value = '';
+        tr.querySelector('.price').value = '';
+        refreshOptionStates();
+        return;
+      }
+
+      // Fill dữ liệu nếu không trùng
+      const m = mats.find(x => String(x.Id) === String(val));
+      tr.querySelector('.unit').value = m ? (m.Unit || '') : '';
+      tr.querySelector('.qty').value = 1;
+      tr.querySelector('input[name$=".Specification"]').value = m ? (m.Specification || '') : '';
+      if(m && m.PurchasePrice != null) tr.querySelector('.price').value = m.PurchasePrice;
+      refreshOptionStates();
+      calc();
+    });
+
+    // Xoá dòng
+    tr.querySelector('.del').addEventListener('click', ()=>{
+      tr.remove();
+      refreshOptionStates();
+      calc();
+    });
+
+    // Số lượng nguyên dương
+    const qty = tr.querySelector('.qty');
+    qty.addEventListener('input', ()=>{ qty.value = qty.value.replace(/[^\d]/g,''); calc(); });
+    qty.addEventListener('blur', ()=>{ qty.value = Math.max(1, Math.floor(Number(qty.value||1))); calc(); });
+
+    tr.querySelector('.price').addEventListener('input', calc);
+
+    calc();
+    refreshOptionStates();
+  }
+
+  function calc(){
+    let items = 0, amount = 0;
+    tbody().querySelectorAll('tr').forEach(tr=>{
+      const q = Number(tr.querySelector('.qty')?.value || 0);
+      const p = Number(tr.querySelector('.price')?.value || 0);
+      if(q>0){ items += q; amount += q*p; }
+    });
+    if(sumItemsEl()) sumItemsEl().textContent = items.toLocaleString('vi-VN');
+    if(sumAmtEl())   sumAmtEl().textContent   = amount.toLocaleString('vi-VN') + ' đ';
+  }
+
+  // MỞ MODAL → reset & thêm 1 dòng
+  modal.addEventListener('shown.bs.modal', ()=>{
+    if(tbody()){ tbody().innerHTML = ''; renderRow(); }
+    if(search()){ search().value=''; setTimeout(()=>search().focus(), 150); }
+    refreshOptionStates();
+  });
+
+  // NÚT "Thêm dòng trống"
+  modal.addEventListener('click', (e)=>{
+    const btn = e.target.closest('#btnAddEmpty');
+    if(!btn) return;
+    e.preventDefault();
+    renderRow();
+  });
+
+  // ENTER trong ô tìm kiếm → thêm dòng
+  document.addEventListener('keydown', (e)=>{
+    if(search() && document.activeElement === search() && e.key === 'Enter'){
+      e.preventDefault();
+      renderRow();
+    }
+  });
+})();
+</script>

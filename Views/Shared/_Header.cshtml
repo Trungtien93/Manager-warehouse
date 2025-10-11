@@ -1,0 +1,54 @@
+@* <!-- Views/Shared/_Header.cshtml -->
+<header class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+    <div class="container-fluid">
+        <!-- Logo -->
+        <a class="navbar-brand fw-bold text-warning" href="/">BEMART</a>
+
+        <!-- Toggle nút cho mobile -->
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <!-- Navigation -->
+        <div class="collapse navbar-collapse" id="mainNavbar">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    <a class="nav-link active" href="/Dashboard">Dashboard</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/NguyenLieu">Nguyên liệu</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/KhoHang">Kho hàng</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/NhapHang">Nhập hàng</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/BaoCao">Báo cáo</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/TaiKhoan">Tài khoản</a>
+                </li>
+            </ul>
+
+            <!-- Tùy chọn tài khoản (tương lai: dropdown user, logout) -->
+            <div class="d-flex align-items-center">
+                <span class="text-light me-3">
+                    Xin chào, @(User.Identity != null && !string.IsNullOrEmpty(User.Identity.Name) ? User.Identity.Name : "Khách")
+                </span>
+                <div class="dropdown">
+                    <a class="d-flex align-items-center text-decoration-none dropdown-toggle text-light" href="#" id="userDropdown" data-bs-toggle="dropdown">
+                        <img src="https://i.pravatar.cc/40" class="rounded-circle me-2" width="40" height="40" alt="avatar" />
+                        <span>@(User.Identity != null && !string.IsNullOrEmpty(User.Identity.Name) ? User.Identity.Name : "Khách")</span>
+                    </a>`````````
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="/Account/Profile">Hồ sơ</a></li>
+                        <li><hr class="dropdown-divider" /></li>
+                        <li><a class="dropdown-item text-danger" href="/Account/Logout">Đăng xuất</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</header> *@

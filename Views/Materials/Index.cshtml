@@ -1,0 +1,396 @@
+@model MaterialIndexVM
+@{
+    ViewData["Title"] = "Nguyên liệu";
+    var q = Model.Q ?? "";
+    const int LowStockThreshold = 5;
+}
+
+<!-- Tailwind thêm vào để làm đẹp -->
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+<div class="p-6 space-y-6 bg-slate-50 rounded-xl shadow-sm border border-slate-200">
+    <!-- Header -->
+    <div>
+        <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+            <i class="bi bi-boxes text-blue-600"></i> @ViewData["Title"]
+        </h1>
+        <p class="text-sm text-slate-500">Quản lý danh mục và tồn kho nguyên liệu</p>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="bg-white border border-slate-200 rounded-lg shadow-sm p-5 space-y-4">
+        <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label class="text-sm font-medium text-slate-600 mb-1 block">Tìm kiếm</label>
+                <input name="q" value="@q" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                       placeholder="Mã / Tên / Mô tả..." />
+            </div>
+
+            <div>
+                <label class="text-sm font-medium text-slate-600 mb-1 block">Kho</label>
+                <select name="warehouseId" class="w-full border border-slate-300 rounded-md px-2 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                        asp-items="Model.WarehouseOptions" onchange="this.form.submit()">
+                    <option value="">-- Tất cả kho --</option>
+                    <option value="-1" selected="@(Model.WarehouseId == -1 ? "selected" : null)">Chưa phân kho</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="text-sm font-medium text-slate-600 mb-1 block">Hiển thị</label>
+                <select name="pageSize" class="w-full border border-slate-300 rounded-md px-2 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                        onchange="this.form.submit()">
+                    @foreach (var s in new[]{10,20,30,50,100})
+                    {
+                        <option value="@s" selected="@(Model.PageSize==s ? "selected" : null)">@s / trang</option>
+                    }
+                </select>
+            </div>
+
+            <div class="flex items-end justify-end gap-2">
+                <a href="@Url.Action("Index","Materials")"
+                   class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:bg-slate-100">Bỏ lọc</a>
+                <button type="submit"
+                        class="px-3 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700">Lọc</button>
+                <button type="button" class="px-3 py-2 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-700"
+                        data-bs-toggle="modal" data-bs-target="#materialCreateModal">
+                    + Thêm
+                </button>
+            </div>
+        </form>
+
+        <!-- Mini Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-slate-50 border border-slate-200 rounded-md p-4">
+                <p class="text-xs text-slate-500">Tổng bản ghi</p>
+                <h4 class="text-lg font-semibold text-slate-800">@Model.TotalItems</h4>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 rounded-md p-4">
+                <p class="text-xs text-slate-500">Tổng SL tồn</p>
+                <h4 class="text-lg font-semibold text-slate-800">@FQty(Model.TotalStockQty)</h4>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 rounded-md p-4">
+                <p class="text-xs text-slate-500">Giá trị tồn (theo giá nhập)</p>
+                <h4 class="text-lg font-semibold text-slate-800">@Model.TotalStockValue.ToString("n0") đ</h4>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tag filters -->
+    @if (!string.IsNullOrWhiteSpace(q) || Model.WarehouseId.HasValue)
+    {
+        <div class="flex flex-wrap gap-2">
+            @if (!string.IsNullOrWhiteSpace(q))
+            { <span class="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm">Từ khoá: <b>@q</b></span> }
+            @if (Model.WarehouseId.HasValue)
+            {
+                var kw = Model.WarehouseOptions?.FirstOrDefault(o => o.Value == Model.WarehouseId.ToString())?.Text ?? "";
+                <span class="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-sm">Kho: <b>@kw</b></span>
+            }
+        </div>
+    }
+
+    <!-- Table -->
+    <div class="bg-white border border-slate-200 rounded-lg shadow-sm overflow-x-auto">
+        <table class="min-w-full text-sm text-slate-700">
+            <thead class="bg-slate-100 text-slate-600 text-xs uppercase">
+                <tr>
+                    <th class="px-3 py-2">Ảnh</th>
+                    <th class="px-3 py-2">Mã</th>
+                    <th class="px-3 py-2">Tên</th>
+                    <th class="px-3 py-2 text-center">ĐVT</th>
+                    <th class="px-3 py-2">Nhà cung cấp</th>
+                    <th class="px-3 py-2 text-end">Giá bán</th>
+                    <th class="px-3 py-2 text-center">Quy cách</th>
+                    <th class="px-3 py-2 text-center">Tồn</th>
+                    <th class="px-3 py-2">Kho</th>
+                    <th class="px-3 py-2 text-end">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                @foreach (var row in Model.Items)
+                {
+                    var m = row.M;
+                    var qty = row.TotalQty;
+                    string badgeColor = qty < 0 ? "bg-red-100 text-red-700"
+                                        : qty == 0 ? "bg-slate-100 text-slate-600"
+                                        : qty <= LowStockThreshold ? "bg-amber-100 text-amber-700"
+                                        : "bg-emerald-100 text-emerald-700";
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="px-3 py-2">
+                            @if (!string.IsNullOrEmpty(m.ImageUrl))
+                            {
+                                <img src="@m.ImageUrl" class="w-10 h-10 rounded-md object-cover border border-slate-200" />
+                            }
+                        </td>
+                        <td class="px-3 py-2 font-semibold">@m.Code</td>
+                        <td class="px-3 py-2">
+                            <div class="font-medium text-slate-800">@m.Name</div>
+                            @if (!string.IsNullOrWhiteSpace(m.Description))
+                            { <div class="text-xs text-slate-500 line-clamp-2">@m.Description</div> }
+                        </td>
+                        <td class="px-3 py-2 text-center">@m.Unit</td>
+                        <td class="px-3 py-2">@m.Supplier?.Name</td>
+                        <td class="px-3 py-2 text-end">@((m.SellingPrice ?? 0m).ToString("n0")) đ</td>
+                        <td class="px-3 py-2 text-center">@m.Specification</td>
+                        <td class="px-3 py-2 text-center">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium @badgeColor">
+                                @((qty % 1m == 0m) ? ((long)qty).ToString() : qty.ToString("0.##"))
+                            </span>
+                        </td>
+                        <td class="px-3 py-2 space-x-1">
+                            @if (row.WhereStock != null && row.WhereStock.Count > 0)
+                            {
+                                foreach (var w in row.WhereStock)
+                                {
+                                    <span class="inline-block px-2 py-0.5 text-xs rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                                        @w.WarehouseName <span class="text-slate-400">(@FQty(w.Qty))</span>
+                                    </span>
+                                }
+                            }
+                            else
+                            {
+                                <span class="inline-block px-2 py-0.5 text-xs rounded-full bg-slate-100 text-slate-500 border border-slate-200">
+                                    Chưa phân kho
+                                </span>
+                            }
+                        </td>
+                        <td class="px-3 py-2 text-end">
+                            <div class="flex justify-end gap-2">
+                                <a href="#"
+                                   data-url="@Url.Action("Edit","Materials", new { id = m.Id, modal = 1 })"
+                                   class="js-edit px-2 py-1 text-xs rounded-md border border-blue-200 text-blue-600 hover:bg-blue-50">
+                                    Sửa
+                                </a>
+                                <a asp-action="Delete" asp-route-id="@m.Id"
+                                   class="px-2 py-1 text-xs rounded-md border border-red-200 text-red-600 hover:bg-red-50">
+                                    Xoá
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+@* @if (!string.IsNullOrWhiteSpace(q) || Model.WarehouseId.HasValue)
+{
+  <div class="mt-2">
+    @if (!string.IsNullOrWhiteSpace(q)) { <span class="chip me-1">Từ khoá: <b>@q</b></span> }
+    @if (Model.WarehouseId.HasValue) {
+        var kw = Model.WarehouseOptions?.FirstOrDefault(o => o.Value == Model.WarehouseId.ToString())?.Text ?? "";
+        <span class="chip">Kho: <b>@kw</b></span>
+    }
+  </div>
+}
+
+<div class="table-responsive mt-2">
+  <table class="table table-sm table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th style="width:44px">Ảnh</th>
+        <th style="width:110px">Mã</th>
+        <th>Tên</th>
+        <th style="width:80px">ĐVT</th>
+        <th style="width:160px">Nhà cung cấp</th>
+        <th style="width:110px" class="text-end">Giá bán</th>
+        <th style="width:10%" class="text-center">Quy cách</th>
+        <th style="width:90px" class="text-center">Tồn</th>
+        <th style="width:160px">Kho</th>
+        <th style="width:120px" class="text-end">Thao tác</th>
+      </tr>
+    </thead>
+    <tbody>
+        @foreach (var row in Model.Items)
+        {
+            var m = row.M;
+            var qty = row.TotalQty;
+            string badgeClass = qty < 0 ? "bg-danger"
+                              : qty == 0 ? "bg-secondary"
+                              : qty <= LowStockThreshold ? "bg-warning text-dark"
+                              : "bg-success";
+            <tr>
+              <td>
+                @if (!string.IsNullOrEmpty(m.ImageUrl)) { <img src="@m.ImageUrl" class="img-ava" alt="img" /> }
+              </td>
+              <td><span class="fw-semibold">@m.Code</span></td>
+              <td>
+                <div class="fw-semibold">@m.Name</div>
+                @if (!string.IsNullOrWhiteSpace(m.Description))
+                { <div class="text-muted small text-trunc-2">@m.Description</div> }
+              </td>
+              <td>@m.Unit</td>
+              <td>@m.Supplier?.Name</td>
+              <td class="text-end">@((m.SellingPrice ?? 0m).ToString("n0")) đ</td>
+              <td class="text-center">@m.Specification</td>
+
+              @{
+                var qtyText = (qty % 1m == 0m) 
+                    ? ((long)qty).ToString()        // 10m -> "10"
+                    : qty.ToString("0.##");         // 10.5 -> "10,5" (theo vi-VN), 10.25 -> "10,25"
+                }
+                
+                <td class="text-center">
+                  <span class="badge @badgeClass">@((qty % 1m == 0m) ? ((long)qty).ToString() : qty.ToString("0.##"))</span>
+                </td>
+                
+
+
+              <td>
+                @if (row.WhereStock != null && row.WhereStock.Count > 0)
+                {
+                    foreach (var w in row.WhereStock)
+                    {
+                        <span class="badge bg-light text-dark border me-1">
+                            @w.WarehouseName <span class="text-muted">(@FQty(w.Qty))</span>
+                        </span>
+                    }
+                }
+                else
+                {  <span class="badge bg-light text-dark border me-1">
+                    <span class="text-muted">Chưa phân kho</span></span>
+                }
+              </td>
+
+
+              <td class="text-end">
+                <div class="btn-group btn-group-sm">
+                
+                  <a  href="#"
+                      class="btn btn-outline-primary btn-sm js-edit"
+                      data-url="@Url.Action("Edit","Materials", new { id = m.Id, modal = 1 })">
+                    Sửa
+                  </a>
+
+                  <a class="btn btn-outline-danger" asp-action="Delete" asp-route-id="@m.Id">Xoá</a>
+                </div>
+              </td>
+            </tr>
+        }
+</tbody> 
+<div id="modal-host"></div>
+
+
+  </table>
+</div>*@
+
+@await Html.PartialAsync("~/Views/Materials/_CreateModal.cshtml", new MNBEMART.Models.Material())
+
+@section Scripts{
+  <partial name="_ValidationScriptsPartial" />
+  <script>
+    // Mở modal Edit (load từ server)
+    document.addEventListener('click', async (e) => {
+      const btn = e.target.closest('.js-edit');
+      if (!btn) return;
+      e.preventDefault();
+
+      const url = btn.getAttribute('data-url');
+      const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }});
+      const html = await res.text();
+
+      const host = document.getElementById('modal-host');
+      host.innerHTML = html;
+
+      const modalEl = host.querySelector('.modal');
+      const bsModal = new bootstrap.Modal(modalEl);
+      modalEl.addEventListener('hidden.bs.modal', () => { host.innerHTML = ''; });
+      bsModal.show();
+    });
+
+    // Submit form Edit trong modal bằng AJAX
+    document.addEventListener('submit', async (e) => {
+      const form = e.target;
+      if (form.id !== 'materialEditForm') return;  // chỉ bắt form edit
+
+      e.preventDefault();
+
+      // đảm bảo giữ ?modal=1 ở POST
+      const action = form.action.includes('?') ? form.action + '&modal=1' : form.action + '?modal=1';
+
+      const res = await fetch(action, { method: 'POST', body: new FormData(form) });
+
+      // Lưu thành công: controller RedirectToAction -> res.redirected = true
+      if (res.redirected) {
+        location.reload();  // reload danh sách mà không rời trang index
+        return;
+      }
+
+      // Lỗi validate: server trả lại HTML modal với message -> render lại vào host
+      const ct = res.headers.get('content-type') || '';
+      if (ct.includes('text/html')) {
+        const html = await res.text();
+        const host = document.getElementById('modal-host');
+        host.innerHTML = html;
+
+        const modalEl = host.querySelector('.modal');
+        const bsModal = new bootstrap.Modal(modalEl);
+        bsModal.show();
+      } else {
+        // fallback
+        location.reload();
+      }
+    });
+    // Auto mở modal theo query (nếu cần)
+    const qp = new URLSearchParams(location.search);
+    if (qp.get('newMaterial') === '1') {
+      const el = document.getElementById('materialCreateModal');
+      if (el) new bootstrap.Modal(el).show();
+    }
+
+    // Preview ảnh
+    (function(){
+      const file = document.getElementById('materialImageFile');
+      const img  = document.getElementById('materialImagePreview');
+      if (!file || !img) return;
+      file.addEventListener('change', () => {
+        const f = file.files?.[0];
+        if (!f) { img.classList.add('d-none'); img.src = '#'; return; }
+        const fr = new FileReader();
+        fr.onload = e => { img.src = e.target.result; img.classList.remove('d-none'); }
+        fr.readAsDataURL(f);
+      });
+    })();
+
+    // Format số lượng hiển thị
+    @functions {
+    // Không tách nghìn, chỉ hiện thập phân khi thực sự có
+    string FQty(decimal v) => (v % 1m == 0m) ? ((long)v).ToString() : v.ToString("0.##");
+    string FQty(int v)     => v.ToString();
+    string FQty(long v)    => v.ToString();
+    }
+
+
+  </script>
+}
+
+
+
+
+@if (Model.TotalPages > 1)
+{
+  <nav class="d-flex justify-content-end">
+    <ul class="pagination pagination-sm mb-0">
+      @{
+        int prev = Math.Max(1, Model.Page - 1);
+        int next = Math.Min(Model.TotalPages, Model.Page + 1);
+        string qs(string p) => Url.Action("Index", new { q = q, warehouseId = Model.WarehouseId, pageSize = Model.PageSize, page = p })!;
+      }
+      <li class="page-item @(Model.Page==1?"disabled":null)">
+        <a class="page-link" href="@qs(prev.ToString())">&laquo;</a>
+      </li>
+      @for (int i = 1; i <= Model.TotalPages; i++)
+      {
+        <li class="page-item @(i==Model.Page?"active":null)">
+          <a class="page-link" href="@qs(i.ToString())">@i</a>
+        </li>
+      }
+      <li class="page-item @(Model.Page==Model.TotalPages?"disabled":null)">
+        <a class="page-link" href="@qs(next.ToString())">&raquo;</a>
+      </li>
+    </ul>
+  </nav>
+}

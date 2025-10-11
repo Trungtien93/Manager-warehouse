@@ -1,0 +1,444 @@
+@model MNBEMART.Models.StockIssue
+@using Microsoft.AspNetCore.Mvc.Rendering
+@{
+    var materials = (IEnumerable<MNBEMART.Models.Material>)(ViewBag.Materials ?? Enumerable.Empty<MNBEMART.Models.Material>());
+}
+
+<div class="modal fade" id="siCreateModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-fullscreen-md-down modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Tạo phiếu xuất</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+      </div>
+
+      <form asp-controller="StockIssues" asp-action="CreateIssue" method="post" id="issueForm">
+        @Html.AntiForgeryToken()
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-lg-3">
+              <div class="border rounded p-3 bg-light">
+                <div class="mb-3">
+                  <label class="form-label">Kho xuất</label>
+                  <select asp-for="WarehouseId" class="form-select" asp-items="ViewBag.WarehouseOptions">
+                    <option value="">-- Chọn kho --</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Người Nhận</label>
+                  <input asp-for="ReceivedByName" class="form-control"/>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Số chứng từ gốc</label>
+                  <input asp-for="ReferenceDocumentNumber" class="form-control"/>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Ngày chứng từ</label>
+                  <input asp-for="ReferenceDate" type="date" class="form-control"/>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Ghi chú</label>
+                  <textarea asp-for="Note" rows="3" class="form-control"></textarea>
+                </div>
+                <div class="small text-muted">Người lập: @User.Identity?.Name</div>
+              </div>
+            </div>
+
+            <div class="col-lg-9">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="input-group input-group-sm" style="max-width:520px">
+                  <span class="input-group-text">🔍</span>
+                  <input id="matSearchOut" class="form-control" placeholder="Nhập tên, mã vật tư...">
+                </div>
+                <button type="button" id="btnAddEmpty" class="btn btn-outline-secondary btn-sm">+ Thêm dòng trống</button>
+              </div>
+
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered align-middle" id="issueDetailsTable">
+                  <thead class="table-light">
+                    <tr>
+                      <th style="width:30%">Sản phẩm</th>
+                      <th>Ghi chú</th>
+                      <th style="width:10%" class="text-end">SL</th>
+                      <th style="width:12%" class="text-end">Tồn (kho chọn)</th>  @* thêm *@
+                      <th style="width:12%" class="text-end">Giá xuất</th>
+                      <th style="width:10%">ĐVT</th>
+                      <th style="width:8%"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="issueDetailBody"></tbody>
+                </table>
+              </div>
+
+              <div class="d-flex justify-content-end mt-2">
+                <div class="text-end">
+                  <div><strong>Tổng SL:</strong> <span id="sumItemsOut">0</span></div>
+                  <div><strong>Tổng tiền xuất:</strong> <span id="sumAmountOut">0 đ</span></div>
+                </div>
+              </div>
+
+              <div class="text-muted small mt-1">* Enter trong ô tìm kiếm để thêm dòng nhanh</div>
+              <div class="text-muted small">* Tự chặn chọn trùng vật tư</div>
+
+               <div class="modal-footer">
+                <div class="me-auto text-danger" id="formErrorOut"></div>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Đóng</button>
+                <button type="submit" class="btn btn-primary" id="btnSubmitOut">Tạo</button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Action bar dính cuối cột phải, không bị CSS global ẩn */
+  #siCreateModal .sticky-actions{
+    position: sticky;
+    bottom: 0;
+    background: #fff;
+    border-top: 1px solid #e9ecef;
+    padding: .75rem;
+    display: flex;
+    gap: .5rem;
+    justify-content: flex-end;
+    z-index: 2;
+  }
+</style>
+
+@* <script>
+(function(){
+  const modal = document.getElementById('siCreateModal') || document.getElementById('createIssueModal');
+  if(!modal){ console.warn('Không tìm thấy modal siCreateModal/createIssueModal'); return; }
+
+  // DATA vật tư
+  const mats = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+    materials.Select(m => new { m.Id, m.Code, m.Name, m.Unit, m.Specification, m.PurchasePrice })
+  ));
+
+  // ====== CÁC GETTER KHỚP VỚI ID Ở HTML ======
+  const tbody      = () => modal.querySelector('#issueDetailBody');
+  const search     = () => modal.querySelector('#matSearchOut');
+  const sumItemsEl = () => modal.querySelector('#sumItemsOut');
+  const sumAmtEl   = () => modal.querySelector('#sumAmountOut');
+  const whSel      = () => modal.querySelector('#WarehouseId');
+  const submitBtn  = () => modal.querySelector('#btnSubmitOut');
+  const errorBox   = () => modal.querySelector('#formErrorOut');
+
+  let onhandCache = {}; // key: `${wid}:${matId}` -> number
+
+  function uid(){ return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'k'+Date.now()+Math.random().toString(16).slice(2); }
+
+  function refreshOptionStates(){
+    const selects = modal.querySelectorAll('.mat-select');
+    const chosen  = new Set([...selects].map(s => s.value).filter(Boolean));
+    selects.forEach(sel => {
+      const keep = sel.value;
+      [...sel.options].forEach(opt => {
+        if(!opt.value) return;
+        opt.disabled = (chosen.has(opt.value) && opt.value !== keep);
+      });
+    });
+  }
+
+  function notifyDup(){ alert('Sản phẩm này đã được chọn ở dòng khác. Vui lòng chọn sản phẩm khác.'); }
+
+  function renderRow(prefill){
+    const key = uid();
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>
+        <input type="hidden" name="Details.index" value="${key}" />
+        <select name="Details[${key}].MaterialId" class="form-select form-select-sm mat-select">
+          <option value="">-- Chọn --</option>
+          ${mats.map(m => `<option value="${m.Id}">${(m.Code ?? '').trim()} ${m.Name}</option>`).join('')}
+        </select>
+      </td>
+      <td><input name="Details[${key}].Specification" class="form-control form-control-sm" placeholder="Ghi chú dòng"/></td>
+      <td><input name="Details[${key}].Quantity" type="number" min="1" step="1" class="form-control form-control-sm text-end qty" value="${prefill?.q ?? 1}"/></td>
+      <td class="text-end">
+        <span class="onhand" data-onhand="0">—</span>
+      </td>
+      <td><input name="Details[${key}].UnitPrice" type="number" min="0" step="0.01" class="form-control form-control-sm text-end price" value="${prefill?.p ?? 0}"/></td>
+      <td><input name="Details[${key}].Unit" class="form-control form-control-sm unit"/></td>
+      <td class="text-center">
+        <button type="button" class="btn btn-outline-danger btn-sm del">✕</button>
+      </td>`;
+    tbody().appendChild(tr);
+
+    const sel = tr.querySelector('.mat-select');
+    sel.addEventListener('change', (e)=>{
+      const val = e.target.value;
+      if(!val){ refreshOptionStates(); return; }
+      const dup = [...modal.querySelectorAll('.mat-select')].some(s => s !== sel && s.value === val);
+      if(dup){
+        notifyDup();
+        sel.value = "";
+        tr.querySelector('.unit').value = '';
+        tr.querySelector('.qty').value = 1;
+        tr.querySelector('input[name$=".Specification"]').value = '';
+        tr.querySelector('.price').value = '';
+        refreshOptionStates();
+        return;
+      }
+      const m = mats.find(x => String(x.Id) === String(val));
+      tr.querySelector('.unit').value = m ? (m.Unit || '') : '';
+      tr.querySelector('.qty').value = 1;
+      tr.querySelector('input[name$=".Specification"]').value = m ? (m.Specification || '') : '';
+      if(m && m.PurchasePrice != null) tr.querySelector('.price').value = m.PurchasePrice;
+      refreshOptionStates();
+      calc();
+    });
+
+    tr.querySelector('.del').addEventListener('click', ()=>{ tr.remove(); refreshOptionStates(); calc(); });
+
+    const qty = tr.querySelector('.qty');
+    qty.addEventListener('input', ()=>{ qty.value = qty.value.replace(/[^\d]/g,''); calc(); });
+    qty.addEventListener('blur', ()=>{ qty.value = Math.max(1, Math.floor(Number(qty.value||1))); calc(); });
+
+    tr.querySelector('.price').addEventListener('input', calc);
+
+    calc();
+    refreshOptionStates();
+  }
+
+  function calc(){
+    let items = 0, amount = 0;
+    tbody().querySelectorAll('tr').forEach(tr=>{
+      const q = Number(tr.querySelector('.qty')?.value || 0);
+      const p = Number(tr.querySelector('.price')?.value || 0);
+      if(q>0){ items += q; amount += q*p; }
+    });
+    if(sumItemsEl()) sumItemsEl().textContent = items.toLocaleString('vi-VN');
+    if(sumAmtEl())   sumAmtEl().textContent   = amount.toLocaleString('vi-VN') + ' đ';
+  }
+
+  // Khi mở modal
+  modal.addEventListener('shown.bs.modal', ()=>{
+    if(tbody()){ tbody().innerHTML = ''; renderRow(); }
+    if(search()){ search().value=''; setTimeout(()=>search().focus(), 150); }
+    refreshOptionStates();
+  });
+
+  // Nút "Thêm dòng trống"
+  modal.addEventListener('click', (e)=>{
+    const btn = e.target.closest('#btnAddEmpty');
+    if(!btn) return;
+    e.preventDefault();
+    renderRow();
+  });
+
+  // Enter trong ô tìm kiếm -> thêm dòng
+  document.addEventListener('keydown', (e)=>{
+    if(search() && document.activeElement === search() && e.key === 'Enter'){
+      e.preventDefault();
+      renderRow();
+    }
+  });
+})();
+</script> *@
+<script>
+(function(){
+  const modal = document.getElementById('siCreateModal');
+  if(!modal) return;
+
+  const baseOnHandUrl = '@Url.Action("OnHand","StockIssues")'; // ✅ server render sẵn
+  const mats = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+    materials.Select(m => new { m.Id, m.Code, m.Name, m.Unit, m.Specification, m.SellingPrice })
+  ));
+
+  const tbody      = () => modal.querySelector('#issueDetailBody');
+  const search     = () => modal.querySelector('#matSearchOut');
+  const sumItemsEl = () => modal.querySelector('#sumItemsOut');
+  const sumAmtEl   = () => modal.querySelector('#sumAmountOut');
+  const whSel      = () => modal.querySelector('#WarehouseId');
+  const submitBtn  = () => modal.querySelector('#btnSubmitOut');
+  const errorBox   = () => modal.querySelector('#formErrorOut');
+
+  let onhandCache = {}; // key: `${wid}:${matId}` -> number
+
+  function uid(){ return (crypto?.randomUUID ? crypto.randomUUID() : 'k'+Date.now()+Math.random().toString(16).slice(2)); }
+
+  function refreshOptionStates(){
+    const selects = modal.querySelectorAll('.mat-select');
+    const chosen  = new Set([...selects].map(s => s.value).filter(Boolean));
+    selects.forEach(sel => {
+      const keep = sel.value;
+      [...sel.options].forEach(opt => {
+        if(!opt.value) return;
+        opt.disabled = (chosen.has(opt.value) && opt.value !== keep);
+      });
+    });
+  }
+
+  function renderRow(prefill){
+    const key = uid();
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>
+        <input type="hidden" name="Details.index" value="${key}" />
+        <select name="Details[${key}].MaterialId" class="form-select form-select-sm mat-select">
+          <option value="">-- Chọn --</option>
+          ${mats.map(m => `<option value="${m.Id}">${(m.Code ?? '').trim()} ${m.Name}</option>`).join('')}
+        </select>
+      </td>
+      <td><input name="Details[${key}].Specification" class="form-control form-control-sm" placeholder="Ghi chú dòng"/></td>
+      <td><input name="Details[${key}].Quantity" type="number" min="1" step="1" class="form-control form-control-sm text-end qty" value="${prefill?.q ?? 1}"/></td>
+      <td class="text-end"><span class="onhand" data-onhand="0">—</span></td>
+      <td><input name="Details[${key}].UnitPrice" type="number" min="0" step="0.01" class="form-control form-control-sm text-end price" value="${prefill?.p ?? 0}"/></td>
+      <td><input name="Details[${key}].Unit" class="form-control form-control-sm unit"/></td>
+      <td class="text-center">
+        <button type="button" class="btn btn-outline-danger btn-sm del">✕</button>
+      </td>`;
+    tbody().appendChild(tr);
+
+    const sel  = tr.querySelector('.mat-select');
+    const qtyI = tr.querySelector('.qty');
+    const priceI = tr.querySelector('.price');
+
+
+    sel.addEventListener('change', async (e)=>{
+      const val = e.target.value;
+      if(!val){ refreshOptionStates(); updateRowOnHand(tr); calc(); return; }
+
+      // chặn trùng
+      const dup = [...modal.querySelectorAll('.mat-select')].some(s => s !== sel && s.value === val);
+      if(dup){ alert('Sản phẩm đã chọn ở dòng khác.'); sel.value=''; refreshOptionStates(); updateRowOnHand(tr); calc(); return; }
+
+      // fill nhanh
+      const m = mats.find(x => String(x.Id) === String(val));
+      tr.querySelector('.unit').value = m ? (m.Unit || '') : '';
+      tr.querySelector('input[name$=".Specification"]').value = m ? (m.Specification || '') : '';
+      if(m && m.SellingPrice != null) priceI.value = m.SellingPrice;
+
+
+      refreshOptionStates();
+
+      // nạp tồn theo kho đã chọn
+      await ensureOnHand([val]);
+      updateRowOnHand(tr);
+      validateRow(tr);
+      calc();
+    });
+
+    qtyI.addEventListener('input', ()=>{ validateRow(tr); calc(); });
+    priceI.addEventListener('input', calc);
+
+    tr.querySelector('.del').addEventListener('click', ()=>{ tr.remove(); refreshOptionStates(); calc(); });
+
+    updateRowOnHand(tr);
+    validateRow(tr);
+    calc();
+  }
+
+  function getWarehouseId(){
+    const v = whSel()?.value;
+    return v ? parseInt(v,10) : 0;
+  }
+
+  async function ensureOnHand(materialIds){
+    const wid = getWarehouseId();
+    if(!wid || !materialIds?.length) return;
+
+    const need = materialIds.filter(id => onhandCache[`${wid}:${id}`] == null);
+    if(!need.length) return;
+
+    try{
+      // ✅ build URL đúng
+      const url = `${baseOnHandUrl}?warehouseId=${encodeURIComponent(wid)}&ids=${encodeURIComponent(need.join(','))}`;
+      const res = await fetch(url, { headers: { 'Accept': 'application/json' }});
+      const data = await res.json();
+      data.forEach(x => onhandCache[`${wid}:${x.materialId}`] = Number(x.qty) || 0);
+      need.forEach(id => { const k = `${wid}:${id}`; if(onhandCache[k] == null) onhandCache[k] = 0; });
+    }catch{ /* ignore */ }
+  }
+
+  function updateRowOnHand(tr){
+    const wid = getWarehouseId();
+    const sel = tr.querySelector('.mat-select');
+    const ohSpan = tr.querySelector('.onhand');
+    if(!ohSpan) return;
+
+    const matId = sel?.value;
+    if(!wid || !matId){
+      ohSpan.dataset.onhand = '0';
+      ohSpan.textContent = '—';
+      return;
+    }
+    const key = `${wid}:${matId}`;
+    const v = onhandCache[key];
+    if(v == null) { ohSpan.dataset.onhand = '0'; ohSpan.textContent = '...'; }
+    else { ohSpan.dataset.onhand = String(v); ohSpan.textContent = fmtQty(v); }
+  }
+
+  function validateRow(tr){
+    const qtyI = tr.querySelector('.qty');
+    const ohSpan = tr.querySelector('.onhand');
+    qtyI.classList.remove('is-invalid');
+
+    const q = Number(qtyI.value || 0);
+    const onhand = Number(ohSpan?.dataset.onhand || 0);
+    if(q > onhand) qtyI.classList.add('is-invalid');
+  }
+
+  function fmtQty(v){ return (v % 1 === 0) ? String(v|0) : v.toFixed(2).replace(/\.?0+$/,''); }
+
+  function calc(){
+    let items = 0, amount = 0, anyInvalid = false;
+    tbody().querySelectorAll('tr').forEach(tr=>{
+      const q = Number(tr.querySelector('.qty')?.value || 0);
+      const p = Number(tr.querySelector('.price')?.value || 0);
+      if(tr.querySelector('.qty')?.classList.contains('is-invalid')) anyInvalid = true;
+      if(q>0){ items += q; amount += q*p; }
+    });
+
+    if(sumItemsEl()) sumItemsEl().textContent = items.toLocaleString('vi-VN');
+    if(sumAmtEl())   sumAmtEl().textContent   = amount.toLocaleString('vi-VN') + ' đ';
+
+    if(submitBtn()){
+      submitBtn().disabled = anyInvalid || getWarehouseId() <= 0;
+    }
+    if(errorBox()){
+      errorBox().textContent = (getWarehouseId() <= 0) ? 'Vui lòng chọn kho trước khi tạo phiếu.'
+                                : anyInvalid ? 'Có dòng vượt tồn kho. Vui lòng giảm số lượng.' : '';
+    }
+  }
+
+  // đổi kho -> nạp tồn cho tất cả dòng
+  modal.addEventListener('change', async (e)=>{
+    if(e.target && e.target.id === 'WarehouseId'){
+      const ids = [...modal.querySelectorAll('.mat-select')].map(s => s.value).filter(Boolean);
+      await ensureOnHand(ids);
+      tbody().querySelectorAll('tr').forEach(tr => { updateRowOnHand(tr); validateRow(tr); });
+      calc();
+    }
+  });
+
+  // Nút thêm dòng (đồng bộ ID)
+  modal.addEventListener('click', (e)=>{
+    const btn = e.target.closest('#btnAddEmptyOut'); // ✅ trùng với id trong HTML
+    if(!btn) return;
+    e.preventDefault();
+    renderRow();
+  });
+
+  // Enter trong ô tìm kiếm
+  document.addEventListener('keydown', (e)=>{
+    if(search() && document.activeElement === search() && e.key === 'Enter'){
+      e.preventDefault();
+      renderRow();
+    }
+  });
+
+  // Khi mở modal -> reset
+  modal.addEventListener('shown.bs.modal', ()=>{
+    if(tbody()){ tbody().innerHTML = ''; renderRow(); }
+    if(search()){ search().value=''; setTimeout(()=>search().focus(), 120); }
+    onhandCache = {};
+    calc();
+  });
+})();
+</script>

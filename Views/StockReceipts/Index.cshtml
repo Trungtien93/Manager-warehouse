@@ -1,0 +1,274 @@
+@model IEnumerable<MNBEMART.Models.StockReceipt>
+@using MNBEMART.Models
+@using Microsoft.AspNetCore.Mvc.Rendering
+@{
+    ViewData["Title"] = "Nhập hàng";
+
+    var hasQ = Context.Request.Query.TryGetValue("q", out var qv);
+    string q = hasQ ? qv.ToString() : string.Empty;
+
+    int? selectedWh = int.TryParse(Context.Request.Query["warehouseId"], out var wv) ? wv : null;
+    DocumentStatus? s = Enum.TryParse<DocumentStatus>(Context.Request.Query["status"], out var sv) ? sv : (DocumentStatus?)null;
+
+    var whOpts = (ViewBag.WarehouseOptions as SelectList) ?? new SelectList(Enumerable.Empty<SelectListItem>());
+
+    decimal sumAmt = (ViewBag.SumAmt as decimal?) ?? 0m;
+    decimal sumQty = (ViewBag.SumQty as decimal?) ?? 0m;
+}
+
+<!-- Tailwind + Bootstrap Icons -->
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+
+<div class="min-h-screen bg-slate-50 text-slate-700 p-6 md:p-8 space-y-6">
+
+    <!-- PAGE HEADER -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                <i class="bi bi-box-arrow-in-down text-blue-600"></i> @ViewData["Title"]
+            </h1>
+            <p class="text-sm text-slate-500">Theo phiếu nhập</p>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+            <button class="px-3 py-2 rounded-lg text-sm border bg-white text-slate-700 hover:bg-slate-100 transition" onclick="location.reload()">
+                <i class="bi bi-arrow-clockwise"></i> Tải lại
+            </button>
+
+            <div class="relative">
+                <button class="px-3 py-2 rounded-lg text-sm border bg-white text-slate-700 hover:bg-slate-100 transition flex items-center gap-1" data-bs-toggle="dropdown">
+                    <i class="bi bi-printer"></i> In phiếu <i class="bi bi-caret-down-fill text-xs"></i>
+                </button>
+                <ul class="absolute right-0 mt-1 hidden group-hover:block bg-white shadow-lg border rounded-md dropdown-menu brand z-10">
+                    <li><button class="block px-3 py-2 text-sm hover:bg-slate-100 w-full text-left"><i class="bi bi-filetype-pdf me-2"></i> In PDF</button></li>
+                    <li><button class="block px-3 py-2 text-sm hover:bg-slate-100 w-full text-left"><i class="bi bi-printer me-2"></i> In trực tiếp</button></li>
+                </ul>
+            </div>
+
+            <div class="relative">
+                <button class="px-3 py-2 rounded-lg text-sm border bg-white text-slate-700 hover:bg-slate-100 transition flex items-center gap-1" data-bs-toggle="dropdown">
+                    <i class="bi bi-filetype-xls"></i> Xuất excel <i class="bi bi-caret-down-fill text-xs"></i>
+                </button>
+                <ul class="absolute right-0 mt-1 hidden group-hover:block bg-white shadow-lg border rounded-md dropdown-menu brand z-10">
+                    <li><button class="block px-3 py-2 text-sm hover:bg-slate-100 w-full text-left">Xuất excel</button></li>
+                    <li><button class="block px-3 py-2 text-sm hover:bg-slate-100 w-full text-left">Excel nhập nhanh</button></li>
+                </ul>
+            </div>
+
+            <button class="px-3 py-2 rounded-lg text-sm border bg-white text-slate-700 hover:bg-slate-100 transition">
+                <i class="bi bi-upload"></i> Nhập excel
+            </button>
+
+            <button class="px-3 py-2 rounded-lg text-sm border bg-white text-slate-700 hover:bg-slate-100 transition">
+                <i class="bi bi-journal-arrow-up"></i> Thẻ nhập hàng
+            </button>
+
+            <button class="px-3 py-2 rounded-lg text-sm border bg-white text-slate-700 hover:bg-slate-100 transition">
+                <i class="bi bi-geo-alt"></i> Gợi ý nhập hàng
+            </button>
+
+            <div class="relative">
+                <button class="px-3 py-2 rounded-lg text-sm border bg-white text-slate-700 hover:bg-slate-100 transition flex items-center gap-1" data-bs-toggle="dropdown">
+                    <i class="bi bi-columns-gap"></i> Cấu hình cột <i class="bi bi-caret-down-fill text-xs"></i>
+                </button>
+                <ul class="absolute right-0 mt-1 hidden group-hover:block bg-white shadow-lg border rounded-md dropdown-menu brand z-10">
+                    <li><button class="block px-3 py-2 text-sm hover:bg-slate-100 w-full text-left">Hiện/ẩn cột…</button></li>
+                </ul>
+            </div>
+
+            <div class="relative">
+                <button class="px-3 py-2 rounded-lg text-sm border bg-white text-slate-700 hover:bg-slate-100 transition flex items-center gap-1" data-bs-toggle="dropdown">
+                    Thao tác <i class="bi bi-caret-down-fill text-xs"></i>
+                </button>
+                <ul class="absolute right-0 mt-1 hidden group-hover:block bg-white shadow-lg border rounded-md dropdown-menu brand z-10">
+                    <li><button class="block px-3 py-2 text-sm hover:bg-slate-100 w-full text-left">Xoá đã chọn</button></li>
+                </ul>
+            </div>
+
+            <button class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium shadow hover:bg-blue-700 transition"
+                    data-bs-toggle="modal" data-bs-target="#srCreateModal">
+                + Tạo phiếu
+            </button>
+        </div>
+    </div>
+
+    <!-- TOOLBAR -->
+    <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-5 space-y-4">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <form method="get" class="flex-1">
+                <div class="relative">
+                    <i class="bi bi-search absolute left-3 top-2.5 text-slate-400"></i>
+                    <input class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                           type="text" name="q" value="@q" placeholder="Mã / Ghi chú..." />
+                </div>
+            </form>
+
+            <div class="flex flex-wrap gap-2 justify-start md:justify-end">
+                <a class="px-3 py-1.5 text-sm font-semibold border rounded-full transition @(s==null?"bg-blue-50 text-blue-700 border-blue-200":"text-slate-600 border-slate-300 hover:bg-slate-100")"
+                   asp-action="Index">Tất cả <small class="ml-1 text-xs text-slate-400">@ViewBag.CountAll</small></a>
+
+                <a class="px-3 py-1.5 text-sm font-semibold border rounded-full transition @(s==DocumentStatus.Moi?"bg-indigo-50 text-indigo-700 border-indigo-200":"text-slate-600 border-slate-300 hover:bg-slate-100")"
+                   asp-action="Index" asp-route-status="@DocumentStatus.Moi">Mới <small class="ml-1 text-xs text-slate-400">@ViewBag.CountMoi</small></a>
+
+                <a class="px-3 py-1.5 text-sm font-semibold border rounded-full transition @(s==DocumentStatus.DaXacNhan?"bg-amber-50 text-amber-700 border-amber-200":"text-slate-600 border-slate-300 hover:bg-slate-100")"
+                   asp-action="Index" asp-route-status="@DocumentStatus.DaXacNhan">Đã xác nhận <small class="ml-1 text-xs text-slate-400">@ViewBag.CountXacNhan</small></a>
+
+                <a class="px-3 py-1.5 text-sm font-semibold border rounded-full transition @(s==DocumentStatus.DaNhapHang?"bg-green-50 text-green-700 border-green-200":"text-slate-600 border-slate-300 hover:bg-slate-100")"
+                   asp-action="Index" asp-route-status="@DocumentStatus.DaNhapHang">Đã nhập hàng <small class="ml-1 text-xs text-slate-400">@ViewBag.CountNhap</small></a>
+
+                <a class="px-3 py-1.5 text-sm font-semibold border rounded-full transition @(s==DocumentStatus.DaHuy?"bg-red-50 text-red-700 border-red-200":"text-slate-600 border-slate-300 hover:bg-slate-100")"
+                   asp-action="Index" asp-route-status="@DocumentStatus.DaHuy">Đã huỷ <small class="ml-1 text-xs text-slate-400">@ViewBag.CountHuy</small></a>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3">
+            <label class="text-sm font-medium text-slate-600">Kho:</label>
+            <select name="warehouseId"
+                    class="border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                    onchange="this.form.submit()">
+                <option value="">Tất cả các kho</option>
+                @foreach (var opt in whOpts)
+                {
+                    <option value="@opt.Value" selected="@(selectedWh==Convert.ToInt32(opt.Value)?"selected":null)">@opt.Text</option>
+                }
+            </select>
+        </div>
+    </div>
+
+    <!-- DANH SÁCH PHIẾU -->
+    @if (!(Model?.Any() ?? false))
+    {
+        <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-8 text-center">
+            <h3 class="text-slate-700 font-semibold mb-2">Chưa có phiếu phù hợp bộ lọc</h3>
+            <p class="text-slate-500 mb-3 text-sm">Thử đổi điều kiện tìm kiếm hoặc tạo phiếu mới</p>
+            <button class="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition"
+                    data-bs-toggle="modal" data-bs-target="#srCreateModal">+ Tạo phiếu</button>
+        </div>
+    }
+    else
+    {
+        <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-x-auto">
+            <table class="min-w-full text-sm text-slate-700">
+                <thead class="bg-slate-100 text-slate-600 text-xs uppercase">
+                    <tr>
+                        <th class="px-3 py-2">Mã phiếu</th>
+                        <th class="px-3 py-2">Người tạo</th>
+                        <th class="px-3 py-2">Kho</th>
+                        <th class="px-3 py-2">Ghi chú</th>
+                        <th class="px-3 py-2 text-right">Số lượng</th>
+                        <th class="px-3 py-2 text-right">Thành tiền</th>
+                        <th class="px-3 py-2 text-center">Trạng thái</th>
+                        <th class="px-3 py-2 text-right">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    @foreach (var r in Model)
+                    {
+                        var qty = r.Details?.Sum(d => Convert.ToDecimal(d.Quantity)) ?? 0m;
+                        var amt = r.Details?.Sum(d => Convert.ToDecimal(d.Quantity) * d.UnitPrice) ?? 0m;
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="px-3 py-2 font-mono font-semibold">@r.ReceiptNumber</td>
+                            <td class="px-3 py-2">@r.CreatedBy?.FullName</td>
+                            <td class="px-3 py-2">@r.Warehouse?.Name</td>
+                            <td class="px-3 py-2 truncate max-w-[240px]">@r.Note</td>
+                            <td class="px-3 py-2 text-right">@qty</td>
+                            <td class="px-3 py-2 text-right">@amt.ToString("n0")</td>
+                            <td class="px-3 py-2 text-center">
+                                @switch (r.Status)
+                                {
+                                    case DocumentStatus.Moi:        <span class="px-2 py-1 text-xs rounded-md bg-indigo-50 text-indigo-700 font-semibold">Mới</span>; break;
+                                    case DocumentStatus.DaXacNhan:  <span class="px-2 py-1 text-xs rounded-md bg-amber-50 text-amber-700 font-semibold">Đã xác nhận</span>; break;
+                                    case DocumentStatus.DaNhapHang: <span class="px-2 py-1 text-xs rounded-md bg-green-50 text-green-700 font-semibold">Đã nhập hàng</span>; break;
+                                    case DocumentStatus.DaHuy:      <span class="px-2 py-1 text-xs rounded-md bg-red-50 text-red-700 font-semibold">Đã huỷ</span>; break;
+                                }
+                            </td>
+                            <td class="px-3 py-2 text-right">
+                                <div class="flex justify-end gap-2">
+                                    <button class="px-2 py-1 text-xs rounded-md border border-blue-200 text-blue-600 hover:bg-blue-50"
+                                            data-bs-toggle="modal" data-bs-target="#detailsModal-@r.Id">
+                                        <i class="bi bi-eye"></i> Xem
+                                    </button>
+                                    @if (User.IsInRole("admin"))
+                                    {
+                                        if (r.Status == DocumentStatus.Moi)
+                                        {
+                                            <form asp-action="ApprovePost" method="post" class="inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@r.Id" />
+                                                <button class="px-2 py-1 text-xs rounded-md border border-amber-300 text-amber-700 hover:bg-amber-50">
+                                                    <i class="bi bi-clipboard-check"></i> Xác nhận
+                                                </button>
+                                            </form>
+                                        }
+                                        else if (r.Status == DocumentStatus.DaXacNhan)
+                                        {
+                                            <form asp-action="ReceivePost" method="post" class="inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@r.Id" />
+                                                <button class="px-2 py-1 text-xs rounded-md border border-green-300 text-green-700 hover:bg-green-50">
+                                                    <i class="bi bi-box-seam"></i> Nhập hàng
+                                                </button>
+                                            </form>
+                                        }
+                                        if (r.Status != DocumentStatus.DaHuy)
+                                        {
+                                            <form asp-action="RejectPost" method="post" class="inline" onsubmit="return confirm('Huỷ phiếu này?');">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@r.Id" />
+                                                <input type="hidden" name="note" value="Huỷ từ danh sách." />
+                                                <button class="px-2 py-1 text-xs rounded-md border border-red-300 text-red-700 hover:bg-red-50">
+                                                    <i class="bi bi-x-circle"></i> Huỷ
+                                                </button>
+                                            </form>
+                                        }
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    <!-- FOOTER -->
+    <div class="flex flex-col md:flex-row justify-between items-center gap-3 mt-4">
+        <div class="bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm">
+            <span class="text-slate-500">Tổng số hàng:</span> <b>@sumQty</b>
+            <span class="mx-2 text-slate-400">|</span>
+            <span class="text-slate-500">Tổng tiền hàng:</span> <b class="text-green-600">@sumAmt.ToString("n0") đ</b>
+        </div>
+        <nav class="flex items-center gap-1">
+            <a href="#" class="px-3 py-1 text-sm rounded-md border border-slate-300 text-slate-600 hover:bg-slate-100">«</a>
+            <a href="#" class="px-3 py-1 text-sm rounded-md border bg-blue-600 text-white border-blue-600">1</a>
+            <a href="#" class="px-3 py-1 text-sm rounded-md border border-slate-300 text-slate-600 hover:bg-slate-100">2</a>
+            <a href="#" class="px-3 py-1 text-sm rounded-md border border-slate-300 text-slate-600 hover:bg-slate-100">»</a>
+        </nav>
+    </div>
+</div>
+
+@foreach (var r in Model)
+{
+    @await Html.PartialAsync("_DetailsModal", r)
+}
+@await Html.PartialAsync("_CreateModal", new MNBEMART.Models.StockReceipt())
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        const url = new URLSearchParams(window.location.search);
+        if (url.get('create') === '1') {
+            const el = document.getElementById('srCreateModal') || document.getElementById('createReceiptModal');
+            if (el) new bootstrap.Modal(el).show();
+        }
+
+        (function () {
+            const openId = '@(TempData["OpenDetailId"] ?? "")';
+            if (openId) {
+                const el = document.getElementById('detailsModal-' + openId);
+                if (el) new bootstrap.Modal(el).show();
+            }
+        })();
+    </script>
+}

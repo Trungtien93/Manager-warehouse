@@ -1,0 +1,39 @@
+@model MNBEMART.ViewModels.UserFormVM
+@{
+    ViewData["Title"] = "Sửa người dùng";
+}
+<h3>@ViewData["Title"]</h3>
+
+<form asp-action="Edit" method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
+
+    <div class="mb-3">
+        <label class="form-label">Họ và tên</label>
+        <input asp-for="FullName" class="form-control" />
+        <span asp-validation-for="FullName" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Tài khoản</label>
+        <input asp-for="Username" class="form-control" required />
+        <span asp-validation-for="Username" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Mật khẩu mới (để trống nếu không đổi)</label>
+        <input asp-for="Password" class="form-control" type="password" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Quyền</label>
+        <select asp-for="Role" class="form-select" asp-items="ViewBag.Roles"></select>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Kho được truy cập</label>
+        <select asp-for="SelectedWarehouseIds" class="form-select" asp-items="ViewBag.WarehouseList" multiple size="6"></select>
+    </div>
+
+    <button class="btn btn-primary">Cập nhật</button>
+    <a asp-action="Index" class="btn btn-secondary">Huỷ</a>
+</form>

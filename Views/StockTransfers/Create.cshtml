@@ -1,0 +1,79 @@
+@model MNBEMART.ViewModels.StockTransferVM
+@using Microsoft.AspNetCore.Mvc.Rendering
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+
+@{
+    // Truyền MaterialOptions xuống partial
+    ViewData["MaterialOptions"] = Model.MaterialOptions;
+    ViewData["Title"] = "Tạo phiếu chuyển kho";
+}
+
+<div class="container-fluid py-3">
+    <h3 class="mb-3">Tạo phiếu chuyển kho</h3>
+
+    <form asp-action="Create" method="post" id="form-create">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Kho đi</label>
+                @Html.DropDownListFor(m => m.FromWarehouseId, Model.WarehouseOptions, new { @class = "form-select", id = "fromWh" })
+                <span asp-validation-for="FromWarehouseId" class="text-danger"></span>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Kho đến</label>
+                @Html.DropDownListFor(m => m.ToWarehouseId, Model.WarehouseOptions, new { @class = "form-select" })
+                <span asp-validation-for="ToWarehouseId" class="text-danger"></span>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Ghi chú</label>
+                <textarea class="form-control" asp-for="Note" rows="1"></textarea>
+            </div>
+        </div>
+
+        <div class="card mt-4 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="mb-0">Chi tiết vật tư</h5>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="btn-add-row">+ Thêm dòng</button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered align-middle mb-0" id="tbl-details">
+                        <thead class="table-light text-center">
+                            <tr>
+                                <th style="width:36%">Vật tư</th>
+                                <th style="width:14%" class="text-end">Số lượng</th>
+                                <th style="width:12%">ĐVT</th>
+                                <th style="width:18%">Tồn (theo kho)</th>   <!-- Đổi label -->
+                                <th>Ghi chú</th>
+                                <th style="width:40px"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @using Microsoft.AspNetCore.Mvc.ViewFeatures
+                            @for (int i = 0; i < Model.Details.Count; i++)
+                            {
+                                var vdd = new ViewDataDictionary(ViewData);
+                                vdd.TemplateInfo.HtmlFieldPrefix = $"Details[{i}]";
+                                @await Html.PartialAsync("_DetailRow", Model.Details[i], vdd)
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <span asp-validation-for="Details" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="mt-3 d-flex gap-2">
+            <button class="btn btn-primary" type="submit">Lưu phiếu</button>
+            <a class="btn btn-outline-secondary" asp-action="Index">Hủy</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/stocktransfer.create.js"></script>
+}

@@ -1,0 +1,162 @@
+@model MNBEMART.Models.StockIssue
+@using MNBEMART.Models
+
+@{
+    decimal sumQty = Model.Details?.Sum(d => Convert.ToDecimal(d.Quantity)) ?? 0m;
+    decimal sumAmt = Model.Details?.Sum(d => Convert.ToDecimal(d.Quantity) * d.UnitPrice) ?? 0m;
+
+    string StatusBadge(DocumentStatus s) => s switch {
+        DocumentStatus.Moi         => "badge bg-secondary",
+        DocumentStatus.DaXacNhan   => "badge bg-warning text-dark",
+        DocumentStatus.DaXuatHang  => "badge bg-success",
+        DocumentStatus.DaHuy       => "badge bg-danger",
+        _                          => "badge bg-light text-dark"
+    };
+}
+
+<div class="modal fade" id="issueDetailsModal-@Model.Id" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-fullscreen-md-down modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title mb-1">
+            Phiếu xuất: <span class="fw-semibold">@Model.IssueNumber</span>
+          </h5>
+          <div class="small text-muted">
+            Tạo lúc @Model.CreatedAt.ToString("dd/MM/yyyy HH:mm") • Người lập: @Model.CreatedBy?.FullName
+          </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <span class="@StatusBadge(Model.Status)">@Model.Status</span>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-lg-4">
+            <div class="border rounded p-3 bg-light">
+              <div class="mb-2">
+                <div class="text-muted small">Kho</div>
+                <div class="fw-semibold">@Model.Warehouse?.Name</div>
+              </div>
+              <div class="mb-2">
+                <div class="text-muted small">Người nhận</div>
+                <div>@(string.IsNullOrWhiteSpace(Model.ReceivedByName) ? "-" : Model.ReceivedByName)</div>
+              </div>
+              <div class="mb-2">
+                <div class="text-muted small">Số chứng từ gốc</div>
+                <div>@(string.IsNullOrWhiteSpace(Model.ReferenceDocumentNumber) ? "-" : Model.ReferenceDocumentNumber)</div>
+              </div>
+              <div class="mb-2">
+                <div class="text-muted small">Ngày chứng từ gốc</div>
+                <div>@(Model.ReferenceDate?.ToString("dd/MM/yyyy") ?? "-")</div>
+              </div>
+              <div class="mb-2">
+                <div class="text-muted small">Ghi chú</div>
+                <div>@(string.IsNullOrWhiteSpace(Model.Note) ? "-" : Model.Note)</div>
+              </div>
+
+              @if (Model.ApprovedAt.HasValue)
+              {
+                <hr />
+                <div class="small">
+                  Đã xác nhận bởi <strong>@Model.ApprovedBy?.FullName</strong> lúc @Model.ApprovedAt?.ToString("dd/MM/yyyy HH:mm")
+                </div>
+              }
+            </div>
+          </div>
+
+          <div class="col-lg-8">
+            <div class="table-responsive">
+              <table class="table table-sm table-bordered align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th style="width:32%">Mã / Tên vật tư</th>
+                    <th>Quy cách</th>
+                    <th style="width:10%">ĐVT</th>
+                    <th style="width:12%" class="text-end">Số lượng</th>
+                    <th style="width:14%" class="text-end">Đơn giá</th>
+                    <th style="width:14%" class="text-end">Thành tiền</th>
+                  </tr>
+                </thead>
+                <tbody>
+                @foreach (var d in Model.Details ?? Enumerable.Empty<MNBEMART.Models.StockIssueDetail>())
+                {
+                    var q = Convert.ToDecimal(d.Quantity);
+                    var line = q * d.UnitPrice;
+                    <tr>
+                      <td>
+                        <div class="fw-semibold">@d.Material?.Code</div>
+                        <div class="text-muted small text-truncate">@d.Material?.Name</div>
+                      </td>
+                      <td>@(string.IsNullOrWhiteSpace(d.Specification) ? "-" : d.Specification)</td>
+                      <td>@(string.IsNullOrWhiteSpace(d.Unit) ? d.Material?.Unit : d.Unit)</td>
+                      <td class="text-end">@q.ToString("0.##")</td>
+                      <td class="text-end">@d.UnitPrice.ToString("n0")</td>
+                      <td class="text-end">@line.ToString("n0")</td>
+                    </tr>
+                }
+                </tbody>
+                <tfoot>
+                  <tr class="table-light">
+                    <th colspan="3" class="text-end">Tổng</th>
+                    <th class="text-end">@sumQty.ToString("0.##")</th>
+                    <th></th>
+                    <th class="text-end fw-semibold">@sumAmt.ToString("n0")</th>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        @if (User.IsInRole("admin"))
+        {
+            <div class="me-auto d-flex gap-2">
+              @* Trạng thái Mới -> nút Xác nhận *@
+              @if (Model.Status == DocumentStatus.Moi)
+              {
+                <form asp-action="Approve" method="post" class="d-inline">
+                  @Html.AntiForgeryToken()
+                  <input type="hidden" name="id" value="@Model.Id" />
+                  <button class="btn btn-warning">Xác nhận</button>
+                </form>
+              }
+              @* Trạng thái Đã xác nhận -> nút Xuất hàng *@
+              @if (Model.Status == DocumentStatus.DaXacNhan)
+              {
+                <form asp-action="IssuePost" method="post" class="d-inline">
+                  @Html.AntiForgeryToken()
+                  <input type="hidden" name="id" value="@Model.Id" />
+                  <button class="btn btn-success">Xuất hàng</button>
+                </form>
+              }
+              @* Chưa huỷ -> cho phép huỷ *@
+              @if (Model.Status != DocumentStatus.DaHuy)
+              {
+                <form asp-action="Reject" method="post" class="d-inline" onsubmit="return confirmReject(this);">
+                  @Html.AntiForgeryToken()
+                  <input type="hidden" name="id" value="@Model.Id" />
+                  <input type="hidden" name="note" value="" />
+                  <button class="btn btn-outline-danger">Huỷ phiếu</button>
+                </form>
+              }
+            </div>
+        }
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Đóng</button>
+        <a class="btn btn-outline-primary" asp-action="Print" asp-route-id="@Model.Id">In phiếu</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function confirmReject(form){
+    const reason = prompt("Lý do huỷ phiếu:", "");
+    if (reason === null) return false;
+    form.querySelector('input[name="note"]').value = reason || "";
+    return true;
+  }
+</script>

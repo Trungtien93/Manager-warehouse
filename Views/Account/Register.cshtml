@@ -1,0 +1,93 @@
+@{
+    Layout = null;
+    ViewData["Title"] = "Đăng ký";
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] - BEMART</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+                    colors: {
+                        primary: { 500: '#2563eb', 600: '#1d4ed8', 700: '#1e40af' },
+                        slate: {
+                            50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0',
+                            500: '#64748b', 700: '#334155', 900: '#0f172a'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="min-h-screen bg-slate-50 flex flex-col justify-center items-center font-sans text-slate-700">
+    <!-- Register Card -->
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-lg border border-slate-200 px-8 py-10">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <div class="mx-auto mb-3 flex items-center justify-center w-14 h-14 rounded-xl bg-blue-50 text-blue-600 shadow-inner">
+                <i class="bi bi-person-plus text-3xl"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-slate-800">Tạo tài khoản <span class="text-blue-600">BEMART</span></h1>
+            <p class="text-sm text-slate-500 mt-1">Hệ thống quản lý kho nguyên vật liệu</p>
+        </div>
+
+        <!-- Register Form -->
+        <form method="post" action="/Account/Register" class="space-y-5">
+            <div>
+                <label for="fullname" class="block text-sm font-medium text-slate-600 mb-1">Họ và tên</label>
+                <input type="text" id="fullname" name="FullName"
+                       class="w-full rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition p-3 text-sm"
+                       placeholder="Nhập họ và tên" required />
+            </div>
+
+            <div>
+                <label for="username" class="block text-sm font-medium text-slate-600 mb-1">Tài khoản</label>
+                <input type="text" id="username" name="Username"
+                       class="w-full rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition p-3 text-sm"
+                       placeholder="Tên đăng nhập" required />
+            </div>
+
+            <div>
+                <label for="password" class="block text-sm font-medium text-slate-600 mb-1">Mật khẩu</label>
+                <input type="password" id="password" name="Password"
+                       class="w-full rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition p-3 text-sm"
+                       placeholder="Nhập mật khẩu" required />
+            </div>
+
+            <div>
+                <label for="confirm" class="block text-sm font-medium text-slate-600 mb-1">Xác nhận mật khẩu</label>
+                <input type="password" id="confirm" name="ConfirmPassword"
+                       class="w-full rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition p-3 text-sm"
+                       placeholder="Nhập lại mật khẩu" required />
+            </div>
+
+            <button type="submit"
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg shadow-sm transition duration-150">
+                Đăng ký
+            </button>
+
+            <div class="text-center mt-4 text-sm">
+                <span class="text-slate-500">Đã có tài khoản?</span>
+                <a href="/Account/Login" class="text-blue-600 hover:underline font-medium">Đăng nhập</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Footer -->
+    <p class="text-slate-400 text-xs mt-10">
+        © @DateTime.Now.Year BEMART – Hệ thống quản lý kho. 
+    </p>
+</body>
+</html>

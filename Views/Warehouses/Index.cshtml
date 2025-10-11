@@ -1,0 +1,135 @@
+@model MNBEMART.Models.WarehouseIndexVM
+@{
+    ViewData["Title"] = "Kho hàng";
+    var q = Model.Q ?? "";
+    string FQty(decimal v) => (v % 1m == 0m) ? ((long)v).ToString() : v.ToString("0.##");
+}
+
+<!-- Tailwind + Bootstrap Icons -->
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+<div class="min-h-screen bg-slate-50 text-slate-700 p-8 space-y-8">
+
+    <!-- Header -->
+    <div>
+        <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+            <i class="bi bi-buildings text-blue-600"></i> @ViewData["Title"]
+        </h1>
+        <p class="text-sm text-slate-500">Quản lý danh sách kho hàng và số lượng tồn</p>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="bg-white border border-slate-200 rounded-lg shadow-sm p-6 space-y-4">
+        <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="md:col-span-2">
+                <label class="text-sm font-medium text-slate-600 mb-1 block">Tìm kiếm</label>
+                <input name="q" value="@q"
+                       placeholder="Tên hoặc địa chỉ kho..."
+                       class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500" />
+            </div>
+
+            <div>
+                <label class="text-sm font-medium text-slate-600 mb-1 block">Hiển thị</label>
+                <select name="pageSize"
+                        class="w-full border border-slate-300 rounded-md px-2 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                        onchange="this.form.submit()">
+                    @foreach (var s in new[]{10,20,30,50,100})
+                    {
+                        <option value="@s" selected="@(Model.PageSize==s ? "selected" : null)">@s / trang</option>
+                    }
+                </select>
+            </div>
+
+            <div class="flex items-end justify-end gap-2">
+                <a href="@Url.Action("Index","Warehouses")"
+                   class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:bg-slate-100">
+                    Bỏ lọc
+                </a>
+                <button type="submit"
+                        class="px-3 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700">
+                    <i class="bi bi-filter"></i> Lọc
+                </button>
+                <a asp-action="Create"
+                   class="px-3 py-2 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-700">
+                    + Thêm
+                </a>
+            </div>
+        </form>
+
+        <!-- Alerts -->
+        @if (TempData["Message"] != null)
+        {
+            <div class="mt-3 px-4 py-2 bg-green-50 border border-green-200 rounded-md text-green-700 text-sm flex items-center gap-2">
+                <i class="bi bi-check-circle-fill"></i> @TempData["Message"]
+            </div>
+        }
+        @if (TempData["Error"] != null)
+        {
+            <div class="mt-3 px-4 py-2 bg-amber-50 border border-amber-200 rounded-md text-amber-700 text-sm flex items-center gap-2">
+                <i class="bi bi-exclamation-triangle-fill"></i> @TempData["Error"]
+            </div>
+        }
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white border border-slate-200 rounded-lg shadow-sm overflow-x-auto">
+        <table class="min-w-full text-sm text-left text-slate-700">
+            <thead class="bg-slate-100 text-slate-600 text-xs uppercase">
+                <tr>
+                    <th class="px-3 py-2 w-1/4">Tên kho</th>
+                    <th class="px-3 py-2">Địa chỉ</th>
+                    <th class="px-3 py-2 text-right w-[140px]">Số nguyên liệu</th>
+                    <th class="px-3 py-2 text-right w-[140px]">Tổng tồn</th>
+                    <th class="px-3 py-2 text-right w-[160px]">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                @foreach (var r in Model.Items)
+                {
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="px-3 py-2 font-semibold text-slate-800">@r.W.Name</td>
+                        <td class="px-3 py-2 text-slate-600 truncate">@r.W.Address</td>
+                        <td class="px-3 py-2 text-right">@r.DistinctMaterials</td>
+                        <td class="px-3 py-2 text-right font-semibold">@FQty(r.TotalQty)</td>
+                        <td class="px-3 py-2 text-right">
+                            <div class="flex justify-end gap-2">
+                                <a asp-action="Edit" asp-route-id="@r.W.Id"
+                                   class="px-2 py-1 text-xs rounded-md border border-blue-200 text-blue-600 hover:bg-blue-50">
+                                    Sửa
+                                </a>
+                                <a asp-action="Delete" asp-route-id="@r.W.Id"
+                                   class="px-2 py-1 text-xs rounded-md border border-red-200 text-red-600 hover:bg-red-50">
+                                    Xoá
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    @if (Model.TotalPages > 1)
+    {
+        <div class="flex justify-end mt-4">
+            <nav class="flex items-center gap-1">
+                @{
+                    int prev = System.Math.Max(1, Model.Page - 1);
+                    int next = System.Math.Min(Model.TotalPages, Model.Page + 1);
+                    string qs(string p) => Url.Action("Index", new { q = q, pageSize = Model.PageSize, page = p })!;
+                }
+                <a href="@qs(prev.ToString())"
+                   class="px-3 py-1 text-sm rounded-md border border-slate-300 text-slate-600 hover:bg-slate-100 @(Model.Page==1?"opacity-40 pointer-events-none":"")">&laquo;</a>
+                @for (int i = 1; i <= Model.TotalPages; i++)
+                {
+                    <a href="@qs(i.ToString())"
+                       class="px-3 py-1 text-sm rounded-md border @(i==Model.Page?"bg-blue-600 text-white border-blue-600":"border-slate-300 text-slate-600 hover:bg-slate-100")">@i</a>
+                }
+                <a href="@qs(next.ToString())"
+                   class="px-3 py-1 text-sm rounded-md border border-slate-300 text-slate-600 hover:bg-slate-100 @(Model.Page==Model.TotalPages?"opacity-40 pointer-events-none":"")">&raquo;</a>
+            </nav>
+        </div>
+    }
+</div>
