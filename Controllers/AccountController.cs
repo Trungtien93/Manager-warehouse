@@ -11,6 +11,7 @@ namespace MNBEMART.Controllers
     {
         private readonly AppDbContext _context;
 
+
         public AccountController(AppDbContext context)
         {
             _context = context;
