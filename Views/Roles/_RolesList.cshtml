@@ -1,0 +1,55 @@
+@model IEnumerable<MNBEMART.Models.Role>
+@{
+    Layout = null;
+}
+@if (ViewBag.SuccessMessage != null)
+{
+    <div class="alert alert-success alert-dismissible fade show mb-3" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>@ViewBag.SuccessMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng"></button>
+    </div>
+}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">Danh sách vai trò</h4>
+    <form id="seedDefaultsForm" asp-action="SeedDefaults" method="post" class="m-0">
+        <button type="submit" class="btn btn-sm btn-outline-primary">Tạo vai trò mặc định</button>
+    </form>
+</div>
+@if (!Model.Any())
+{
+    <div class="alert alert-info">Chưa có vai trò. Nhấn "Tạo vai trò mặc định" để khởi tạo nhanh.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th style="width:80px">ID</th>
+                    <th>Mã</th>
+                    <th>Tên</th>
+                    <th style="width:160px"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model)
+                {
+                    <tr>
+                        <td>@r.Id</td>
+                        <td>@r.Code</td>
+                        <td>@r.Name</td>
+                        <td>
+                            <button type="button" 
+                                    class="btn btn-sm btn-primary load-permissions-btn" 
+                                    data-role-id="@r.Id" 
+                                    data-role-name="@r.Name">
+                                <i class="bi bi-shield-check me-1"></i>Phân quyền
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+

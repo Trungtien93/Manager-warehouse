@@ -25,6 +25,11 @@ namespace MNBEMART.Models
 
         public string? Unit { get; set; }
 
+        // Lô hàng (tuỳ chọn)
+        public string? LotNumber { get; set; }
+        public DateTime? ManufactureDate { get; set; }
+        public DateTime? ExpiryDate { get; set; }
+
         [Precision(18, 0)]
         public decimal Total => (decimal)Quantity * UnitPrice;
     }

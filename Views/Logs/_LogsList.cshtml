@@ -1,0 +1,75 @@
+@model List<MNBEMART.Models.AuditLog>
+@{
+    Layout = null;
+    dynamic f = ViewBag.Filter;
+    DateTime from = (f?.From as DateTime?)?.Date ?? DateTime.Now.Date.AddDays(-7);
+    DateTime to   = (f?.To as DateTime?)?.Date   ?? DateTime.Now.Date;
+}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<div class="p-4 space-y-4">
+  <h2 class="text-xl font-semibold">Lịch sử thao tác</h2>
+
+  <form method="get" class="grid grid-cols-1 md:grid-cols-6 gap-2 items-end">
+    <div>
+      <label class="text-sm">Từ ngày</label>
+      <input type="date" class="form-control" name="From" value="@from.ToString("yyyy-MM-dd")" />
+    </div>
+    <div>
+      <label class="text-sm">Đến ngày</label>
+      <input type="date" class="form-control" name="To" value="@to.ToString("yyyy-MM-dd")" />
+    </div>
+    <div>
+      <label class="text-sm">Cửa hàng</label>
+      @Html.DropDownList("WarehouseId", (SelectList)ViewBag.Warehouses, "-- Tất cả --", new { @class = "form-select" })
+    </div>
+    <div>
+      <label class="text-sm">Nhân viên</label>
+      @Html.DropDownList("UserId", (SelectList)ViewBag.Users, "-- Tất cả --", new { @class = "form-select" })
+    </div>
+    <div>
+      <label class="text-sm">Chức năng</label>
+      @Html.DropDownList("Module", (SelectList)ViewBag.Modules, "-- Tất cả --", new { @class = "form-select" })
+    </div>
+    <div class="flex gap-2">
+      <input type="text" class="form-control" name="q" value="@f?.q" placeholder="Nhập hoặc chọn chức năng.." />
+      <button class="btn btn-primary"><i class="bi bi-search"></i></button>
+    </div>
+    <input type="hidden" name="partial" value="true" />
+  </form>
+
+  <div class="table-responsive">
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>Người thực hiện</th>
+          <th>Chức năng</th>
+          <th>Thời gian</th>
+          <th>Cửa hàng</th>
+          <th>Nội dung</th>
+        </tr>
+      </thead>
+      <tbody>
+        @foreach (var x in Model)
+        {
+          <tr>
+            <td>@x.User?.FullName (@x.User?.Username)</td>
+            <td>@(x.Module ?? x.ObjectType) - @x.Action</td>
+            <td>@x.Timestamp.ToString("dd/MM/yyyy HH:mm:ss")</td>
+            <td>@x.Warehouse?.Name</td>
+            <td>@(x.Content ?? ($"{x.ObjectType} #{x.ObjectId}"))</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  
+  <!-- Pagination -->
+  @await Component.InvokeAsync("Pagination", new { 
+      page = ViewBag.Page, 
+      totalPages = ViewBag.TotalPages, 
+      pageSize = ViewBag.PageSize,
+      actionName = "Index",
+      routeValues = new { partial = true }
+  })
+</div>
+

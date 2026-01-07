@@ -1,0 +1,367 @@
+@model List<MNBEMART.Models.StockLot>
+@using System.Linq
+@{
+    ViewData["Title"] = "Quản lý Lô hàng";
+    string statusFilter = ViewBag.StatusFilter as string ?? "all";
+    int page = ViewBag.Page as int? ?? 1;
+    int pageSize = ViewBag.PageSize as int? ?? 10;
+    int totalItems = ViewBag.TotalItems as int? ?? Model.Count();
+    int totalPages = ViewBag.TotalPages as int? ?? 1;
+    int? materialId = ViewBag.MaterialId as int?;
+    int? warehouseId = ViewBag.WarehouseId as int?;
+    string FQty(decimal v) => (v % 1m == 0m) ? ((long)v).ToString() : v.ToString("0.##");
+    
+    // Calculate pagination display
+    var startItem = (page - 1) * pageSize + 1;
+    var endItem = Math.Min(page * pageSize, totalItems);
+}
+
+<!-- Tailwind + Bootstrap Icons -->
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+
+<div class="max-w-[1600px] mx-auto px-6 lg:px-8 py-8">
+    <!-- Large Header -->
+    @* <div class="mb-6">
+        <h1 class="text-4xl font-black text-slate-900 tracking-tight mb-2">
+            Quản lý Lô hàng
+        </h1>
+        <p class="text-lg text-slate-600">
+            Phân tách, gộp, và theo dõi lô hàng
+        </p>
+    </div> *@
+
+    <!-- Toolbar -->
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 mb-6 p-6">
+        <!-- Search and Filters Row -->
+        <form method="get" class="flex items-center justify-between gap-4 mb-4">
+            <input type="hidden" name="page" value="1" />
+            <input type="hidden" name="pageSize" value="@pageSize" />
+            
+            <!-- Filters -->
+            <div class="flex-1 flex items-center gap-3">
+                <div class="relative flex-1 max-w-md">
+                    <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input name="q" value="@(ViewBag.Q as string ?? "")" 
+                           placeholder="Tìm kiếm số lô, vật tư..."
+                           class="w-full pl-10 pr-4 py-3 border-2 border-slate-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all shadow-sm hover:border-green-400" />
+                </div>
+                <select name="materialId" 
+                        class="border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all shadow-sm hover:border-green-400">
+                    <option value="">Tất cả vật tư</option>
+                    @foreach (var m in ViewBag.Materials as SelectList)
+                    {
+                        <option value="@m.Value" selected="@(m.Value == materialId?.ToString())">@m.Text</option>
+                    }
+                </select>
+                <select name="warehouseId" 
+                        class="border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all shadow-sm hover:border-green-400">
+                    <option value="">Tất cả kho</option>
+                    @foreach (var w in ViewBag.Warehouses as SelectList)
+                    {
+                        <option value="@w.Value" selected="@(w.Value == warehouseId?.ToString())">@w.Text</option>
+                    }
+                </select>
+                <select name="status" 
+                        class="border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all shadow-sm hover:border-green-400">
+                    <option value="all" selected="@(statusFilter == "all")">Tất cả</option>
+                    <option value="available" selected="@(statusFilter == "available")">Khả dụng</option>
+                    <option value="reserved" selected="@(statusFilter == "reserved")">Đã đặt trước</option>
+                    <option value="expiring" selected="@(statusFilter == "expiring")">Sắp hết hạn</option>
+                </select>
+                <button type="button" class="p-3 border-2 border-slate-300 rounded-xl hover:bg-slate-50 transition">
+                    <i class="bi bi-funnel text-slate-600"></i>
+                </button>
+            </div>
+            
+            <!-- Actions -->
+            <div class="flex items-center gap-3">
+                <button type="submit" class="px-5 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition flex items-center gap-2">
+                    <i class="bi bi-funnel-fill"></i>
+                    Lọc
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto max-h-[600px] relative">
+            <table class="min-w-full divide-y divide-slate-200">
+                <thead class="bg-slate-50 sticky top-0 z-10">
+                    <tr>
+                        <th class="px-6 py-4 w-12">
+                            <input type="checkbox" class="rounded border-slate-300 text-green-600 focus:ring-green-500" id="selectAll" />
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition">
+                            Số lô <i class="bi bi-arrow-down-up text-green-600 ml-1"></i>
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            Vật tư
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            Kho
+                        </th>
+                        <th class="px-6 py-4 text-right text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition">
+                            Số lượng <i class="bi bi-arrow-down-up text-green-600 ml-1"></i>
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            ĐVT
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            Ngày SX
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            HSD
+                        </th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            Trạng thái
+                        </th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider w-24">
+                            Thao tác
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-slate-200">
+                    @if (Model.Any())
+                    {
+                        @foreach (var lot in Model)
+                        {
+                            var today = DateTime.Today;
+                            var isExpired = lot.ExpiryDate.HasValue && lot.ExpiryDate < today;
+                            var isExpiringSoon = lot.ExpiryDate.HasValue && lot.ExpiryDate >= today && lot.ExpiryDate <= today.AddDays(30);
+                            var rowClass = isExpired ? "bg-red-50" : isExpiringSoon ? "bg-amber-50" : "hover:bg-slate-50";
+
+                            <tr class="@rowClass transition-colors duration-150">
+                                <td class="px-6 py-4">
+                                    <input type="checkbox" class="lot-checkbox rounded border-slate-300 text-green-600 focus:ring-green-500" value="@lot.Id" 
+                                           data-material="@lot.MaterialId" data-warehouse="@lot.WarehouseId" />
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="font-mono text-sm font-semibold text-slate-900">@lot.LotNumber</div>
+                                    @if (!string.IsNullOrEmpty(lot.ParentLotId))
+                                    {
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 mt-1">
+                                            <i class="bi bi-diagram-3 me-1"></i> Phân tách từ @lot.ParentLotId
+                                        </span>
+                                    }
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="text-sm font-medium text-slate-900">@lot.Material?.Name</div>
+                                    <div class="text-xs text-slate-500">@lot.Material?.Code</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
+                                    @lot.Warehouse?.Name
+                                </td>
+                                <td class="px-6 py-4 text-right whitespace-nowrap">
+                                    <span class="text-sm font-bold text-slate-900">@FQty(lot.Quantity)</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
+                                    @lot.Material?.Unit
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                                    @(lot.ManufactureDate?.ToString("dd/MM/yyyy") ?? "-")
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    @if (lot.ExpiryDate.HasValue)
+                                    {
+                                        var textColor = isExpired ? "text-red-700 font-bold" : isExpiringSoon ? "text-amber-700 font-bold" : "text-slate-600";
+                                        <span class="text-sm @textColor">@lot.ExpiryDate.Value.ToString("dd/MM/yyyy")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-sm text-slate-400">-</span>
+                                    }
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    @if (lot.IsReserved)
+                                    {
+                                        <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                                            <i class="bi bi-lock-fill me-1"></i> Đã đặt trước
+                                        </span>
+                                    }
+                                    else if (isExpired)
+                                    {
+                                        <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200">
+                                            <i class="bi bi-x-circle me-1"></i> Hết hạn
+                                        </span>
+                                    }
+                                    else if (isExpiringSoon)
+                                    {
+                                        <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                                            <i class="bi bi-exclamation-triangle me-1"></i> Sắp hết hạn
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
+                                            <i class="bi bi-check-circle me-1"></i> Khả dụng
+                                        </span>
+                                    }
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <div class="relative inline-block">
+                                        <button type="button" class="action-menu-btn p-2 hover:bg-slate-100 rounded-lg transition"
+                                                data-id="@lot.Id">
+                                            <i class="bi bi-three-dots-vertical text-slate-600"></i>
+                                        </button>
+                                        <div class="action-menu hidden absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-slate-200 z-10">
+                                            <a asp-action="Details" asp-route-id="@lot.Id" 
+                                               class="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-green-50 hover:text-green-700 transition flex items-center gap-2">
+                                                <i class="bi bi-eye text-green-600"></i> Xem
+                                            </a>
+                                            @if (!lot.IsReserved && lot.Quantity > 1)
+                                            {
+                                                <a asp-action="Split" asp-route-id="@lot.Id" 
+                                                   class="block w-full text-left px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 transition flex items-center gap-2">
+                                                    <i class="bi bi-scissors text-amber-600"></i> Phân tách
+                                                </a>
+                                            }
+                                            <a asp-action="History" asp-route-id="@lot.Id" 
+                                               class="block w-full text-left px-4 py-2 text-sm text-purple-700 hover:bg-purple-50 transition flex items-center gap-2">
+                                                <i class="bi bi-clock-history text-purple-600"></i> Lịch sử
+                                            </a>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="10" class="px-6 py-12 text-center">
+                                <div class="flex flex-col items-center justify-center">
+                                    <i class="bi bi-inbox text-4xl text-slate-300 mb-3"></i>
+                                    <p class="text-slate-500 font-medium">Không tìm thấy lô hàng</p>
+                                    <p class="text-sm text-slate-400 mt-1">Thử thay đổi bộ lọc</p>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Merge Button and Pagination -->
+    @if (Model.Any())
+    {
+        <div class="mt-6 flex items-center justify-between">
+            <div>
+                <button id="mergeBtn" onclick="mergeLots()" disabled
+                        class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 disabled:from-slate-300 disabled:to-slate-400 disabled:cursor-not-allowed text-white font-semibold px-6 py-3 rounded-xl transition shadow-md hover:shadow-lg flex items-center gap-2">
+                    <i class="bi bi-union"></i> Gộp lô đã chọn
+                </button>
+                <p class="text-sm text-slate-500 mt-2">Chọn ít nhất 2 lô cùng vật tư và kho để gộp</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="text-sm text-slate-600 mr-4">
+                    Hiển thị <span class="font-semibold">@startItem-@endItem</span> trong tổng <span class="font-semibold">@totalItems</span>
+                </div>
+                @if (page > 1)
+                {
+                    <a href="@Url.Action("Index", new { page = page - 1, materialId = materialId, warehouseId = warehouseId, status = statusFilter, pageSize = pageSize })"
+                       class="px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition">
+                        Trước
+                    </a>
+                }
+                else
+                {
+                    <button disabled class="px-4 py-2 text-sm font-semibold text-slate-400 bg-white border border-slate-200 rounded-lg opacity-50 cursor-not-allowed">
+                        Trước
+                    </button>
+                }
+                
+                @if (page < totalPages)
+                {
+                    <a href="@Url.Action("Index", new { page = page + 1, materialId = materialId, warehouseId = warehouseId, status = statusFilter, pageSize = pageSize })"
+                       class="px-4 py-2 text-sm font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition">
+                        Tiếp theo
+                    </a>
+                }
+                else
+                {
+                    <button disabled class="px-4 py-2 text-sm font-semibold text-slate-400 bg-slate-200 rounded-lg opacity-50 cursor-not-allowed">
+                        Tiếp theo
+                    </button>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        // Action menu toggle
+        document.querySelectorAll('.action-menu-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const menu = this.nextElementSibling;
+                const isHidden = menu.classList.contains('hidden');
+                
+                // Close all other menus
+                document.querySelectorAll('.action-menu').forEach(m => {
+                    if (m !== menu) {
+                        m.classList.add('hidden');
+                    }
+                });
+                
+                // Toggle current menu
+                if (isHidden) {
+                    menu.classList.remove('hidden');
+                } else {
+                    menu.classList.add('hidden');
+                }
+            });
+        });
+
+        // Close menus when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.action-menu-btn') && !e.target.closest('.action-menu')) {
+                document.querySelectorAll('.action-menu').forEach(menu => {
+                    menu.classList.add('hidden');
+                });
+            }
+        });
+
+        // Select all functionality
+        document.getElementById('selectAll')?.addEventListener('change', function() {
+            document.querySelectorAll('.lot-checkbox').forEach(cb => {
+                cb.checked = this.checked;
+            });
+            updateMergeButton();
+        });
+
+        // Update merge button state
+        document.querySelectorAll('.lot-checkbox').forEach(cb => {
+            cb.addEventListener('change', updateMergeButton);
+        });
+
+        function updateMergeButton() {
+            const checked = document.querySelectorAll('.lot-checkbox:checked');
+            const mergeBtn = document.getElementById('mergeBtn');
+            
+            if (checked.length >= 2) {
+                // Check if all same material and warehouse
+                const firstMaterial = checked[0].dataset.material;
+                const firstWarehouse = checked[0].dataset.warehouse;
+                const allSame = Array.from(checked).every(cb => 
+                    cb.dataset.material === firstMaterial && cb.dataset.warehouse === firstWarehouse
+                );
+                
+                mergeBtn.disabled = !allSame;
+            } else {
+                mergeBtn.disabled = true;
+            }
+        }
+
+        function mergeLots() {
+            const checked = document.querySelectorAll('.lot-checkbox:checked');
+            if (checked.length < 2) return;
+            
+            const ids = Array.from(checked).map(cb => cb.value).join(',');
+            window.location.href = '/Lots/Merge?lotIds=' + ids;
+        }
+    </script>
+}

@@ -12,6 +12,7 @@
 
     decimal sumIn  = Model.Sum(x => x.QtyIn);
     decimal sumOut = Model.Sum(x => x.QtyOut);
+    decimal delta = sumIn - sumOut;
 
     string TrimDec(decimal v, int maxDecimals = 2) {
         var fmt = "0." + new string('#', maxDecimals);
@@ -23,91 +24,167 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
-<div class="min-h-screen bg-slate-50 p-6 md:p-8 space-y-6 text-slate-700">
+<div class="max-w-[1600px] mx-auto px-6 lg:px-8 py-8">
+    <!-- Large Header -->
+    @* <div class="mb-6">
+        <div class="bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl shadow-lg p-8 text-white">
+            <div class="flex items-center gap-3">
+                <div class="bg-white/20 backdrop-blur-sm rounded-xl p-3">
+                    <i class="bi bi-arrow-left-right text-3xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-4xl font-black tracking-tight mb-2">
+                        Báo cáo nhập xuất
+                    </h1>
+                    <p class="text-green-100 text-lg">Báo cáo tổng hợp theo vật tư, hiển thị số lượng nhập, xuất và chênh lệch</p>
+                </div>
+            </div>
+        </div>
+    </div> *@
 
-    <!-- HEADER -->
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                <i class="bi bi-arrow-left-right text-blue-600"></i> Tổng hợp Nhập / Xuất
-            </h1>
-            <p class="text-sm text-slate-500">Báo cáo tổng hợp theo vật tư, hiển thị số lượng nhập, xuất và chênh lệch</p>
+    <!-- Filter Section -->
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 mb-6 p-6">
+        <form method="get" asp-controller="Reports" asp-action="Movements"
+              class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4 items-end">
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                    <i class="bi bi-calendar-event text-green-600"></i>Từ ngày
+                </label>
+                <input type="date" name="From" value="@displayFrom.ToString("yyyy-MM-dd")"
+                       class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all shadow-sm hover:border-green-400" />
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                    <i class="bi bi-calendar-check text-green-600"></i>Đến ngày
+                </label>
+                <input type="date" name="To" value="@displayTo.ToString("yyyy-MM-dd")"
+                       class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all shadow-sm hover:border-green-400" />
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                    <i class="bi bi-building text-green-600"></i>Kho
+                </label>
+                @Html.DropDownList(
+                    "WarehouseId",
+                    (IEnumerable<SelectListItem>)ViewBag.Warehouses,
+                    htmlAttributes: new { @class = "w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all shadow-sm hover:border-green-400" }
+                )
+            </div>
+
+            <div class="flex items-end gap-2">
+                <button class="w-full md:w-auto bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold px-5 py-3 rounded-xl text-sm transition-all shadow-md hover:shadow-lg flex items-center gap-2">
+                    <i class="bi bi-funnel-fill"></i> Xem
+                </button>
+                <button type="submit" formaction="/Reports/ExportPdfMovements"
+                        class="w-full md:w-auto bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold px-4 py-3 rounded-xl text-sm transition-all shadow-md hover:shadow-lg flex items-center gap-2">
+                    <i class="bi bi-file-earmark-pdf"></i> PDF
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div class="bg-gradient-to-br from-green-500 to-emerald-600 border-0 rounded-2xl p-6 shadow-xl text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-green-100 uppercase tracking-wide mb-2">Tổng nhập</p>
+                    <h4 class="text-4xl font-black">@TrimDec(sumIn)</h4>
+                </div>
+                <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
+                    <i class="bi bi-box-arrow-in-down text-white text-3xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-gradient-to-br from-red-500 to-red-600 border-0 rounded-2xl p-6 shadow-xl text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-red-100 uppercase tracking-wide mb-2">Tổng xuất</p>
+                    <h4 class="text-4xl font-black">@TrimDec(sumOut)</h4>
+                </div>
+                <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
+                    <i class="bi bi-box-arrow-up text-white text-3xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-gradient-to-br from-blue-500 to-indigo-600 border-0 rounded-2xl p-6 shadow-xl text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-blue-100 uppercase tracking-wide mb-2">Chênh lệch</p>
+                    <h4 class="text-4xl font-black">@TrimDec(delta)</h4>
+                </div>
+                <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
+                    <i class="bi bi-arrow-left-right text-white text-3xl"></i>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- FILTER FORM -->
-    <form method="get" asp-controller="Reports" asp-action="Movements"
-          class="bg-white border border-slate-200 shadow-sm rounded-xl p-5 grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4 items-end">
-        <div>
-            <label class="block text-sm font-medium text-slate-600 mb-1">Từ ngày</label>
-            <input type="date" name="From" value="@displayFrom:yyyy-MM-dd"
-                   class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500" />
-        </div>
-
-        <div>
-            <label class="block text-sm font-medium text-slate-600 mb-1">Đến ngày</label>
-            <input type="date" name="To" value="@displayTo:yyyy-MM-dd"
-                   class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500" />
-        </div>
-
-        <div>
-            <label class="block text-sm font-medium text-slate-600 mb-1">Kho</label>
-            @Html.DropDownList(
-                "WarehouseId",
-                (IEnumerable<SelectListItem>)ViewBag.Warehouses,
-                htmlAttributes: new { @class = "w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500" }
-            )
-        </div>
-
-        <div class="flex items-end">
-            <button class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition">
-                <i class="bi bi-funnel me-1"></i> Xem
-            </button>
-        </div>
-    </form>
-
-    <!-- BẢNG TỔNG HỢP -->
-    <div class="bg-white border border-slate-200 shadow-sm rounded-xl p-6">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-semibold text-slate-800 flex items-center gap-2">
-                <i class="bi bi-table text-blue-600"></i> Bảng tổng hợp
+    <!-- Table Section -->
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+        <div class="p-6 border-b border-slate-200">
+            <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <i class="bi bi-table text-green-600"></i> Bảng tổng hợp
             </h2>
-            <div class="text-sm text-slate-500">
-                <span class="me-3">Tổng nhập: <b class="text-green-600">@TrimDec(sumIn)</b></span>
-                <span>Tổng xuất: <b class="text-red-600">@TrimDec(sumOut)</b></span>
-            </div>
         </div>
-
-        <div class="overflow-x-auto">
-            <table class="min-w-full text-sm text-slate-700">
-                <thead class="bg-slate-100 text-slate-600 text-xs uppercase">
+        <div class="overflow-x-auto max-h-[600px] relative">
+            <table class="min-w-full divide-y divide-slate-200">
+                <thead class="bg-slate-50 sticky top-0 z-10">
                     <tr>
-                        <th class="px-3 py-2 text-left">Vật tư</th>
-                        <th class="px-3 py-2 text-right">Nhập</th>
-                        <th class="px-3 py-2 text-right">Xuất</th>
-                        <th class="px-3 py-2 text-right">Chênh lệch</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition">
+                            Vật tư <i class="bi bi-arrow-down-up text-green-600 ml-1"></i>
+                        </th>
+                        <th class="px-6 py-4 text-right text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition">
+                            Nhập <i class="bi bi-arrow-down-up text-green-600 ml-1"></i>
+                        </th>
+                        <th class="px-6 py-4 text-right text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition">
+                            Xuất <i class="bi bi-arrow-down-up text-green-600 ml-1"></i>
+                        </th>
+                        <th class="px-6 py-4 text-right text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition">
+                            Chênh lệch <i class="bi bi-arrow-down-up text-green-600 ml-1"></i>
+                        </th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100">
-                    @foreach (var r in Model)
+                <tbody class="bg-white divide-y divide-slate-200">
+                    @if (Model.Any())
                     {
-                        var delta = r.QtyIn - r.QtyOut;
-                        <tr class="hover:bg-slate-50 transition">
-                            <td class="px-3 py-2">@r.MaterialName</td>
-                            <td class="px-3 py-2 text-right text-green-600 font-medium">@TrimDec(r.QtyIn)</td>
-                            <td class="px-3 py-2 text-right text-red-600 font-medium">@TrimDec(r.QtyOut)</td>
-                            <td class="px-3 py-2 text-right font-semibold @(delta < 0 ? "text-red-600" : "text-slate-800")">@TrimDec(delta)</td>
+                        @foreach (var r in Model)
+                        {
+                            var rowDelta = r.QtyIn - r.QtyOut;
+                            <tr class="hover:bg-slate-50 transition-colors duration-150">
+                                <td class="px-6 py-4 font-medium text-slate-900">@r.MaterialName</td>
+                                <td class="px-6 py-4 text-right font-bold text-green-600">@TrimDec(r.QtyIn)</td>
+                                <td class="px-6 py-4 text-right font-bold text-red-600">@TrimDec(r.QtyOut)</td>
+                                <td class="px-6 py-4 text-right font-bold @(rowDelta < 0 ? "text-red-600" : "text-blue-600")">@TrimDec(rowDelta)</td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="4" class="px-6 py-12 text-center">
+                                <div class="flex flex-col items-center justify-center">
+                                    <i class="bi bi-inbox text-4xl text-slate-300 mb-3"></i>
+                                    <p class="text-slate-500 font-medium">Không có dữ liệu</p>
+                                    <p class="text-sm text-slate-400 mt-1">Thử thay đổi bộ lọc</p>
+                                </div>
+                            </td>
                         </tr>
                     }
                 </tbody>
-                <tfoot>
-                    <tr class="bg-slate-100 font-semibold">
-                        <td class="px-3 py-2 text-right">Tổng</td>
-                        <td class="px-3 py-2 text-right text-green-700">@TrimDec(sumIn)</td>
-                        <td class="px-3 py-2 text-right text-red-700">@TrimDec(sumOut)</td>
-                        <td class="px-3 py-2 text-right text-slate-800">@TrimDec(sumIn - sumOut)</td>
-                    </tr>
-                </tfoot>
+                @if (Model.Any())
+                {
+                    <tfoot class="bg-gradient-to-r from-slate-50 to-slate-100 border-t-2 border-slate-200">
+                        <tr>
+                            <td class="px-6 py-4 text-right font-bold text-slate-900">Tổng</td>
+                            <td class="px-6 py-4 text-right font-bold text-green-600 text-lg">@TrimDec(sumIn)</td>
+                            <td class="px-6 py-4 text-right font-bold text-red-600 text-lg">@TrimDec(sumOut)</td>
+                            <td class="px-6 py-4 text-right font-bold text-blue-600 text-lg">@TrimDec(delta)</td>
+                        </tr>
+                    </tfoot>
+                }
             </table>
         </div>
     </div>

@@ -22,42 +22,6 @@ namespace MNBEMART.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("MNBEMART.Models.Attachment", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("DocumentId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("DocumentType")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("FileName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("FileUrl")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("UploadedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("UploadedById")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UploadedById");
-
-                    b.ToTable("Attachments");
-                });
-
             modelBuilder.Entity("MNBEMART.Models.AuditLog", b =>
                 {
                     b.Property<int>("Id")
@@ -68,6 +32,12 @@ namespace MNBEMART.Migrations
 
                     b.Property<string>("Action")
                         .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Content")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Module")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ObjectId")
@@ -84,37 +54,19 @@ namespace MNBEMART.Migrations
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("WarehouseId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.HasIndex("UserId");
 
+                    b.HasIndex("WarehouseId");
+
                     b.ToTable("AuditLogs");
                 });
 
-            modelBuilder.Entity("MNBEMART.Models.Auth.Permission", b =>
-                {
-                    b.Property<string>("Code")
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<string>("Group")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
-
-                    b.Property<bool>("IsScopedWarehouse")
-                        .HasColumnType("bit");
-
-                    b.HasKey("Code");
-
-                    b.ToTable("Permissions");
-                });
-
-            modelBuilder.Entity("MNBEMART.Models.Auth.RolePermission", b =>
+            modelBuilder.Entity("MNBEMART.Models.ChatMessage", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -122,58 +74,140 @@ namespace MNBEMART.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("Effect")
-                        .HasColumnType("int");
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
 
-                    b.Property<string>("PermissionCode")
+                    b.Property<string>("Message")
                         .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
+                        .HasMaxLength(5000)
+                        .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("RoleId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("WarehouseId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RoleId", "PermissionCode", "WarehouseId")
-                        .IsUnique()
-                        .HasFilter("[WarehouseId] IS NOT NULL");
-
-                    b.ToTable("RolePermissions");
-                });
-
-            modelBuilder.Entity("MNBEMART.Models.Auth.UserPermission", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("Effect")
-                        .HasColumnType("int");
-
-                    b.Property<string>("PermissionCode")
+                    b.Property<string>("Role")
                         .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
 
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("WarehouseId")
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "CreatedAt");
+
+                    b.ToTable("ChatMessages");
+                });
+
+            modelBuilder.Entity("MNBEMART.Models.DemandForecast", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("ConfidenceLevel")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ForecastDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("ForecastedQuantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<decimal?>("HistoricalAverage")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<int>("MaterialId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal?>("Trend")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("WarehouseId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId", "PermissionCode", "WarehouseId")
-                        .IsUnique()
-                        .HasFilter("[WarehouseId] IS NOT NULL");
+                    b.HasIndex("WarehouseId");
 
-                    b.ToTable("UserPermissions");
+                    b.HasIndex("MaterialId", "WarehouseId", "ForecastDate")
+                        .IsUnique();
+
+                    b.ToTable("DemandForecasts");
+                });
+
+            modelBuilder.Entity("MNBEMART.Models.Document", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("Category")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("DocumentId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("DocumentType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("FilePath")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<long>("FileSize")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("MimeType")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UploadedById")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UploadedById");
+
+                    b.HasIndex("DocumentType", "DocumentId");
+
+                    b.ToTable("Documents");
                 });
 
             modelBuilder.Entity("MNBEMART.Models.DocumentNumbering", b =>
@@ -222,6 +256,56 @@ namespace MNBEMART.Migrations
                     b.ToTable("DocumentNumberings");
                 });
 
+            modelBuilder.Entity("MNBEMART.Models.LotHistory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("LotId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("PerformedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PerformedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<decimal?>("QuantityAfter")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<decimal?>("QuantityBefore")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<string>("RelatedLotIds")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("StockLotId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StockLotId");
+
+                    b.ToTable("LotHistories");
+                });
+
             modelBuilder.Entity("MNBEMART.Models.Material", b =>
                 {
                     b.Property<int>("Id")
@@ -235,18 +319,42 @@ namespace MNBEMART.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
 
+                    b.Property<int?>("CostingMethod")
+                        .HasColumnType("int");
+
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime?>("ExpiryDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("ImageUrl")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ManufactureDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal?>("MaximumStock")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("MinimumStock")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<int?>("PreferredSupplierId")
+                        .HasColumnType("int");
+
                     b.Property<decimal?>("PurchasePrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("ReorderQuantity")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
@@ -271,8 +379,14 @@ namespace MNBEMART.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("nvarchar(32)");
 
+                    b.Property<decimal?>("VolumePerUnit")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<int?>("WarehouseId")
                         .HasColumnType("int");
+
+                    b.Property<decimal?>("WeightPerUnit")
+                        .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
 
@@ -286,7 +400,7 @@ namespace MNBEMART.Migrations
                     b.ToTable("Materials");
                 });
 
-            modelBuilder.Entity("MNBEMART.Models.PeriodLock", b =>
+            modelBuilder.Entity("MNBEMART.Models.MaterialSpecification", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -294,23 +408,312 @@ namespace MNBEMART.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime>("LockedAt")
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("LockedById")
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("MaterialSpecifications");
+                });
+
+            modelBuilder.Entity("MNBEMART.Models.Notification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    b.Property<int>("Month")
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DocumentId")
                         .HasColumnType("int");
 
-                    b.Property<int>("Year")
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsImportant")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Message")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("UserId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("LockedById");
+                    b.HasIndex("IsDeleted", "DeletedAt");
 
-                    b.ToTable("PeriodLocks");
+                    b.HasIndex("UserId", "IsArchived");
+
+                    b.HasIndex("UserId", "IsImportant");
+
+                    b.HasIndex("UserId", "IsRead", "CreatedAt");
+
+                    b.ToTable("Notifications");
+                });
+
+            modelBuilder.Entity("MNBEMART.Models.NotificationSettings", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("EmailDigestFrequency")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("EnableDesktopNotifications")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("EnableEmailNotifications")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("EnableSound")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("EnabledTypes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("SoundType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasDefaultValue("default");
+
+                    b.Property<int>("UpdateFrequency")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(30);
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("NotificationSettings");
+                });
+
+            modelBuilder.Entity("MNBEMART.Models.Permission", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ActionKey")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Module")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Permissions");
+                });
+
+            modelBuilder.Entity("MNBEMART.Models.PurchaseRequest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("ApprovedById")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ApprovedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsAutoGenerated")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("RequestDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RequestNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("RequestedById")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApprovedById");
+
+                    b.HasIndex("RequestedById");
+
+                    b.ToTable("PurchaseRequests");
+                });
+
+            modelBuilder.Entity("MNBEMART.Models.PurchaseRequestDetail", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("CurrentStock")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("EstimatedPrice")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("MaterialId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("MinimumStock")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int?>("PreferredSupplierId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PurchaseRequestId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("RequestedQuantity")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MaterialId");
+
+                    b.HasIndex("PreferredSupplierId");
+
+                    b.HasIndex("PurchaseRequestId");
+
+                    b.ToTable("PurchaseRequestDetails");
+                });
+
+            modelBuilder.Entity("MNBEMART.Models.Role", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("Roles");
+                });
+
+            modelBuilder.Entity("MNBEMART.Models.RolePermission", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("CanApprove")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("CanCreate")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("CanDelete")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("CanRead")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("CanUpdate")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("PermissionId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RoleId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PermissionId");
+
+                    b.HasIndex("RoleId", "PermissionId")
+                        .IsUnique();
+
+                    b.ToTable("RolePermissions");
                 });
 
             modelBuilder.Entity("MNBEMART.Models.Stock", b =>
@@ -344,79 +747,6 @@ namespace MNBEMART.Migrations
                         .IsUnique();
 
                     b.ToTable("Stocks", (string)null);
-                });
-
-            modelBuilder.Entity("MNBEMART.Models.StockAdjustment", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AdjustNumber")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("ApprovedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int?>("ApprovedById")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("CreatedById")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Reason")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.Property<int>("WarehouseId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ApprovedById");
-
-                    b.HasIndex("CreatedById");
-
-                    b.HasIndex("WarehouseId");
-
-                    b.ToTable("StockAdjustments");
-                });
-
-            modelBuilder.Entity("MNBEMART.Models.StockAdjustmentDetail", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("MaterialId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Note")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal>("QuantityDiff")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("StockAdjustmentId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MaterialId");
-
-                    b.HasIndex("StockAdjustmentId");
-
-                    b.ToTable("StockAdjustmentDetails");
                 });
 
             modelBuilder.Entity("MNBEMART.Models.StockBalance", b =>
@@ -471,66 +801,6 @@ namespace MNBEMART.Migrations
                         .IsUnique();
 
                     b.ToTable("StockBalances");
-                });
-
-            modelBuilder.Entity("MNBEMART.Models.StockCount", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CountDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CountNumber")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Note")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.Property<int>("WarehouseId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("WarehouseId");
-
-                    b.ToTable("StockCounts");
-                });
-
-            modelBuilder.Entity("MNBEMART.Models.StockCountLine", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<decimal>("CountedQty")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("MaterialId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("StockCountId")
-                        .HasColumnType("int");
-
-                    b.Property<decimal?>("SystemQty")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MaterialId");
-
-                    b.HasIndex("StockCountId");
-
-                    b.ToTable("StockCountLines");
                 });
 
             modelBuilder.Entity("MNBEMART.Models.StockIssue", b =>
@@ -592,6 +862,33 @@ namespace MNBEMART.Migrations
                     b.ToTable("StockIssues");
                 });
 
+            modelBuilder.Entity("MNBEMART.Models.StockIssueAllocation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<int>("StockIssueDetailId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StockLotId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StockIssueDetailId");
+
+                    b.HasIndex("StockLotId");
+
+                    b.ToTable("StockIssueAllocations");
+                });
+
             modelBuilder.Entity("MNBEMART.Models.StockIssueDetail", b =>
                 {
                     b.Property<int>("Id")
@@ -599,6 +896,10 @@ namespace MNBEMART.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal?>("CostPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("MaterialId")
                         .HasColumnType("int");
@@ -629,6 +930,69 @@ namespace MNBEMART.Migrations
                     b.HasIndex("StockIssueId", "MaterialId");
 
                     b.ToTable("StockIssueDetails");
+                });
+
+            modelBuilder.Entity("MNBEMART.Models.StockLot", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ExpiryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsReserved")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("LotNumber")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("ManufactureDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("MaterialId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ParentLotId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<string>("ReservedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ReservedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("ReservedForIssueId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("UnitPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("WarehouseId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MaterialId");
+
+                    b.HasIndex("WarehouseId", "MaterialId", "LotNumber", "ManufactureDate", "ExpiryDate")
+                        .IsUnique()
+                        .HasFilter("[LotNumber] IS NOT NULL AND [ManufactureDate] IS NOT NULL AND [ExpiryDate] IS NOT NULL");
+
+                    b.ToTable("StockLots");
                 });
 
             modelBuilder.Entity("MNBEMART.Models.StockReceipt", b =>
@@ -699,6 +1063,15 @@ namespace MNBEMART.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("ExpiryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("LotNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ManufactureDate")
+                        .HasColumnType("datetime2");
 
                     b.Property<int>("MaterialId")
                         .HasColumnType("int");
@@ -788,6 +1161,15 @@ namespace MNBEMART.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime?>("ExpiryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("LotId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ManufactureDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<int>("MaterialId")
                         .HasColumnType("int");
 
@@ -797,7 +1179,7 @@ namespace MNBEMART.Migrations
 
                     b.Property<decimal>("Quantity")
                         .HasPrecision(18, 3)
-                        .HasColumnType("decimal(18,3)");
+                        .HasColumnType("decimal(18,4)");
 
                     b.Property<int>("StockTransferId")
                         .HasColumnType("int");
@@ -806,7 +1188,13 @@ namespace MNBEMART.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<decimal?>("UnitPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("LotId");
 
                     b.HasIndex("MaterialId");
 
@@ -852,12 +1240,60 @@ namespace MNBEMART.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("ApprovedById")
+                        .HasColumnType("int");
+
+                    b.Property<string>("AvatarUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EmailVerificationToken")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("EmailVerifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("FailedLoginAttempts")
+                        .HasColumnType("int");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsEmailVerified")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastLoginAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("LastLoginIp")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("LockedUntil")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PasswordResetToken")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("PasswordResetTokenExpiry")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("RegisteredAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RejectionReason")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Role")
@@ -870,7 +1306,24 @@ namespace MNBEMART.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ApprovedById");
+
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("MNBEMART.Models.UserRole", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RoleId")
+                        .HasColumnType("int");
+
+                    b.HasKey("UserId", "RoleId");
+
+                    b.HasIndex("RoleId");
+
+                    b.ToTable("UserRoles");
                 });
 
             modelBuilder.Entity("MNBEMART.Models.UserWarehouse", b =>
@@ -908,8 +1361,26 @@ namespace MNBEMART.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<decimal?>("BaseTransferCost")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("CostPerKg")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("CostPerKm")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("Latitude")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("Longitude")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("Name")
                         .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Region")
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
@@ -917,15 +1388,36 @@ namespace MNBEMART.Migrations
                     b.ToTable("Warehouses");
                 });
 
-            modelBuilder.Entity("MNBEMART.Models.Attachment", b =>
+            modelBuilder.Entity("MNBEMART.Models.WarehouseDistance", b =>
                 {
-                    b.HasOne("MNBEMART.Models.User", "UploadedBy")
-                        .WithMany()
-                        .HasForeignKey("UploadedById")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
 
-                    b.Navigation("UploadedBy");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("BaseCost")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("DistanceKm")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("EstimatedTimeHours")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("FromWarehouseId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ToWarehouseId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FromWarehouseId");
+
+                    b.HasIndex("ToWarehouseId");
+
+                    b.ToTable("WarehouseDistances");
                 });
 
             modelBuilder.Entity("MNBEMART.Models.AuditLog", b =>
@@ -936,7 +1428,64 @@ namespace MNBEMART.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("MNBEMART.Models.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("User");
+
+                    b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("MNBEMART.Models.ChatMessage", b =>
+                {
+                    b.HasOne("MNBEMART.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MNBEMART.Models.DemandForecast", b =>
+                {
+                    b.HasOne("MNBEMART.Models.Material", "Material")
+                        .WithMany()
+                        .HasForeignKey("MaterialId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MNBEMART.Models.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Material");
+
+                    b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("MNBEMART.Models.Document", b =>
+                {
+                    b.HasOne("MNBEMART.Models.User", "UploadedBy")
+                        .WithMany()
+                        .HasForeignKey("UploadedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("UploadedBy");
+                });
+
+            modelBuilder.Entity("MNBEMART.Models.LotHistory", b =>
+                {
+                    b.HasOne("MNBEMART.Models.StockLot", "StockLot")
+                        .WithMany()
+                        .HasForeignKey("StockLotId");
+
+                    b.Navigation("StockLot");
                 });
 
             modelBuilder.Entity("MNBEMART.Models.Material", b =>
@@ -948,22 +1497,93 @@ namespace MNBEMART.Migrations
 
                     b.HasOne("MNBEMART.Models.Warehouse", "Warehouse")
                         .WithMany("Materials")
-                        .HasForeignKey("WarehouseId");
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Supplier");
 
                     b.Navigation("Warehouse");
                 });
 
-            modelBuilder.Entity("MNBEMART.Models.PeriodLock", b =>
+            modelBuilder.Entity("MNBEMART.Models.Notification", b =>
                 {
-                    b.HasOne("MNBEMART.Models.User", "LockedBy")
+                    b.HasOne("MNBEMART.Models.User", "User")
                         .WithMany()
-                        .HasForeignKey("LockedById")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasForeignKey("UserId");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MNBEMART.Models.NotificationSettings", b =>
+                {
+                    b.HasOne("MNBEMART.Models.User", "User")
+                        .WithOne()
+                        .HasForeignKey("MNBEMART.Models.NotificationSettings", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("LockedBy");
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MNBEMART.Models.PurchaseRequest", b =>
+                {
+                    b.HasOne("MNBEMART.Models.User", "ApprovedBy")
+                        .WithMany()
+                        .HasForeignKey("ApprovedById");
+
+                    b.HasOne("MNBEMART.Models.User", "RequestedBy")
+                        .WithMany()
+                        .HasForeignKey("RequestedById")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ApprovedBy");
+
+                    b.Navigation("RequestedBy");
+                });
+
+            modelBuilder.Entity("MNBEMART.Models.PurchaseRequestDetail", b =>
+                {
+                    b.HasOne("MNBEMART.Models.Material", "Material")
+                        .WithMany()
+                        .HasForeignKey("MaterialId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MNBEMART.Models.Supplier", "PreferredSupplier")
+                        .WithMany()
+                        .HasForeignKey("PreferredSupplierId");
+
+                    b.HasOne("MNBEMART.Models.PurchaseRequest", "PurchaseRequest")
+                        .WithMany("Details")
+                        .HasForeignKey("PurchaseRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Material");
+
+                    b.Navigation("PreferredSupplier");
+
+                    b.Navigation("PurchaseRequest");
+                });
+
+            modelBuilder.Entity("MNBEMART.Models.RolePermission", b =>
+                {
+                    b.HasOne("MNBEMART.Models.Permission", "Permission")
+                        .WithMany("RolePermissions")
+                        .HasForeignKey("PermissionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MNBEMART.Models.Role", "Role")
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Permission");
+
+                    b.Navigation("Role");
                 });
 
             modelBuilder.Entity("MNBEMART.Models.Stock", b =>
@@ -985,50 +1605,6 @@ namespace MNBEMART.Migrations
                     b.Navigation("Warehouse");
                 });
 
-            modelBuilder.Entity("MNBEMART.Models.StockAdjustment", b =>
-                {
-                    b.HasOne("MNBEMART.Models.User", "ApprovedBy")
-                        .WithMany()
-                        .HasForeignKey("ApprovedById");
-
-                    b.HasOne("MNBEMART.Models.User", "CreatedBy")
-                        .WithMany()
-                        .HasForeignKey("CreatedById")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("MNBEMART.Models.Warehouse", "Warehouse")
-                        .WithMany()
-                        .HasForeignKey("WarehouseId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ApprovedBy");
-
-                    b.Navigation("CreatedBy");
-
-                    b.Navigation("Warehouse");
-                });
-
-            modelBuilder.Entity("MNBEMART.Models.StockAdjustmentDetail", b =>
-                {
-                    b.HasOne("MNBEMART.Models.Material", "Material")
-                        .WithMany()
-                        .HasForeignKey("MaterialId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("MNBEMART.Models.StockAdjustment", "StockAdjustment")
-                        .WithMany("Details")
-                        .HasForeignKey("StockAdjustmentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Material");
-
-                    b.Navigation("StockAdjustment");
-                });
-
             modelBuilder.Entity("MNBEMART.Models.StockBalance", b =>
                 {
                     b.HasOne("MNBEMART.Models.Material", "Material")
@@ -1048,41 +1624,12 @@ namespace MNBEMART.Migrations
                     b.Navigation("Warehouse");
                 });
 
-            modelBuilder.Entity("MNBEMART.Models.StockCount", b =>
-                {
-                    b.HasOne("MNBEMART.Models.Warehouse", "Warehouse")
-                        .WithMany()
-                        .HasForeignKey("WarehouseId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Warehouse");
-                });
-
-            modelBuilder.Entity("MNBEMART.Models.StockCountLine", b =>
-                {
-                    b.HasOne("MNBEMART.Models.Material", "Material")
-                        .WithMany()
-                        .HasForeignKey("MaterialId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("MNBEMART.Models.StockCount", "StockCount")
-                        .WithMany("Lines")
-                        .HasForeignKey("StockCountId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Material");
-
-                    b.Navigation("StockCount");
-                });
-
             modelBuilder.Entity("MNBEMART.Models.StockIssue", b =>
                 {
                     b.HasOne("MNBEMART.Models.User", "ApprovedBy")
                         .WithMany()
-                        .HasForeignKey("ApprovedById");
+                        .HasForeignKey("ApprovedById")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("MNBEMART.Models.User", "CreatedBy")
                         .WithMany("CreatedIssues")
@@ -1101,6 +1648,25 @@ namespace MNBEMART.Migrations
                     b.Navigation("CreatedBy");
 
                     b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("MNBEMART.Models.StockIssueAllocation", b =>
+                {
+                    b.HasOne("MNBEMART.Models.StockIssueDetail", "StockIssueDetail")
+                        .WithMany()
+                        .HasForeignKey("StockIssueDetailId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MNBEMART.Models.StockLot", "StockLot")
+                        .WithMany()
+                        .HasForeignKey("StockLotId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("StockIssueDetail");
+
+                    b.Navigation("StockLot");
                 });
 
             modelBuilder.Entity("MNBEMART.Models.StockIssueDetail", b =>
@@ -1122,11 +1688,31 @@ namespace MNBEMART.Migrations
                     b.Navigation("StockIssue");
                 });
 
+            modelBuilder.Entity("MNBEMART.Models.StockLot", b =>
+                {
+                    b.HasOne("MNBEMART.Models.Material", "Material")
+                        .WithMany()
+                        .HasForeignKey("MaterialId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MNBEMART.Models.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Material");
+
+                    b.Navigation("Warehouse");
+                });
+
             modelBuilder.Entity("MNBEMART.Models.StockReceipt", b =>
                 {
                     b.HasOne("MNBEMART.Models.User", "ApprovedBy")
                         .WithMany()
-                        .HasForeignKey("ApprovedById");
+                        .HasForeignKey("ApprovedById")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("MNBEMART.Models.User", "CreatedBy")
                         .WithMany("CreatedReceipts")
@@ -1170,7 +1756,8 @@ namespace MNBEMART.Migrations
                 {
                     b.HasOne("MNBEMART.Models.User", "ApprovedBy")
                         .WithMany()
-                        .HasForeignKey("ApprovedById");
+                        .HasForeignKey("ApprovedById")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("MNBEMART.Models.User", "CreatedBy")
                         .WithMany()
@@ -1201,6 +1788,11 @@ namespace MNBEMART.Migrations
 
             modelBuilder.Entity("MNBEMART.Models.StockTransferDetail", b =>
                 {
+                    b.HasOne("MNBEMART.Models.StockLot", "Lot")
+                        .WithMany()
+                        .HasForeignKey("LotId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("MNBEMART.Models.Material", "Material")
                         .WithMany()
                         .HasForeignKey("MaterialId")
@@ -1213,9 +1805,40 @@ namespace MNBEMART.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("Lot");
+
                     b.Navigation("Material");
 
                     b.Navigation("StockTransfer");
+                });
+
+            modelBuilder.Entity("MNBEMART.Models.User", b =>
+                {
+                    b.HasOne("MNBEMART.Models.User", "ApprovedBy")
+                        .WithMany("ApprovedUsers")
+                        .HasForeignKey("ApprovedById")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("ApprovedBy");
+                });
+
+            modelBuilder.Entity("MNBEMART.Models.UserRole", b =>
+                {
+                    b.HasOne("MNBEMART.Models.Role", "Role")
+                        .WithMany("UserRoles")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MNBEMART.Models.User", "User")
+                        .WithMany("UserRoles")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Role");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("MNBEMART.Models.UserWarehouse", b =>
@@ -1237,14 +1860,38 @@ namespace MNBEMART.Migrations
                     b.Navigation("Warehouse");
                 });
 
-            modelBuilder.Entity("MNBEMART.Models.StockAdjustment", b =>
+            modelBuilder.Entity("MNBEMART.Models.WarehouseDistance", b =>
+                {
+                    b.HasOne("MNBEMART.Models.Warehouse", "FromWarehouse")
+                        .WithMany()
+                        .HasForeignKey("FromWarehouseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MNBEMART.Models.Warehouse", "ToWarehouse")
+                        .WithMany()
+                        .HasForeignKey("ToWarehouseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FromWarehouse");
+
+                    b.Navigation("ToWarehouse");
+                });
+
+            modelBuilder.Entity("MNBEMART.Models.Permission", b =>
+                {
+                    b.Navigation("RolePermissions");
+                });
+
+            modelBuilder.Entity("MNBEMART.Models.PurchaseRequest", b =>
                 {
                     b.Navigation("Details");
                 });
 
-            modelBuilder.Entity("MNBEMART.Models.StockCount", b =>
+            modelBuilder.Entity("MNBEMART.Models.Role", b =>
                 {
-                    b.Navigation("Lines");
+                    b.Navigation("UserRoles");
                 });
 
             modelBuilder.Entity("MNBEMART.Models.StockIssue", b =>
@@ -1269,11 +1916,15 @@ namespace MNBEMART.Migrations
 
             modelBuilder.Entity("MNBEMART.Models.User", b =>
                 {
+                    b.Navigation("ApprovedUsers");
+
                     b.Navigation("AuditLogs");
 
                     b.Navigation("CreatedIssues");
 
                     b.Navigation("CreatedReceipts");
+
+                    b.Navigation("UserRoles");
 
                     b.Navigation("UserWarehouses");
                 });

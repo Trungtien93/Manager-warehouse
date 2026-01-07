@@ -1,0 +1,408 @@
+@model List<MNBEMART.Controllers.RolePermissionVM>
+@{
+    Layout = null;
+    var role = ViewBag.Role as MNBEMART.Models.Role;
+    var canUpdate = ViewBag.CanUpdate as bool? ?? false;
+}
+
+<div class="permissions-container" data-can-update="@canUpdate.ToString().ToLower()">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="mb-1">
+                <i class="bi bi-shield-check text-primary me-2"></i>
+                Phân quyền cho vai trò: <strong>@(role?.Name ?? "N/A")</strong>
+            </h4>
+            <p class="text-muted mb-0 small">Quản lý quyền truy cập cho từng module trong hệ thống</p>
+        </div>
+        <div>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnBackToRoles">
+                <i class="bi bi-arrow-left me-1"></i>Trở về
+            </button>
+        </div>
+    </div>
+
+    <!-- Message Area -->
+    <div id="permissionsMessage" class="mb-3 hidden"></div>
+
+    @if (ViewBag.SuccessMessage != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show mb-3" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i>@ViewBag.SuccessMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
+            <i class="bi bi-exclamation-circle-fill me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng"></button>
+        </div>
+    }
+
+    <!-- Toolbar -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label small text-muted">Tìm kiếm module</label>
+                    <input type="text" id="searchModules" class="form-control form-control-sm" placeholder="Nhập tên module...">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">Lọc theo danh mục</label>
+                    <select id="filterCategory" class="form-select form-select-sm">
+                        <option value="">Tất cả danh mục</option>
+                        @foreach (var category in Model.Select(m => m.Category).Distinct().OrderBy(c => c))
+                        {
+                            <option value="@category">@category</option>
+                        }
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Permissions Form -->
+    <form id="permissionsForm" method="post" asp-action="SavePermissions">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="roleId" value="@role?.Id" />
+
+        @{
+            var groupedByCategory = Model.GroupBy(m => m.Category).OrderBy(g => g.Key);
+        }
+
+        @foreach (var categoryGroup in groupedByCategory)
+        {
+            <div class="card mb-3 category-card" data-category="@categoryGroup.Key">
+                <div class="card-header bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">
+                            <i class="bi bi-folder-fill text-primary me-2"></i>
+                            @categoryGroup.Key
+                            <span class="badge bg-secondary ms-2">@categoryGroup.Count()</span>
+                        </h6>
+                        <div>
+                            <button type="button" class="btn btn-sm btn-link text-decoration-none p-0 me-2 category-toggle" data-category="@categoryGroup.Key">
+                                <i class="bi bi-chevron-down"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body category-content" data-category="@categoryGroup.Key">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 30px">
+                                        @if (canUpdate)
+                                        {
+                                            <input type="checkbox" class="form-check-input row-master" data-category="@categoryGroup.Key">
+                                        }
+                                    </th>
+                                    <th style="width: 200px">Chức năng</th>
+                                    <th class="text-center" style="width: 100px">
+                                        <span data-bs-toggle="tooltip" title="Xem danh sách và chi tiết">
+                                            <i class="bi bi-eye text-primary"></i> Xem
+                                        </span>
+                                    </th>
+                                    <th class="text-center" style="width: 100px">
+                                        <span data-bs-toggle="tooltip" title="Tạo mới bản ghi">
+                                            <i class="bi bi-plus-circle text-success"></i> Thêm
+                                        </span>
+                                    </th>
+                                    <th class="text-center" style="width: 100px">
+                                        <span data-bs-toggle="tooltip" title="Cập nhật bản ghi">
+                                            <i class="bi bi-pencil text-warning"></i> Sửa
+                                        </span>
+                                    </th>
+                                    <th class="text-center" style="width: 100px">
+                                        <span data-bs-toggle="tooltip" title="Xóa bản ghi">
+                                            <i class="bi bi-trash text-danger"></i> Xóa
+                                        </span>
+                                    </th>
+                                    <th class="text-center" style="width: 100px">
+                                        <span data-bs-toggle="tooltip" title="Phê duyệt">
+                                            <i class="bi bi-check-circle text-info"></i> Duyệt
+                                        </span>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (int i = 0; i < categoryGroup.Count(); i++)
+                                {
+                                    var item = categoryGroup.ElementAt(i);
+                                    var index = Model.IndexOf(item);
+                                    <tr class="permission-row" data-module="@item.Module.ToLower()" data-category="@item.Category">
+                                        <td>
+                                            @if (canUpdate)
+                                            {
+                                                <input type="checkbox" class="form-check-input row-checkbox" data-index="@index">
+                                            }
+                                        </td>
+                                        <td>
+                                            <strong>@item.DisplayName</strong>
+                                            <br>
+                                            <small class="text-muted">@item.Module</small>
+                                        </td>
+                                        <td class="text-center">
+                                            <input type="hidden" name="permissions[@index].PermissionId" value="@item.PermissionId" />
+                                            <input type="hidden" name="permissions[@index].Module" value="@item.Module" />
+                                            <input type="checkbox" 
+                                                   name="permissions[@index].CanRead" 
+                                                   value="true" 
+                                                   class="form-check-input permission-checkbox cell-read" 
+                                                   data-index="@index"
+                                                   @(item.CanRead ? "checked" : "")
+                                                   @(!canUpdate ? "disabled" : "")>
+                                        </td>
+                                        <td class="text-center">
+                                            <input type="checkbox" 
+                                                   name="permissions[@index].CanCreate" 
+                                                   value="true" 
+                                                   class="form-check-input permission-checkbox cell-create" 
+                                                   data-index="@index"
+                                                   @(item.CanCreate ? "checked" : "")
+                                                   @(!canUpdate ? "disabled" : "")>
+                                        </td>
+                                        <td class="text-center">
+                                            <input type="checkbox" 
+                                                   name="permissions[@index].CanUpdate" 
+                                                   value="true" 
+                                                   class="form-check-input permission-checkbox cell-update" 
+                                                   data-index="@index"
+                                                   @(item.CanUpdate ? "checked" : "")
+                                                   @(!canUpdate ? "disabled" : "")>
+                                        </td>
+                                        <td class="text-center">
+                                            <input type="checkbox" 
+                                                   name="permissions[@index].CanDelete" 
+                                                   value="true" 
+                                                   class="form-check-input permission-checkbox cell-delete" 
+                                                   data-index="@index"
+                                                   @(item.CanDelete ? "checked" : "")
+                                                   @(!canUpdate ? "disabled" : "")>
+                                        </td>
+                                        <td class="text-center">
+                                            @if (item.HasApprove)
+                                            {
+                                                <input type="checkbox" 
+                                                       name="permissions[@index].CanApprove" 
+                                                       value="true" 
+                                                       class="form-check-input permission-checkbox cell-approve" 
+                                                       data-index="@index"
+                                                       @(item.CanApprove ? "checked" : "")
+                                                       @(!canUpdate ? "disabled" : "")>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">-</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Form Actions -->
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted small">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Tổng số module: <strong>@Model.Count</strong>
+                        </span>
+                    </div>
+                    <div>
+                        @if (canUpdate)
+                        {
+                            <button type="submit" class="btn btn-primary" id="btnSavePermissions">
+                                <i class="bi bi-save me-1"></i>Lưu thay đổi
+                            </button>
+                        }
+                        else
+                        {
+                            <button type="button" class="btn btn-secondary" disabled>
+                                <i class="bi bi-lock me-1"></i>Bạn không có quyền cập nhật
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    // Expose canUpdate from server to JavaScript (as boolean, not string)
+    window.permissionsCanUpdate = @(canUpdate ? "true" : "false");
+    
+    // Convert string to boolean if needed (Razor outputs string "true"/"false")
+    if (typeof window.permissionsCanUpdate === 'string') {
+        window.permissionsCanUpdate = window.permissionsCanUpdate.toLowerCase() === 'true';
+    } else {
+        window.permissionsCanUpdate = Boolean(window.permissionsCanUpdate);
+    }
+
+    // Initialize permissions form handlers
+    function initPermissionsFormHandlers() {
+        // Ensure canUpdate is boolean
+        let canUpdate = window.permissionsCanUpdate;
+        if (typeof canUpdate === 'string') {
+            canUpdate = canUpdate.toLowerCase() === 'true';
+        }
+        canUpdate = Boolean(canUpdate);
+        
+        // Fallback: check data attribute from permissions container
+        if (!canUpdate) {
+            const permissionsContainer = document.querySelector('.permissions-container');
+            if (permissionsContainer) {
+                const dataCanUpdate = permissionsContainer.getAttribute('data-can-update');
+                if (dataCanUpdate === 'true') {
+                    canUpdate = true;
+                    window.permissionsCanUpdate = true; // Update global flag
+                }
+            }
+        }
+
+        if (!canUpdate) {
+            // Disable all interactions if no update permission
+            document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                cb.disabled = true;
+                cb.addEventListener('click', e => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                });
+            });
+            return;
+        }
+
+        // Search functionality
+        const searchInput = document.getElementById('searchModules');
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                document.querySelectorAll('.permission-row').forEach(row => {
+                    const module = row.dataset.module || '';
+                    const displayName = row.querySelector('td:nth-child(2) strong')?.textContent.toLowerCase() || '';
+                    if (module.includes(searchTerm) || displayName.includes(searchTerm)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        // Category filter
+        const categoryFilter = document.getElementById('filterCategory');
+        if (categoryFilter) {
+            categoryFilter.addEventListener('change', function() {
+                const selectedCategory = this.value;
+                document.querySelectorAll('.category-card').forEach(card => {
+                    if (!selectedCategory || card.dataset.category === selectedCategory) {
+                        card.style.display = '';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        // Category toggle
+        document.querySelectorAll('.category-toggle').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const category = this.dataset.category;
+                const content = document.querySelector(`.category-content[data-category="${category}"]`);
+                const icon = this.querySelector('i');
+                if (content) {
+                    if (content.style.display === 'none') {
+                        content.style.display = '';
+                        icon.className = 'bi bi-chevron-down';
+                    } else {
+                        content.style.display = 'none';
+                        icon.className = 'bi bi-chevron-right';
+                    }
+                }
+            });
+        });
+
+        // Row master checkbox
+        document.querySelectorAll('.row-master').forEach(master => {
+            master.addEventListener('change', function() {
+                const category = this.dataset.category;
+                const checked = this.checked;
+                document.querySelectorAll(`.permission-row[data-category="${category}"] .permission-checkbox`).forEach(cb => {
+                    cb.checked = checked;
+                });
+            });
+        });
+
+        // Row checkbox
+        document.querySelectorAll('.row-checkbox').forEach(cb => {
+            cb.addEventListener('change', function() {
+                const index = this.dataset.index;
+                const checked = this.checked;
+                document.querySelectorAll(`.permission-checkbox[data-index="${index}"]`).forEach(permCb => {
+                    permCb.checked = checked;
+                });
+            });
+        });
+
+        // Initialize tooltips
+        if (typeof bootstrap !== 'undefined') {
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        }
+    }
+
+    // Call when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initPermissionsFormHandlers);
+    } else {
+        initPermissionsFormHandlers();
+    }
+</script>
+
+<style>
+    .permissions-container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    
+    .category-card {
+        transition: box-shadow 0.2s;
+    }
+    
+    .category-card:hover {
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .permission-row:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .permission-checkbox:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    .table th {
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+    
+    .table td {
+        font-size: 0.875rem;
+    }
+</style>
+
+

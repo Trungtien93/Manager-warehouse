@@ -6,6 +6,8 @@ namespace MNBEMART.Data
 {
     public class AppDbContext : DbContext
     {
+        public DbSet<StockLot> StockLots => Set<StockLot>();
+        public DbSet<StockIssueAllocation> StockIssueAllocations => Set<StockIssueAllocation>();
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
         public DbSet<User> Users { get; set; }
@@ -13,6 +15,7 @@ namespace MNBEMART.Data
         public DbSet<UserWarehouse> UserWarehouses { get; set; }
         public DbSet<Material> Materials { get; set; }
         public DbSet<Supplier> Suppliers { get; set; }
+        public DbSet<MaterialSpecification> MaterialSpecifications { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
         public DbSet<StockReceipt> StockReceipts { get; set; }
         public DbSet<StockIssue> StockIssues { get; set; }
@@ -31,13 +34,26 @@ namespace MNBEMART.Data
 
         // DbSets mới
         public DbSet<DocumentNumbering> DocumentNumberings => Set<DocumentNumbering>();
-        public DbSet<StockAdjustment> StockAdjustments => Set<StockAdjustment>();
-        public DbSet<StockAdjustmentDetail> StockAdjustmentDetails => Set<StockAdjustmentDetail>();
-        public DbSet<StockCount> StockCounts => Set<StockCount>();
-        public DbSet<StockCountLine> StockCountLines => Set<StockCountLine>();
-        public DbSet<Attachment> Attachments => Set<Attachment>();
-        public DbSet<PeriodLock> PeriodLocks => Set<PeriodLock>();
-        
+        // StockAdjustment đã bị vô hiệu hóa - chức năng không còn sử dụng
+        // public DbSet<StockAdjustment> StockAdjustments => Set<StockAdjustment>();
+        // public DbSet<StockAdjustmentDetail> StockAdjustmentDetails => Set<StockAdjustmentDetail>();
+        // StockCount, StockCountLine, Attachment, PeriodLock đã bị xóa - các bảng không sử dụng
+        // public DbSet<StockCount> StockCounts => Set<StockCount>();
+        // public DbSet<StockCountLine> StockCountLines => Set<StockCountLine>();
+        // public DbSet<Attachment> Attachments => Set<Attachment>();
+        // public DbSet<PeriodLock> PeriodLocks => Set<PeriodLock>();
+        public DbSet<Permission> Permissions => Set<Permission>();
+        public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+        public DbSet<PurchaseRequest> PurchaseRequests => Set<PurchaseRequest>();
+        public DbSet<PurchaseRequestDetail> PurchaseRequestDetails => Set<PurchaseRequestDetail>();
+        public DbSet<LotHistory> LotHistories => Set<LotHistory>();
+        public DbSet<WarehouseDistance> WarehouseDistances => Set<WarehouseDistance>();
+        public DbSet<Notification> Notifications => Set<Notification>();
+        public DbSet<NotificationSettings> NotificationSettings => Set<NotificationSettings>();
+        public DbSet<Document> Documents => Set<Document>();
+        public DbSet<DemandForecast> DemandForecasts => Set<DemandForecast>();
+        public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -60,6 +76,19 @@ namespace MNBEMART.Data
             modelBuilder.Entity<MNBEMART.Models.Role>()
                 .HasIndex(x => x.Code).IsUnique();
 
+            // AuditLog quan hệ (tuỳ chọn Warehouse)
+            modelBuilder.Entity<AuditLog>(e =>
+            {
+                e.HasOne(a => a.User)
+                 .WithMany(u => u.AuditLogs)
+                 .HasForeignKey(a => a.UserId)
+                 .OnDelete(DeleteBehavior.Cascade);
+                e.HasOne(a => a.Warehouse)
+                 .WithMany()
+                 .HasForeignKey(a => a.WarehouseId)
+                 .OnDelete(DeleteBehavior.SetNull);
+            });
+
             modelBuilder.Entity<MNBEMART.Models.UserRole>(b =>
             {
                 b.HasKey(x => new { x.UserId, x.RoleId });
@@ -70,6 +99,11 @@ namespace MNBEMART.Data
                     .WithMany(r => r.UserRoles)
                     .HasForeignKey(x => x.RoleId);
             });
+            // ===== RolePermission n-n =====
+            modelBuilder.Entity<RolePermission>()
+                .HasIndex(x => new { x.RoleId, x.PermissionId })
+                .IsUnique();
+
 
             // ===== Warehouse quan hệ =====
             modelBuilder.Entity<StockReceipt>()
@@ -113,11 +147,22 @@ namespace MNBEMART.Data
                 e.Property(x => x.PurchasePrice).HasPrecision(18, 2);    // Giá nhập
                 e.Property(x => x.SellingPrice).HasPrecision(18, 2);     // Giá bán
                 e.Property(x => x.StockQuantity).HasDefaultValue(0);     // Tồn kho mặc định 0
+                e.Property(x => x.MinimumStock).HasPrecision(18, 2);     // Tồn tối thiểu
+                e.Property(x => x.MaximumStock).HasPrecision(18, 2);     // Tồn tối đa
+                e.Property(x => x.ReorderQuantity).HasPrecision(18, 2);  // Số lượng đặt lại
+                e.Property(x => x.CostingMethod).HasConversion<int>();  // Phương pháp tính giá (mặc định WeightedAverage trong code)
 
 
 
                 // (Khuyến nghị) Mã vật tư duy nhất
                 e.HasIndex(x => x.Code).IsUnique();
+            });
+
+            // ===== MaterialSpecification =====
+            modelBuilder.Entity<MaterialSpecification>(e =>
+            {
+                e.Property(x => x.Name).HasMaxLength(100).IsRequired();
+                e.HasIndex(x => x.Name).IsUnique();
             });
             // ===== StockBalance =====
             modelBuilder.Entity<StockBalance>(e =>
@@ -211,6 +256,13 @@ namespace MNBEMART.Data
                 .HasForeignKey(si => si.ApprovedById)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // ===== User Approval Relationship =====
+            modelBuilder.Entity<User>()
+                .HasOne(u => u.ApprovedBy)
+                .WithMany(u => u.ApprovedUsers)
+                .HasForeignKey(u => u.ApprovedById)
+                .OnDelete(DeleteBehavior.Restrict);
+
             // ===== Precision giá =====
             modelBuilder.Entity<StockReceiptDetail>()
                 .Property(d => d.UnitPrice).HasPrecision(18, 2);
@@ -227,14 +279,31 @@ namespace MNBEMART.Data
             // Decimal precision cho UnitPrice, QuantityDiff, Quantity…
             modelBuilder.Entity<StockReceiptDetail>().Property(p => p.UnitPrice).HasPrecision(18, 2);
             modelBuilder.Entity<StockIssueDetail>().Property(p => p.UnitPrice).HasPrecision(18, 2);
-            modelBuilder.Entity<StockAdjustmentDetail>().Property(p => p.QuantityDiff).HasPrecision(18, 3);
+            // StockAdjustment đã bị vô hiệu hóa - chức năng không còn sử dụng
+            // modelBuilder.Entity<StockAdjustmentDetail>().Property(p => p.QuantityDiff).HasPrecision(18, 3);
             modelBuilder.Entity<StockTransferDetail>().Property(p => p.Quantity).HasPrecision(18, 3);
 
             modelBuilder.Entity<StockReceiptDetail>()
                 .Property(p => p.Quantity).HasPrecision(18,3);
+            modelBuilder.Entity<StockReceiptDetail>()
+                .Property(p => p.UnitPrice).HasPrecision(18,2);
 
             modelBuilder.Entity<StockIssueDetail>()
                 .Property(p => p.Quantity).HasPrecision(18,3);
+
+            // ===== LOTS =====
+            modelBuilder.Entity<StockLot>(e =>
+            {
+                e.HasIndex(x => new { x.WarehouseId, x.MaterialId, x.LotNumber, x.ManufactureDate, x.ExpiryDate }).IsUnique();
+                e.Property(x => x.Quantity).HasPrecision(18,3);
+            });
+
+            modelBuilder.Entity<StockIssueAllocation>(e =>
+            {
+                e.Property(x => x.Quantity).HasPrecision(18,3);
+                e.HasOne(a => a.StockIssueDetail).WithMany().HasForeignKey(a => a.StockIssueDetailId).OnDelete(DeleteBehavior.Cascade);
+                e.HasOne(a => a.StockLot).WithMany().HasForeignKey(a => a.StockLotId).OnDelete(DeleteBehavior.Restrict);
+            });
 
             // AppDbContext.OnModelCreating(...)
             modelBuilder.Entity<DocumentNumbering>(e =>
@@ -244,6 +313,23 @@ namespace MNBEMART.Data
                 e.Property(x => x.Prefix).HasMaxLength(16).IsRequired();
                 e.Property(x => x.Format).HasMaxLength(128);
                 e.Property(x => x.CurrentNo).IsRequired();
+            });
+
+            // ===== Document =====
+            modelBuilder.Entity<Document>(e =>
+            {
+                e.HasIndex(x => new { x.DocumentType, x.DocumentId });
+                
+                e.Property(x => x.DocumentType).HasMaxLength(50).IsRequired();
+                e.Property(x => x.FileName).HasMaxLength(255).IsRequired();
+                e.Property(x => x.FilePath).HasMaxLength(500).IsRequired();
+                e.Property(x => x.MimeType).HasMaxLength(100);
+                e.Property(x => x.Description).HasMaxLength(500);
+
+                e.HasOne(x => x.UploadedBy)
+                    .WithMany()
+                    .HasForeignKey(x => x.UploadedById)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
 
@@ -260,27 +346,84 @@ namespace MNBEMART.Data
             modelBuilder.Entity<StockTransferDetail>(e =>
             {
                 e.Property(x => x.Quantity).HasColumnType("decimal(18,4)");
+                e.Property(x => x.UnitPrice).HasPrecision(18, 2);
                 e.Property(x => x.Unit).HasMaxLength(50);
                 e.Property(x => x.Note).HasMaxLength(500);
                 e.HasOne(d => d.StockTransfer).WithMany(h => h.Details).HasForeignKey(d => d.StockTransferId).OnDelete(DeleteBehavior.Cascade);
+                e.HasOne(d => d.Lot).WithMany().HasForeignKey(d => d.LotId).OnDelete(DeleteBehavior.NoAction);
             });
-            // Attachment – UploadedBy
-            modelBuilder.Entity<Attachment>()
-             .HasOne(a => a.UploadedBy).WithMany()
-             .HasForeignKey(a => a.UploadedById)
-             .OnDelete(DeleteBehavior.Restrict);
+            // Attachment và PeriodLock đã bị xóa - các bảng không sử dụng
+            // modelBuilder.Entity<Attachment>()
+            //  .HasOne(a => a.UploadedBy).WithMany()
+            //  .HasForeignKey(a => a.UploadedById)
+            //  .OnDelete(DeleteBehavior.Restrict);
 
-            // PeriodLock – LockedBy
-            modelBuilder.Entity<PeriodLock>()
-             .HasOne(p => p.LockedBy).WithMany()
-             .HasForeignKey(p => p.LockedById)
-             .OnDelete(DeleteBehavior.Restrict);
+            // modelBuilder.Entity<PeriodLock>()
+            //  .HasOne(p => p.LockedBy).WithMany()
+            //  .HasForeignKey(p => p.LockedById)
+            //  .OnDelete(DeleteBehavior.Restrict);
+
+            // ===== NotificationSettings =====
+            modelBuilder.Entity<NotificationSettings>(e =>
+            {
+                e.HasKey(x => x.UserId);
+                e.HasOne(x => x.User)
+                    .WithOne()
+                    .HasForeignKey<NotificationSettings>(x => x.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                e.Property(x => x.SoundType).HasMaxLength(50).HasDefaultValue("default");
+                e.Property(x => x.UpdateFrequency).HasDefaultValue(30);
+            });
+
+            // ===== Notification indexes =====
+            modelBuilder.Entity<Notification>(e =>
+            {
+                e.HasIndex(x => new { x.UserId, x.IsRead, x.CreatedAt });
+                e.HasIndex(x => new { x.UserId, x.IsImportant });
+                e.HasIndex(x => new { x.UserId, x.IsArchived });
+                e.HasIndex(x => new { x.IsDeleted, x.DeletedAt });
+            });
 
             // Tùy chọn: index hiệu năng
             modelBuilder.Entity<StockReceipt>().HasIndex(x => new { x.WarehouseId, x.Status, x.CreatedAt });
             modelBuilder.Entity<StockIssue>().HasIndex(x => new { x.WarehouseId, x.Status, x.CreatedAt });
             modelBuilder.Entity<StockReceiptDetail>().HasIndex(x => new { x.StockReceiptId, x.MaterialId });
             modelBuilder.Entity<StockIssueDetail>().HasIndex(x => new { x.StockIssueId, x.MaterialId });
+
+            // ===== DemandForecast =====
+            modelBuilder.Entity<DemandForecast>(e =>
+            {
+                e.HasIndex(x => new { x.MaterialId, x.WarehouseId, x.ForecastDate }).IsUnique();
+                e.Property(x => x.ForecastedQuantity).HasPrecision(18, 3);
+                e.Property(x => x.ConfidenceLevel).HasPrecision(5, 2);
+                e.Property(x => x.HistoricalAverage).HasPrecision(18, 3);
+                e.Property(x => x.Trend).HasPrecision(18, 3);
+                e.Property(x => x.Method).HasMaxLength(50).IsRequired();
+                e.Property(x => x.Notes).HasMaxLength(500);
+
+                e.HasOne(x => x.Material)
+                    .WithMany()
+                    .HasForeignKey(x => x.MaterialId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne(x => x.Warehouse)
+                    .WithMany()
+                    .HasForeignKey(x => x.WarehouseId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // ===== ChatMessage =====
+            modelBuilder.Entity<ChatMessage>(e =>
+            {
+                e.HasIndex(x => new { x.UserId, x.CreatedAt });
+                e.Property(x => x.Role).HasMaxLength(10).IsRequired();
+                e.Property(x => x.Message).HasMaxLength(5000).IsRequired();
+
+                e.HasOne(x => x.User)
+                    .WithMany()
+                    .HasForeignKey(x => x.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
         }
 
     }

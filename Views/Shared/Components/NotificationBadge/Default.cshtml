@@ -1,0 +1,67 @@
+@model int
+
+@if (Model > 0)
+{
+    <span class="absolute -top-1 -right-2 flex h-5 min-w-[20px] items-center justify-center">
+        @if (Model == 1)
+        {
+            <span class="relative inline-flex items-center justify-center rounded-full h-4 w-4 bg-red-500"></span>
+        }
+        else
+        {
+            <span class="relative inline-flex items-center justify-center rounded-full h-5 min-w-[20px] px-1.5 bg-red-500 text-white text-[10px] font-bold">
+                @(Model > 99 ? "99+" : Model.ToString())
+            </span>
+        }
+    </span>
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

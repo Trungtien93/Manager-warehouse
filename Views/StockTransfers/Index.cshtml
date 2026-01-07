@@ -1,47 +1,453 @@
 @model List<MNBEMART.Models.StockTransfer>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+@using System.Linq
 @{
     ViewData["Title"] = "Phiếu chuyển kho";
+    string FQty(decimal v) => (v % 1m == 0m) ? ((long)v).ToString() : v.ToString("0.##");
+    
+    // Calculate pagination display
+    var page = ViewBag.Page as int? ?? 1;
+    var pageSize = ViewBag.PageSize as int? ?? 30;
+    var totalItems = ViewBag.TotalItems as int? ?? Model.Count();
+    var totalPages = ViewBag.TotalPages as int? ?? 1;
+    var startItem = (page - 1) * pageSize + 1;
+    var endItem = Math.Min(page * pageSize, totalItems);
 }
 
-<div class="container-fluid py-3">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="mb-0">🔄 Phiếu chuyển kho</h3>
-        <a class="btn btn-primary" asp-action="Create">+ Tạo phiếu</a>
+<!-- Tailwind + Bootstrap Icons -->
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+<!-- Bootstrap CSS for modals only -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+
+<div class="max-w-[1600px] mx-auto px-6 lg:px-8 py-8">
+    <!-- Large Header -->
+    @* <div class="mb-6">
+        <h1 class="text-4xl font-black text-slate-900 tracking-tight mb-2">
+            Phiếu chuyển kho
+        </h1>
+        <p class="text-lg text-slate-600">
+            Quản lý chuyển kho giữa các kho
+        </p>
+    </div> *@
+
+    <!-- Notifications -->
+    @if (TempData["Msg"] != null)
+    {
+        <div class="bg-green-50 border-2 border-green-200 text-green-800 px-4 py-3 rounded-xl mb-6 flex items-center justify-between shadow-sm">
+            <div class="flex items-center gap-2">
+                <i class="bi bi-check-circle-fill text-green-600"></i>
+                <span>@TempData["Msg"]</span>
+            </div>
+            <button type="button" onclick="this.parentElement.remove()" class="text-green-600 hover:text-green-800">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="bg-red-50 border-2 border-red-200 text-red-800 px-4 py-3 rounded-xl mb-6 flex items-center justify-between shadow-sm">
+            <div class="flex items-center gap-2">
+                <i class="bi bi-exclamation-circle-fill text-red-600"></i>
+                <span>@TempData["Error"]</span>
+            </div>
+            <button type="button" onclick="this.parentElement.remove()" class="text-red-600 hover:text-red-800">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+    }
+
+    <!-- Toolbar -->
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 mb-6 p-6">
+        <div class="flex items-center justify-between">
+            <div class="flex-1 flex items-center gap-3">
+                <div class="relative flex-1 max-w-md">
+                    <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input name="q" value="" 
+                           placeholder="Tìm kiếm mã phiếu, ghi chú..."
+                           class="w-full pl-10 pr-4 py-3 border-2 border-slate-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all shadow-sm hover:border-green-400" />
+                </div>
+                <button type="button" class="p-3 border-2 border-slate-300 rounded-xl hover:bg-slate-50 transition">
+                    <i class="bi bi-funnel text-slate-600"></i>
+                </button>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <button type="button" class="px-5 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition flex items-center gap-2"
+                        data-bs-toggle="modal" data-bs-target="#stCreateModal" onclick="loadTransferModal()">
+                    <i class="bi bi-plus-circle"></i>
+                    + Thêm phiếu chuyển kho mới
+                </button>
+            </div>
+        </div>
     </div>
 
-    <div class="table-responsive">
-        <table class="table table-sm table-bordered align-middle">
-            <thead class="table-light text-center">
-                <tr>
-                    <th>Số phiếu</th>
-                    <th>Kho đi</th>
-                    <th>Kho đến</th>
-                    <th>Ngày tạo</th>
-                    <th>Trạng thái</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-            @foreach (var x in Model)
-            {
-                <tr>
-                    <td class="text-nowrap">@x.TransferNumber</td>
-                    <td>@x.FromWarehouse?.Name</td>
-                    <td>@x.ToWarehouse?.Name</td>
-                    <td>@x.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
-                    <td>
-                        @if (x.Status == MNBEMART.Models.DocumentStatus.Moi)
-                        { <span class="badge text-bg-warning">Mới</span> }
-                        else if (x.Status == MNBEMART.Models.DocumentStatus.DaXacNhan)
-                        { <span class="badge text-bg-success">Đã xác nhận</span> }
-                    </td>
-                    <td class="text-end">
-                        <a class="btn btn-sm btn-outline-secondary" asp-action="Details" asp-route-id="@x.Id">Chi tiết</a>
-                    </td>
-                </tr>
-            }
-            </tbody>
-        </table>
-    </div>
+    <!-- Table -->
+    @if (Model.Any())
+    {
+        <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+            <div class="overflow-x-auto max-h-[600px] relative">
+                <table class="min-w-full divide-y divide-slate-200">
+                    <thead class="bg-slate-50 sticky top-0 z-10">
+                        <tr>
+                            <th class="px-6 py-4 w-12">
+                                <input type="checkbox" class="rounded border-slate-300 text-green-600 focus:ring-green-500" id="chkAllTransfer" />
+                            </th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition">
+                                Số phiếu <i class="bi bi-arrow-down-up text-green-600 ml-1"></i>
+                            </th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                Kho đi
+                            </th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                Kho đến
+                            </th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition">
+                                Ngày tạo <i class="bi bi-arrow-down-up text-green-600 ml-1"></i>
+                            </th>
+                            <th class="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                Trạng thái
+                            </th>
+                            <th class="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider w-24">
+                                Thao tác
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-slate-200">
+                        @foreach (var x in Model)
+                        {
+                            <tr class="hover:bg-slate-50 transition-colors duration-150">
+                                <td class="px-6 py-4">
+                                    <input type="checkbox" class="transfer-chk rounded border-slate-300 text-green-600 focus:ring-green-500" value="@x.Id" />
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="font-mono text-sm font-semibold text-slate-900">@x.TransferNumber</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
+                                    @x.FromWarehouse?.Name
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
+                                    @x.ToWarehouse?.Name
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                                    @x.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    @if (x.Status == MNBEMART.Models.DocumentStatus.Moi)
+                                    {
+                                        <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                                            Mới
+                                        </span>
+                                    }
+                                    else if (x.Status == MNBEMART.Models.DocumentStatus.DaXacNhan)
+                                    {
+                                        <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                                            Đã xác nhận
+                                        </span>
+                                    }
+                                    else if (x.Status == MNBEMART.Models.DocumentStatus.HoanThanh)
+                                    {
+                                        <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
+                                            Hoàn thành
+                                        </span>
+                                    }
+                                    else if (x.Status == MNBEMART.Models.DocumentStatus.DaHuy)
+                                    {
+                                        <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200">
+                                            Đã huỷ
+                                        </span>
+                                    }
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <div class="relative inline-block">
+                                        <button type="button" class="action-menu-btn p-2 hover:bg-slate-100 rounded-lg transition"
+                                                data-id="@x.Id">
+                                            <i class="bi bi-three-dots-vertical text-slate-600"></i>
+                                        </button>
+                                        <div class="action-menu hidden absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-slate-200 z-10">
+                                            <button type="button" data-action="quick-view" data-id="@x.Id" 
+                                                   data-bs-toggle="modal" data-bs-target="#detailsModal-@x.Id"
+                                                   class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-green-50 hover:text-green-700 transition flex items-center gap-2">
+                                                <i class="bi bi-eye text-green-600"></i> Xem nhanh
+                                            </button>
+                                            @if (User.IsInRole("Admin"))
+                                            {
+                                                <hr class="my-1">
+                                                @if (x.Status == MNBEMART.Models.DocumentStatus.Moi)
+                                                {
+                                                    <form asp-action="Approve" method="post" class="m-0">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="id" value="@x.Id" />
+                                                        <button type="submit" class="w-full text-left px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 transition flex items-center gap-2">
+                                                            <i class="bi bi-check-circle text-amber-600"></i> Xác nhận
+                                                        </button>
+                                                    </form>
+                                                    <form asp-action="Cancel" method="post" onsubmit="return confirm('Huỷ phiếu này?');" class="m-0">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="id" value="@x.Id" />
+                                                        <button type="submit" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition flex items-center gap-2">
+                                                            <i class="bi bi-x-circle"></i> Hủy
+                                                        </button>
+                                                    </form>
+                                                }
+                                                else if (x.Status == MNBEMART.Models.DocumentStatus.DaXacNhan)
+                                                {
+                                                    <form asp-action="Complete" method="post" class="m-0">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="id" value="@x.Id" />
+                                                        <button type="submit" class="w-full text-left px-4 py-2 text-sm text-green-700 hover:bg-green-50 transition flex items-center gap-2">
+                                                            <i class="bi bi-check2-circle text-green-600"></i> Hoàn thành
+                                                        </button>
+                                                    </form>
+                                                    <form asp-action="Cancel" method="post" onsubmit="return confirm('Huỷ phiếu này?');" class="m-0">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="id" value="@x.Id" />
+                                                        <button type="submit" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition flex items-center gap-2">
+                                                            <i class="bi bi-x-circle"></i> Hủy
+                                                        </button>
+                                                    </form>
+                                                }
+                                            }
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Footer Summary and Pagination -->
+        <div class="flex items-center justify-between mt-6">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 px-6 py-3 text-sm">
+                <span class="text-slate-500">Tổng phiếu:</span> <b class="text-slate-900">@totalItems</b>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="text-sm text-slate-600 mr-4">
+                    Hiển thị <span class="font-semibold">@startItem-@endItem</span> trong tổng <span class="font-semibold">@totalItems</span>
+                </div>
+                @if (page > 1)
+                {
+                    <a href="@Url.Action("Index", new { page = page - 1, pageSize = pageSize })"
+                       class="px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition">
+                        Trước
+                    </a>
+                }
+                else
+                {
+                    <button disabled class="px-4 py-2 text-sm font-semibold text-slate-400 bg-white border border-slate-200 rounded-lg opacity-50 cursor-not-allowed">
+                        Trước
+                    </button>
+                }
+                
+                @if (page < totalPages)
+                {
+                    <a href="@Url.Action("Index", new { page = page + 1, pageSize = pageSize })"
+                       class="px-4 py-2 text-sm font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition">
+                        Tiếp theo
+                    </a>
+                }
+                else
+                {
+                    <button disabled class="px-4 py-2 text-sm font-semibold text-slate-400 bg-slate-200 rounded-lg opacity-50 cursor-not-allowed">
+                        Tiếp theo
+                    </button>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Empty State -->
+        <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-16 text-center">
+            <div class="inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 mb-6 shadow-lg">
+                <i class="bi bi-inbox text-slate-500 text-5xl"></i>
+            </div>
+            <h3 class="text-2xl font-black text-slate-900 mb-3">Chưa có phiếu chuyển kho</h3>
+            <p class="text-slate-600 mb-6 text-lg">Tạo phiếu chuyển kho đầu tiên để bắt đầu</p>
+            <button type="button" class="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-xl transition-all shadow-md hover:shadow-lg"
+                    data-bs-toggle="modal" data-bs-target="#stCreateModal" onclick="loadTransferModal()">
+                <i class="bi bi-plus-circle"></i>
+                Tạo phiếu
+            </button>
+        </div>
+    }
 </div>
+
+<!-- Bootstrap JS for modals -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+@* Modal xem nhanh *@
+@foreach (var x in Model)
+{
+    @await Html.PartialAsync("_DetailsModal", x)
+}
+
+@section Scripts {
+    <script>
+        // Action menu toggle
+        document.querySelectorAll('.action-menu-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const menu = this.nextElementSibling;
+                const isHidden = menu.classList.contains('hidden');
+                
+                // Close all other menus
+                document.querySelectorAll('.action-menu').forEach(m => {
+                    if (m !== menu) {
+                        m.classList.add('hidden');
+                    }
+                });
+                
+                // Toggle current menu
+                if (isHidden) {
+                    menu.classList.remove('hidden');
+                } else {
+                    menu.classList.add('hidden');
+                }
+            });
+        });
+
+        // Close menus when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.action-menu-btn') && !e.target.closest('.action-menu')) {
+                document.querySelectorAll('.action-menu').forEach(menu => {
+                    menu.classList.add('hidden');
+                });
+            }
+        });
+
+        // Select all checkbox
+        const chkAllTransfer = document.getElementById('chkAllTransfer');
+        const transferChks = document.querySelectorAll('.transfer-chk');
+        if (chkAllTransfer) {
+            chkAllTransfer.addEventListener('change', function() {
+                transferChks.forEach(x => x.checked = this.checked);
+            });
+        }
+
+        // Update select all when individual checkboxes change
+        transferChks.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const allChecked = Array.from(transferChks).every(cb => cb.checked);
+                const someChecked = Array.from(transferChks).some(cb => cb.checked);
+                
+                if (chkAllTransfer) {
+                    chkAllTransfer.checked = allChecked;
+                    chkAllTransfer.indeterminate = someChecked && !allChecked;
+                }
+            });
+        });
+    </script>
+
+    <!-- Load Modal -->
+    <div id="modalContainer"></div>
+    
+    <script>
+        async function loadTransferModal() {
+            const container = document.getElementById('modalContainer');
+            if (!container) return;
+            
+            // Check if modal already loaded
+            if (document.getElementById('stCreateModal')) {
+                const modalEl = document.getElementById('stCreateModal');
+                if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                    const bsModal = new bootstrap.Modal(modalEl);
+                    bsModal.show();
+                }
+                return;
+            }
+            
+            try {
+                const response = await fetch('@Url.Action("Create", "StockTransfers")', {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!response.ok) throw new Error('Failed to load modal');
+                
+                const html = await response.text();
+                
+                // Parse HTML and extract scripts
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = html;
+                
+                // Extract scripts
+                const scripts = tempDiv.querySelectorAll('script');
+                const scriptsArray = Array.from(scripts);
+                
+                // Remove scripts from tempDiv before inserting
+                scriptsArray.forEach(script => script.remove());
+                
+                // Insert HTML without scripts first
+                container.innerHTML = tempDiv.innerHTML;
+                
+                // Execute scripts manually (innerHTML doesn't execute scripts)
+                // Execute inline scripts first (they need modal to be in DOM)
+                const inlineScripts = scriptsArray.filter(s => !s.src);
+                const externalScripts = scriptsArray.filter(s => s.src);
+                
+                // Execute inline scripts immediately after HTML is inserted
+                inlineScripts.forEach(script => {
+                    const newScript = document.createElement('script');
+                    newScript.textContent = script.textContent;
+                    document.body.appendChild(newScript);
+                });
+                
+                // Load external scripts if any
+                if (externalScripts.length > 0) {
+                    externalScripts.forEach(script => {
+                        const newScript = document.createElement('script');
+                        newScript.src = script.src;
+                        document.head.appendChild(newScript);
+                    });
+                }
+                
+                // Show modal after scripts executed
+                setTimeout(() => {
+                    const modalEl = document.getElementById('stCreateModal');
+                    if (modalEl) {
+                        // Wait for Bootstrap to be fully loaded
+                        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                            try {
+                                // Check if modal already has an instance
+                                let bsModal = bootstrap.Modal.getInstance(modalEl);
+                                if (!bsModal) {
+                                    bsModal = new bootstrap.Modal(modalEl, {
+                                        backdrop: true,
+                                        keyboard: true,
+                                        focus: true
+                                    });
+                                }
+                                bsModal.show();
+                            } catch (e) {
+                                console.error('Error creating Bootstrap modal:', e);
+                                // Fallback: try to show modal without backdrop
+                                try {
+                                    const fallbackModal = new bootstrap.Modal(modalEl, { backdrop: false });
+                                    fallbackModal.show();
+                                } catch (e2) {
+                                    console.error('Fallback modal creation also failed:', e2);
+                                }
+                            }
+                        } else {
+                            console.warn('Bootstrap Modal not available, waiting...');
+                            // Wait a bit and retry
+                            setTimeout(() => {
+                                if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                                    const bsModal = new bootstrap.Modal(modalEl);
+                                    bsModal.show();
+                                }
+                            }, 100);
+                        }
+                    } else {
+                        console.warn('Modal element not found');
+                    }
+                }, 300);
+                
+            } catch (error) {
+                console.error('Error loading transfer modal:', error);
+                alert('Không thể tải form tạo phiếu. Vui lòng thử lại.');
+            }
+        }
+        
+    </script>
+}

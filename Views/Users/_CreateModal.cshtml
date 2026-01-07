@@ -1,0 +1,58 @@
+@model MNBEMART.ViewModels.UserFormVM
+
+<div class="modal fade" id="createUserModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="bi bi-person-plus"></i> Thêm người dùng mới</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      
+      <form asp-action="Create" method="post">
+        @Html.AntiForgeryToken()
+        
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Họ và tên <span class="text-danger">*</span></label>
+            <input asp-for="FullName" class="form-control" placeholder="Nhập họ tên đầy đủ" required />
+            <span asp-validation-for="FullName" class="text-danger small"></span>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Tài khoản <span class="text-danger">*</span></label>
+            <input asp-for="Username" class="form-control" placeholder="Tên đăng nhập" required />
+            <span asp-validation-for="Username" class="text-danger small"></span>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Mật khẩu <span class="text-danger">*</span></label>
+            <input asp-for="Password" class="form-control" type="password" placeholder="Tối thiểu 6 ký tự" required />
+            <span asp-validation-for="Password" class="text-danger small"></span>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Quyền</label>
+            <select asp-for="Role" class="form-select" asp-items="ViewBag.Roles"></select>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Email</label>
+            <input asp-for="Email" type="email" class="form-control" placeholder="example@email.com" />
+            <span asp-validation-for="Email" class="text-danger small"></span>
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-circle"></i> Lưu
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+@section Scripts {
+  <partial name="_ValidationScriptsPartial" />
+}

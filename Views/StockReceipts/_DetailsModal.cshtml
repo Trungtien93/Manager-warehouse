@@ -57,6 +57,16 @@
                 <div>@(string.IsNullOrWhiteSpace(Model.Note) ? "-" : Model.Note)</div>
               </div>
 
+              @if (!string.IsNullOrWhiteSpace(Model.AttachedDocuments))
+              {
+                <div class="mb-2">
+                  <div class="text-muted small mb-2">Hình ảnh minh chứng</div>
+                  <a href="@Model.AttachedDocuments" target="_blank" title="Xem ảnh kích thước đầy đủ">
+                    <img src="@Model.AttachedDocuments" alt="Evidence" class="img-thumbnail" style="max-width:100%;max-height:200px;cursor:pointer;" />
+                  </a>
+                </div>
+              }
+
               @if (Model.ApprovedAt.HasValue)
               {
                 <hr />
@@ -68,6 +78,11 @@
           </div>
 
           <div class="col-lg-8">
+            <!-- Document Management Section -->
+            <div class="mb-3">
+              @await Html.PartialAsync("_DocumentManagement", new { DocumentType = "StockReceipt", DocumentId = Model.Id } as object)
+            </div>
+            
             <div class="table-responsive">
               <table class="table table-sm table-bordered align-middle">
                 <thead class="table-light">
@@ -75,6 +90,7 @@
                     <th style="width:32%">Mã / Tên vật tư</th>
                     <th>Quy cách</th>
                     <th style="width:10%">ĐVT</th>
+                    <th style="width:18%">Lô / NSX / HSD</th>
                     <th style="width:12%" class="text-end">Số lượng</th>
                     <th style="width:14%" class="text-end">Đơn giá</th>
                     <th style="width:14%" class="text-end">Thành tiền</th>
@@ -92,6 +108,13 @@
                       </td>
                       <td>@(string.IsNullOrWhiteSpace(d.Specification) ? "-" : d.Specification)</td>
                       <td>@(string.IsNullOrWhiteSpace(d.Unit) ? d.Material?.Unit : d.Unit)</td>
+                      <td>
+                        <div>@(string.IsNullOrWhiteSpace(d.LotNumber) ? "-" : d.LotNumber)</div>
+                        <div class="text-muted small">
+                          @(d.ManufactureDate?.ToString("dd/MM/yyyy") ?? "")
+                          @if (d.ExpiryDate.HasValue) {<text> → @d.ExpiryDate?.ToString("dd/MM/yyyy")</text>}
+                        </div>
+                      </td>
                       <td class="text-end">@q.ToString("0.##")</td>
                       <td class="text-end">@d.UnitPrice.ToString("n0")</td>
                       <td class="text-end">@line.ToString("n0")</td>
@@ -145,7 +168,7 @@
             </div>
         }
         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Đóng</button>
-        <a class="btn btn-outline-primary" asp-action="Print" asp-route-id="@Model.Id">In phiếu</a>
+        <a class="btn btn-outline-primary" asp-action="PrintOne" asp-route-id="@Model.Id">In phiếu</a>
       </div>
     </div>
   </div>

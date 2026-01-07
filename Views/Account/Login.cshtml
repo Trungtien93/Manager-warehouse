@@ -45,33 +45,50 @@
             <p class="text-sm text-slate-500 mt-1">Hệ thống quản lý kho nguyên vật liệu</p>
         </div>
 
+        <!-- Error Messages -->
+        @if (ViewBag.Error != null)
+        {
+            <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                <i class="bi bi-exclamation-circle me-2"></i>@ViewBag.Error
+            </div>
+        }
+
         <!-- Login Form -->
-        <form method="post" action="/Account/Login" class="space-y-5">
+        <form method="post" action="/Account/Login" class="space-y-5" id="loginForm">
             <div>
                 <label for="username" class="block text-sm font-medium text-slate-600 mb-1">Tài khoản</label>
-                <input type="text" id="username" name="Username"
+                <input type="text" id="username" name="username"
                        class="w-full rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition p-3 text-sm"
-                       placeholder="Nhập tên đăng nhập" required />
+                       placeholder="Nhập tên đăng nhập" required autofocus />
             </div>
 
             <div>
                 <label for="password" class="block text-sm font-medium text-slate-600 mb-1">Mật khẩu</label>
-                <input type="password" id="password" name="Password"
-                       class="w-full rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition p-3 text-sm"
-                       placeholder="Nhập mật khẩu" required />
+                <div class="relative">
+                    <input type="password" id="password" name="password"
+                           class="w-full rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition p-3 text-sm pr-10"
+                           placeholder="Nhập mật khẩu" required />
+                    <button type="button" id="togglePassword" 
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700">
+                        <i class="bi bi-eye" id="eyeIcon"></i>
+                    </button>
+                </div>
             </div>
 
             <div class="flex items-center justify-between text-sm mt-1">
-                <label class="inline-flex items-center gap-2">
-                    <input type="checkbox" class="rounded text-blue-600 focus:ring-blue-500" />
+                <label class="inline-flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" name="rememberMe" value="true" class="rounded text-blue-600 focus:ring-blue-500" />
                     <span>Ghi nhớ đăng nhập</span>
                 </label>
                 <a href="/Account/ForgotPassword" class="text-blue-600 hover:underline font-medium">Quên mật khẩu?</a>
             </div>
 
-            <button type="submit"
+            <button type="submit" id="submitBtn"
                 class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg shadow-sm transition duration-150">
-                Đăng nhập
+                <span id="submitText">Đăng nhập</span>
+                <span id="submitLoading" class="hidden">
+                    <i class="bi bi-hourglass-split me-2"></i>Đang xử lý...
+                </span>
             </button>
 
             <div class="text-center mt-4 text-sm">
@@ -85,5 +102,33 @@
     <p class="text-slate-400 text-xs mt-10">
         © @DateTime.Now.Year BEMART – Hệ thống quản lý kho. 
     </p>
+
+    <script>
+        // Toggle password visibility
+        document.getElementById('togglePassword')?.addEventListener('click', function() {
+            const passwordInput = document.getElementById('password');
+            const eyeIcon = document.getElementById('eyeIcon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                eyeIcon.classList.remove('bi-eye');
+                eyeIcon.classList.add('bi-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                eyeIcon.classList.remove('bi-eye-slash');
+                eyeIcon.classList.add('bi-eye');
+            }
+        });
+
+        // Form submit loading state
+        document.getElementById('loginForm')?.addEventListener('submit', function() {
+            const submitBtn = document.getElementById('submitBtn');
+            const submitText = document.getElementById('submitText');
+            const submitLoading = document.getElementById('submitLoading');
+            submitBtn.disabled = true;
+            submitText.classList.add('hidden');
+            submitLoading.classList.remove('hidden');
+        });
+    </script>
 </body>
 </html>

@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <!-- Navigation -->
+  <data name="Nav_Home" xml:space="preserve"><value>Trang chủ</value></data>
+  <data name="Nav_Materials" xml:space="preserve"><value>Nguyên liệu</value></data>
+  <data name="Nav_Warehouses" xml:space="preserve"><value>Kho hàng</value></data>
+  <data name="Nav_Suppliers" xml:space="preserve"><value>Nhà cung cấp</value></data>
+  <data name="Nav_StockReceipts" xml:space="preserve"><value>Nhập kho</value></data>
+  <data name="Nav_StockIssues" xml:space="preserve"><value>Xuất kho</value></data>
+  <data name="Nav_Stocks" xml:space="preserve"><value>Tồn kho</value></data>
+  <data name="Nav_StockTransfers" xml:space="preserve"><value>Chuyển kho</value></data>
+  <data name="Nav_Reports_Revenue" xml:space="preserve"><value>Báo cáo doanh thu</value></data>
+  <data name="Nav_Reports_Movements" xml:space="preserve"><value>Báo cáo nhập xuất</value></data>
+  <data name="Nav_Reports_Inventory" xml:space="preserve"><value>Báo cáo tồn kho</value></data>
+  <data name="Nav_Admin" xml:space="preserve"><value>Quản trị</value></data>
+  <data name="Nav_Users" xml:space="preserve"><value>Người dùng</value></data>
+  <data name="Nav_Roles" xml:space="preserve"><value>Phân quyền</value></data>
+  <data name="Nav_Logs" xml:space="preserve"><value>Lịch sử thao tác</value></data>
+
+  <!-- Header dropdown -->
+  <data name="Header_Profile" xml:space="preserve"><value>Hồ sơ cá nhân</value></data>
+  <data name="Header_Settings" xml:space="preserve"><value>Cài đặt</value></data>
+  <data name="Header_Logout" xml:space="preserve"><value>Đăng xuất</value></data>
+
+  <!-- Dashboard cards -->
+  <data name="Dashboard_Title" xml:space="preserve"><value>Bảng điều khiển</value></data>
+  <data name="Dashboard_Materials" xml:space="preserve"><value>Nguyên liệu</value></data>
+  <data name="Dashboard_Warehouses" xml:space="preserve"><value>Kho hàng</value></data>
+  <data name="Dashboard_Receipts" xml:space="preserve"><value>Phiếu nhập</value></data>
+  <data name="Dashboard_Issues" xml:space="preserve"><value>Phiếu xuất</value></data>
+  <data name="Dashboard_TotalStock" xml:space="preserve"><value>Tổng tồn kho</value></data>
+  <data name="Dashboard_TotalLots" xml:space="preserve"><value>Tổng số lô</value></data>
+  <data name="Dashboard_NearExpiry" xml:space="preserve"><value>Sắp hết hạn</value></data>
+  <data name="Dashboard_Expired" xml:space="preserve"><value>Đã hết hạn</value></data>
+
+  <!-- Generic -->
+  <data name="Common_Search" xml:space="preserve"><value>Tìm kiếm</value></data>
+  <data name="Common_Filter" xml:space="preserve"><value>Lọc</value></data>
+  <data name="Common_ClearFilter" xml:space="preserve"><value>Bỏ lọc</value></data>
+  <data name="Common_Create" xml:space="preserve"><value>Tạo mới</value></data>
+  <data name="Common_Add" xml:space="preserve"><value>Thêm</value></data>
+  <data name="Common_Edit" xml:space="preserve"><value>Sửa</value></data>
+  <data name="Common_Delete" xml:space="preserve"><value>Xoá</value></data>
+  <data name="Common_Save" xml:space="preserve"><value>Lưu</value></data>
+  <data name="Common_Cancel" xml:space="preserve"><value>Hủy</value></data>
+
+  <!-- Materials page -->
+  <data name="Materials_Title" xml:space="preserve"><value>Nguyên liệu</value></data>
+  <data name="Materials_Subtitle" xml:space="preserve"><value>Quản lý danh mục và tồn kho nguyên liệu</value></data>
+  <data name="Materials_SearchPlaceholder" xml:space="preserve"><value>Mã / Tên / Mô tả...</value></data>
+  <data name="Materials_Filter_Warehouse" xml:space="preserve"><value>Kho</value></data>
+  <data name="Materials_Filter_AllWarehouses" xml:space="preserve"><value>Tất cả kho</value></data>
+  <data name="Materials_Filter_UnassignedWarehouse" xml:space="preserve"><value>Chưa phân kho</value></data>
+  <data name="Materials_Filter_PageSize" xml:space="preserve"><value>Hiển thị</value></data>
+  <data name="Materials_Stats_TotalItems" xml:space="preserve"><value>Tổng bản ghi</value></data>
+  <data name="Materials_Stats_TotalQty" xml:space="preserve"><value>Tổng SL tồn</value></data>
+  <data name="Materials_Stats_TotalValue" xml:space="preserve"><value>Giá trị tồn (theo giá nhập)</value></data>
+  <data name="Materials_Tag_Keyword" xml:space="preserve"><value>Từ khoá</value></data>
+  <data name="Materials_Tag_Warehouse" xml:space="preserve"><value>Kho</value></data>
+  <data name="Materials_Table_Image" xml:space="preserve"><value>Ảnh</value></data>
+  <data name="Materials_Table_Code" xml:space="preserve"><value>Mã</value></data>
+  <data name="Materials_Table_Name" xml:space="preserve"><value>Tên</value></data>
+  <data name="Materials_Table_Unit" xml:space="preserve"><value>ĐVT</value></data>
+  <data name="Materials_Table_Supplier" xml:space="preserve"><value>Nhà cung cấp</value></data>
+  <data name="Materials_Table_SellingPrice" xml:space="preserve"><value>Giá bán</value></data>
+  <data name="Materials_Table_Specification" xml:space="preserve"><value>Quy cách</value></data>
+  <data name="Materials_Table_Stock" xml:space="preserve"><value>Tồn</value></data>
+  <data name="Materials_Table_Warehouse" xml:space="preserve"><value>Kho</value></data>
+  <data name="Materials_Table_Actions" xml:space="preserve"><value>Thao tác</value></data>
+  <data name="Materials_Label_NotAssigned" xml:space="preserve"><value>Chưa phân kho</value></data>
+</root>

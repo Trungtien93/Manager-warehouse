@@ -1,0 +1,400 @@
+@model dynamic
+@using MNBEMART.Models
+@{
+    var documentType = Model?.DocumentType?.ToString() ?? "";
+    var documentId = Model?.DocumentId ?? 0;
+    var containerId = $"documents-{documentType}-{documentId}";
+}
+
+<div id="@containerId" class="document-management-container">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">
+            <i class="bi bi-file-earmark-arrow-up me-2"></i>
+            Quản lý tài liệu đính kèm
+        </h5>
+        <button type="button" class="btn btn-sm btn-primary" onclick="toggleUploadForm('@containerId')">
+            <i class="bi bi-plus-circle me-1"></i> Thêm tài liệu
+        </button>
+    </div>
+
+    <!-- Upload Form (Hidden by default) -->
+    <div id="@containerId-upload-form" class="card mb-3" style="display: none;">
+        <div class="card-body">
+            <h6 class="card-title">Tải lên tài liệu mới</h6>
+            <form id="@containerId-upload-form-element" enctype="multipart/form-data" onsubmit="return false;">
+                @Html.AntiForgeryToken()
+                <div class="mb-3">
+                    <label class="form-label">Chọn file</label>
+                    <input type="file" 
+                           class="form-control" 
+                           id="@containerId-file-input"
+                           accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls,.doc,.docx"
+                           required>
+                    <div class="form-text">Hỗ trợ: PDF, Images, Excel, Word. Tối đa 10MB</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Loại tài liệu</label>
+                    <select class="form-select" id="@containerId-category">
+                        <option value="1">Hóa đơn</option>
+                        <option value="2">Ảnh minh chứng</option>
+                        <option value="3">Hợp đồng</option>
+                        <option value="4">Phiếu giao hàng</option>
+                        <option value="99">Khác</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Mô tả (tùy chọn)</label>
+                    <textarea class="form-control" 
+                              id="@containerId-description" 
+                              rows="2"
+                              placeholder="Nhập mô tả tài liệu..."></textarea>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" 
+                            class="btn btn-primary"
+                            onclick="uploadDocument('@documentType', @documentId, '@containerId')">
+                        <i class="bi bi-upload me-1"></i> Tải lên
+                    </button>
+                    <button type="button" 
+                            class="btn btn-secondary"
+                            onclick="toggleUploadForm('@containerId')">
+                        Hủy
+                    </button>
+                </div>
+                <div id="@containerId-upload-progress" class="mt-2" style="display: none;">
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" 
+                             style="width: 0%"></div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Documents List -->
+    <div id="@containerId-documents-list" class="list-group">
+        <div class="text-center text-muted py-4">
+            <i class="bi bi-hourglass-split fs-3"></i>
+            <div class="mt-2">Đang tải danh sách tài liệu...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Load documents when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        loadDocuments('@documentType', @documentId, '@containerId');
+    });
+
+    function toggleUploadForm(containerId) {
+        const form = document.getElementById(containerId + '-upload-form');
+        if (form.style.display === 'none') {
+            form.style.display = 'block';
+        } else {
+            form.style.display = 'none';
+            // Reset form
+            document.getElementById(containerId + '-file-input').value = '';
+            document.getElementById(containerId + '-description').value = '';
+            document.getElementById(containerId + '-category').value = '1';
+        }
+    }
+
+    function uploadDocument(documentType, documentId, containerId) {
+        const fileInput = document.getElementById(containerId + '-file-input');
+        const category = document.getElementById(containerId + '-category').value;
+        const description = document.getElementById(containerId + '-description').value;
+        const progressDiv = document.getElementById(containerId + '-upload-progress');
+        const progressBar = progressDiv.querySelector('.progress-bar');
+
+        if (!fileInput.files || fileInput.files.length === 0) {
+            alert('Vui lòng chọn file để upload');
+            return;
+        }
+
+        const file = fileInput.files[0];
+        const formData = new FormData();
+        formData.append('documentType', documentType);
+        formData.append('documentId', documentId);
+        formData.append('file', file);
+        formData.append('category', category);
+        if (description) {
+            formData.append('description', description);
+        }
+
+        // Add anti-forgery token
+        const token = document.querySelector('input[name="__RequestVerificationToken"]');
+        if (token) {
+            formData.append('__RequestVerificationToken', token.value);
+        }
+
+        progressDiv.style.display = 'block';
+        progressBar.style.width = '0%';
+
+        fetch('@Url.Action("Upload", "DocumentManagement")', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(async response => {
+            // Check if response is OK
+            if (!response.ok) {
+                // Try to parse error response as JSON
+                try {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+                } catch (parseError) {
+                    // If not JSON, get text or use status text
+                    const errorText = await response.text().catch(() => response.statusText);
+                    throw new Error(`Lỗi ${response.status}: ${errorText || 'Không xác định'}`);
+                }
+            }
+            
+            // Check content type before parsing JSON
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                // If not JSON, try to parse anyway but show warning
+                const text = await response.text();
+                console.warn('Expected JSON but got:', contentType, text.substring(0, 100));
+                throw new Error('Phản hồi không hợp lệ từ server');
+            }
+        })
+        .then(data => {
+            progressBar.style.width = '100%';
+            if (data && data.success) {
+                // Reload documents list
+                loadDocuments(documentType, documentId, containerId);
+                // Reset and hide form
+                fileInput.value = '';
+                document.getElementById(containerId + '-description').value = '';
+                document.getElementById(containerId + '-category').value = '1';
+                toggleUploadForm(containerId);
+                
+                // Show success message
+                showToast('success', 'Upload tài liệu thành công!');
+            } else {
+                showToast('error', (data && data.message) || 'Upload tài liệu thất bại');
+            }
+        })
+        .catch(error => {
+            console.error('Upload error:', error);
+            const errorMessage = error.message || 'Có lỗi xảy ra khi upload tài liệu';
+            showToast('error', errorMessage);
+        })
+        .finally(() => {
+            setTimeout(() => {
+                progressDiv.style.display = 'none';
+                progressBar.style.width = '0%';
+            }, 500);
+        });
+    }
+
+    function loadDocuments(documentType, documentId, containerId) {
+        const listDiv = document.getElementById(containerId + '-documents-list');
+        
+        fetch('@Url.Action("GetAttachments", "DocumentManagement")?documentType=' + encodeURIComponent(documentType) + '&documentId=' + documentId, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(async response => {
+            if (!response.ok) {
+                try {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `HTTP ${response.status}`);
+                } catch (parseError) {
+                    throw new Error(`Lỗi ${response.status}: ${response.statusText}`);
+                }
+            }
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                const text = await response.text();
+                console.warn('Expected JSON but got:', contentType);
+                throw new Error('Phản hồi không hợp lệ từ server');
+            }
+        })
+        .then(data => {
+            if (data && data.success && data.documents && data.documents.length > 0) {
+                renderDocumentsList(data.documents, documentType, documentId, containerId);
+            } else {
+                listDiv.innerHTML = `
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-file-earmark fs-3"></i>
+                        <div class="mt-2">Chưa có tài liệu đính kèm</div>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading documents:', error);
+            listDiv.innerHTML = `
+                <div class="text-center text-danger py-4">
+                    <i class="bi bi-exclamation-triangle fs-3"></i>
+                    <div class="mt-2">Lỗi tải danh sách tài liệu: ${escapeHtml(error.message || 'Không xác định')}</div>
+                </div>
+            `;
+        });
+    }
+
+    function renderDocumentsList(documents, documentType, documentId, containerId) {
+        const listDiv = document.getElementById(containerId + '-documents-list');
+        
+        const html = documents.map(doc => {
+            const fileIcon = getFileIcon(doc.mimeType || '');
+            const fileSize = formatFileSize(doc.fileSize);
+            const categoryBadge = getCategoryBadge(doc.categoryName || '');
+            
+            return `
+                <div class="list-group-item">
+                    <div class="d-flex align-items-start">
+                        <div class="me-3">
+                            <i class="${fileIcon} fs-3 text-primary"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1">${escapeHtml(doc.fileName)}</h6>
+                                    <p class="mb-1 text-muted small">
+                                        ${categoryBadge}
+                                        <span class="ms-2">${fileSize}</span>
+                                        ${doc.description ? `<span class="ms-2">• ${escapeHtml(doc.description)}</span>` : ''}
+                                    </p>
+                                    <small class="text-muted">
+                                        Upload bởi ${escapeHtml(doc.uploadedBy)} vào ${doc.uploadedAt}
+                                    </small>
+                                </div>
+                                <div class="d-flex gap-1">
+                                    <a href="${doc.downloadUrl}" 
+                                       class="btn btn-sm btn-outline-primary" 
+                                       title="Tải xuống">
+                                        <i class="bi bi-download"></i>
+                                    </a>
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-danger" 
+                                            onclick="deleteDocument(${doc.id}, '${documentType}', ${documentId}, '${containerId}')"
+                                            title="Xóa">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        listDiv.innerHTML = html;
+    }
+
+    function deleteDocument(documentId, documentType, parentDocumentId, containerId) {
+        if (!confirm('Bạn có chắc chắn muốn xóa tài liệu này?')) {
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('id', documentId);
+        formData.append('documentType', documentType);
+        formData.append('documentId', parentDocumentId);
+
+        // Add anti-forgery token
+        const token = document.querySelector('input[name="__RequestVerificationToken"]');
+        if (token) {
+            formData.append('__RequestVerificationToken', token.value);
+        }
+
+        fetch('@Url.Action("Delete", "DocumentManagement")', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(async response => {
+            if (!response.ok) {
+                try {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `HTTP ${response.status}`);
+                } catch (parseError) {
+                    throw new Error(`Lỗi ${response.status}: ${response.statusText}`);
+                }
+            }
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                const text = await response.text();
+                console.warn('Expected JSON but got:', contentType);
+                throw new Error('Phản hồi không hợp lệ từ server');
+            }
+        })
+        .then(data => {
+            if (data && data.success) {
+                loadDocuments(documentType, parentDocumentId, containerId);
+                showToast('success', 'Xóa tài liệu thành công!');
+            } else {
+                showToast('error', (data && data.message) || 'Xóa tài liệu thất bại');
+            }
+        })
+        .catch(error => {
+            console.error('Delete error:', error);
+            showToast('error', error.message || 'Có lỗi xảy ra khi xóa tài liệu');
+        });
+    }
+
+    function getFileIcon(mimeType) {
+        if (mimeType.includes('pdf')) return 'bi bi-filetype-pdf';
+        if (mimeType.includes('image')) return 'bi bi-filetype-jpg';
+        if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return 'bi bi-filetype-xls';
+        if (mimeType.includes('word') || mimeType.includes('document')) return 'bi bi-filetype-docx';
+        return 'bi bi-file-earmark';
+    }
+
+    function getCategoryBadge(categoryName) {
+        const badges = {
+            'Hóa đơn': 'badge bg-primary',
+            'Ảnh minh chứng': 'badge bg-info',
+            'Hợp đồng': 'badge bg-success',
+            'Phiếu giao hàng': 'badge bg-warning text-dark',
+            'Khác': 'badge bg-secondary'
+        };
+        const className = badges[categoryName] || 'badge bg-secondary';
+        return `<span class="${className}">${categoryName}</span>`;
+    }
+
+    function formatFileSize(bytes) {
+        if (!bytes || bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return (Math.round(bytes / Math.pow(k, i) * 100) / 100).toFixed(2) + ' ' + sizes[i];
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function showToast(type, message) {
+        // Simple toast notification - can be enhanced with a toast library
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+        toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        toast.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
+    }
+</script>

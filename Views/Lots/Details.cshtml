@@ -1,0 +1,244 @@
+@model MNBEMART.Models.StockLot
+@{
+    ViewData["Title"] = "Chi tiết lô hàng";
+    var history = ViewBag.History as List<MNBEMART.Models.LotHistory> ?? new List<MNBEMART.Models.LotHistory>();
+    var parentLot = ViewBag.ParentLot as MNBEMART.Models.StockLot;
+    var childLots = ViewBag.ChildLots as List<MNBEMART.Models.StockLot> ?? new List<MNBEMART.Models.StockLot>();
+    
+    var today = DateTime.Today;
+    var isExpired = Model.ExpiryDate.HasValue && Model.ExpiryDate < today;
+    var isExpiringSoon = Model.ExpiryDate.HasValue && Model.ExpiryDate >= today && Model.ExpiryDate <= today.AddDays(30);
+    string FQty(decimal v) => (v % 1m == 0m) ? ((long)v).ToString() : v.ToString("0.##");
+}
+
+<div class="max-w-[1400px] mx-auto px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h1 class="text-3xl font-black text-slate-900 tracking-tight">
+                    Chi tiết lô: @Model.LotNumber
+                </h1>
+                <p class="text-slate-600 mt-2">@Model.Material?.Name (@Model.Material?.Code)</p>
+            </div>
+            <a asp-action="Index" class="bg-slate-600 hover:bg-slate-700 text-white font-medium px-5 py-2.5 rounded-lg transition">
+                <i class="bi bi-arrow-left me-1"></i> Quay lại
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left Column: Lot Info -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Lot Info Card -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h3 class="text-lg font-bold text-slate-900 mb-4">Thông tin lô hàng</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-sm font-semibold text-slate-600">Số lô</label>
+                        <p class="text-slate-900 font-mono">@Model.LotNumber</p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-semibold text-slate-600">Kho</label>
+                        <p class="text-slate-900">@Model.Warehouse?.Name</p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-semibold text-slate-600">Số lượng</label>
+                        <p class="text-2xl font-black text-blue-600">@FQty(Model.Quantity)</p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-semibold text-slate-600">ĐVT</label>
+                        <p class="text-slate-900">@Model.Material?.Unit</p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-semibold text-slate-600">Trạng thái</label>
+                        @if (Model.IsReserved)
+                        {
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-amber-100 text-amber-800">
+                                <i class="bi bi-lock-fill me-1"></i> Đã đặt trước
+                            </span>
+                        }
+                        else if (isExpired)
+                        {
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-red-100 text-red-800">
+                                <i class="bi bi-x-circle me-1"></i> Hết hạn
+                            </span>
+                        }
+                        else if (isExpiringSoon)
+                        {
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-amber-100 text-amber-800">
+                                <i class="bi bi-exclamation-triangle me-1"></i> Sắp hết hạn
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-green-100 text-green-800">
+                                <i class="bi bi-check-circle me-1"></i> Khả dụng
+                            </span>
+                        }
+                    </div>
+                    <div>
+                        <label class="text-sm font-semibold text-slate-600">Ngày sản xuất</label>
+                        <p class="text-slate-900">@(Model.ManufactureDate?.ToString("dd/MM/yyyy") ?? "-")</p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-semibold text-slate-600">Hạn sử dụng</label>
+                        <p class="text-slate-900 font-semibold @(isExpired ? "text-red-600" : isExpiringSoon ? "text-amber-600" : "")">
+                            @(Model.ExpiryDate?.ToString("dd/MM/yyyy") ?? "-")
+                        </p>
+                    </div>
+                    @if (Model.IsReserved)
+                    {
+                        <div class="col-span-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                            <p class="text-sm font-semibold text-amber-900">Đã đặt trước cho phiếu xuất #@Model.ReservedForIssueId</p>
+                            <p class="text-xs text-amber-700 mt-1">Bởi @Model.ReservedBy - @Model.ReservedDate?.ToString("dd/MM/yyyy HH:mm")</p>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h3 class="text-lg font-bold text-slate-900 mb-4">Hành động</h3>
+                <div class="flex flex-wrap gap-3">
+                    @if (!Model.IsReserved && Model.Quantity > 1)
+                    {
+                        <a asp-action="Split" asp-route-id="@Model.Id" 
+                           class="bg-amber-600 hover:bg-amber-700 text-white font-medium px-5 py-2.5 rounded-lg transition">
+                            <i class="bi bi-scissors me-1"></i> Phân tách lô
+                        </a>
+                    }
+                    @if (Model.IsReserved)
+                    {
+                        <form asp-action="Release" asp-route-id="@Model.Id" method="post" class="inline">
+                            <button type="submit" class="bg-orange-600 hover:bg-orange-700 text-white font-medium px-5 py-2.5 rounded-lg transition">
+                                <i class="bi bi-unlock me-1"></i> Hủy đặt trước
+                            </button>
+                        </form>
+                    }
+                    <a asp-action="History" asp-route-id="@Model.Id" 
+                       class="bg-purple-600 hover:bg-purple-700 text-white font-medium px-5 py-2.5 rounded-lg transition">
+                        <i class="bi bi-clock-history me-1"></i> Lịch sử đầy đủ
+                    </a>
+                </div>
+            </div>
+
+            <!-- History Timeline -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h3 class="text-lg font-bold text-slate-900 mb-4">
+                    <i class="bi bi-clock-history me-2"></i>
+                    Lịch sử hoạt động
+                </h3>
+                @if (history.Any())
+                {
+                    <div class="space-y-4">
+                        @foreach (var item in history.Take(10))
+                        {
+                            var icon = item.Action switch
+                            {
+                                "Split" => "bi-scissors text-amber-600",
+                                "Created from split" => "bi-plus-circle text-blue-600",
+                                "Merged" => "bi-union text-purple-600",
+                                "Created from merge" => "bi-plus-circle text-purple-600",
+                                "Reserved" => "bi-lock-fill text-amber-600",
+                                "Released" => "bi-unlock text-green-600",
+                                _ => "bi-circle text-slate-400"
+                            };
+
+                            <div class="flex gap-4">
+                                <div class="flex-shrink-0 w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
+                                    <i class="bi @icon"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="font-semibold text-slate-900">@item.Action</p>
+                                    @if (item.QuantityBefore.HasValue && item.QuantityAfter.HasValue)
+                                    {
+                                        <p class="text-sm text-slate-600">
+                                            @FQty(item.QuantityBefore.Value) → @FQty(item.QuantityAfter.Value)
+                                        </p>
+                                    }
+                                    @if (!string.IsNullOrEmpty(item.Notes))
+                                    {
+                                        <p class="text-sm text-slate-600">@item.Notes</p>
+                                    }
+                                    <p class="text-xs text-slate-500 mt-1">
+                                        @item.PerformedBy - @item.PerformedAt.ToString("dd/MM/yyyy HH:mm")
+                                    </p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="text-slate-500 text-center py-4">Chưa có lịch sử</p>
+                }
+            </div>
+        </div>
+
+        <!-- Right Column: Relationships -->
+        <div class="space-y-6">
+            <!-- Parent Lot -->
+            @if (parentLot != null)
+            {
+                <div class="bg-blue-50 border-2 border-blue-200 rounded-xl p-6">
+                    <h3 class="text-lg font-bold text-blue-900 mb-3">
+                        <i class="bi bi-arrow-up-circle me-2"></i>
+                        Lô gốc
+                    </h3>
+                    <div class="bg-white rounded-lg p-4">
+                        <p class="font-mono font-semibold text-blue-900">@parentLot.LotNumber</p>
+                        <p class="text-sm text-slate-600 mt-1">Số lượng: @FQty(parentLot.Quantity)</p>
+                        <a asp-action="Details" asp-route-id="@parentLot.Id" 
+                           class="text-blue-600 hover:text-blue-800 text-sm font-medium mt-2 inline-block">
+                            Xem chi tiết →
+                        </a>
+                    </div>
+                </div>
+            }
+
+            <!-- Child Lots -->
+            @if (childLots.Any())
+            {
+                <div class="bg-purple-50 border-2 border-purple-200 rounded-xl p-6">
+                    <h3 class="text-lg font-bold text-purple-900 mb-3">
+                        <i class="bi bi-diagram-3 me-2"></i>
+                        Lô con (@childLots.Count)
+                    </h3>
+                    <div class="space-y-2">
+                        @foreach (var child in childLots)
+                        {
+                            <div class="bg-white rounded-lg p-3">
+                                <p class="font-mono text-sm font-semibold text-purple-900">@child.LotNumber</p>
+                                <p class="text-xs text-slate-600">SL: @FQty(child.Quantity)</p>
+                                <a asp-action="Details" asp-route-id="@child.Id" 
+                                   class="text-purple-600 hover:text-purple-800 text-xs font-medium mt-1 inline-block">
+                                    Xem →
+                                </a>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            <!-- Material Info -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h3 class="text-lg font-bold text-slate-900 mb-3">Vật tư</h3>
+                <div class="space-y-2">
+                    <p class="text-sm"><span class="font-semibold">Mã:</span> @Model.Material?.Code</p>
+                    <p class="text-sm"><span class="font-semibold">Tên:</span> @Model.Material?.Name</p>
+                    <p class="text-sm"><span class="font-semibold">Đơn vị:</span> @Model.Material?.Unit</p>
+                    @if (Model.Material?.Supplier != null)
+                    {
+                        <p class="text-sm"><span class="font-semibold">NCC:</span> @Model.Material.Supplier.Name</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+

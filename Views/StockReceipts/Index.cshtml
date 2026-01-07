@@ -1,6 +1,7 @@
 @model IEnumerable<MNBEMART.Models.StockReceipt>
 @using MNBEMART.Models
 @using Microsoft.AspNetCore.Mvc.Rendering
+@using System.Linq
 @{
     ViewData["Title"] = "Nhập hàng";
 
@@ -14,214 +15,268 @@
 
     decimal sumAmt = (ViewBag.SumAmt as decimal?) ?? 0m;
     decimal sumQty = (ViewBag.SumQty as decimal?) ?? 0m;
+    
+    // Calculate pagination display
+    var page = ViewBag.Page as int? ?? 1;
+    var pageSize = ViewBag.PageSize as int? ?? 10;
+    var totalItems = ViewBag.TotalItems as int? ?? 0;
+    var startItem = (page - 1) * pageSize + 1;
+    var endItem = Math.Min(page * pageSize, totalItems);
 }
 
 <!-- Tailwind + Bootstrap Icons -->
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
 
-<div class="min-h-screen bg-slate-50 text-slate-700 p-6 md:p-8 space-y-6">
+<div class="max-w-[1600px] mx-auto px-6 lg:px-8 py-8">
+    <!-- Large Header -->
+    @* <div class="mb-6">
+        <h1 class="text-4xl font-black text-slate-900 tracking-tight mb-2">
+            Nhập hàng
+        </h1>
+        <p class="text-lg text-slate-600">
+            Quản lý phiếu nhập kho và theo dõi trạng thái
+        </p>
+    </div> *@
 
-    <!-- PAGE HEADER -->
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                <i class="bi bi-box-arrow-in-down text-blue-600"></i> @ViewData["Title"]
-            </h1>
-            <p class="text-sm text-slate-500">Theo phiếu nhập</p>
-        </div>
-
-        <div class="flex flex-wrap gap-2">
-            <button class="px-3 py-2 rounded-lg text-sm border bg-white text-slate-700 hover:bg-slate-100 transition" onclick="location.reload()">
-                <i class="bi bi-arrow-clockwise"></i> Tải lại
-            </button>
-
-            <div class="relative">
-                <button class="px-3 py-2 rounded-lg text-sm border bg-white text-slate-700 hover:bg-slate-100 transition flex items-center gap-1" data-bs-toggle="dropdown">
-                    <i class="bi bi-printer"></i> In phiếu <i class="bi bi-caret-down-fill text-xs"></i>
-                </button>
-                <ul class="absolute right-0 mt-1 hidden group-hover:block bg-white shadow-lg border rounded-md dropdown-menu brand z-10">
-                    <li><button class="block px-3 py-2 text-sm hover:bg-slate-100 w-full text-left"><i class="bi bi-filetype-pdf me-2"></i> In PDF</button></li>
-                    <li><button class="block px-3 py-2 text-sm hover:bg-slate-100 w-full text-left"><i class="bi bi-printer me-2"></i> In trực tiếp</button></li>
-                </ul>
-            </div>
-
-            <div class="relative">
-                <button class="px-3 py-2 rounded-lg text-sm border bg-white text-slate-700 hover:bg-slate-100 transition flex items-center gap-1" data-bs-toggle="dropdown">
-                    <i class="bi bi-filetype-xls"></i> Xuất excel <i class="bi bi-caret-down-fill text-xs"></i>
-                </button>
-                <ul class="absolute right-0 mt-1 hidden group-hover:block bg-white shadow-lg border rounded-md dropdown-menu brand z-10">
-                    <li><button class="block px-3 py-2 text-sm hover:bg-slate-100 w-full text-left">Xuất excel</button></li>
-                    <li><button class="block px-3 py-2 text-sm hover:bg-slate-100 w-full text-left">Excel nhập nhanh</button></li>
-                </ul>
-            </div>
-
-            <button class="px-3 py-2 rounded-lg text-sm border bg-white text-slate-700 hover:bg-slate-100 transition">
-                <i class="bi bi-upload"></i> Nhập excel
-            </button>
-
-            <button class="px-3 py-2 rounded-lg text-sm border bg-white text-slate-700 hover:bg-slate-100 transition">
-                <i class="bi bi-journal-arrow-up"></i> Thẻ nhập hàng
-            </button>
-
-            <button class="px-3 py-2 rounded-lg text-sm border bg-white text-slate-700 hover:bg-slate-100 transition">
-                <i class="bi bi-geo-alt"></i> Gợi ý nhập hàng
-            </button>
-
-            <div class="relative">
-                <button class="px-3 py-2 rounded-lg text-sm border bg-white text-slate-700 hover:bg-slate-100 transition flex items-center gap-1" data-bs-toggle="dropdown">
-                    <i class="bi bi-columns-gap"></i> Cấu hình cột <i class="bi bi-caret-down-fill text-xs"></i>
-                </button>
-                <ul class="absolute right-0 mt-1 hidden group-hover:block bg-white shadow-lg border rounded-md dropdown-menu brand z-10">
-                    <li><button class="block px-3 py-2 text-sm hover:bg-slate-100 w-full text-left">Hiện/ẩn cột…</button></li>
-                </ul>
-            </div>
-
-            <div class="relative">
-                <button class="px-3 py-2 rounded-lg text-sm border bg-white text-slate-700 hover:bg-slate-100 transition flex items-center gap-1" data-bs-toggle="dropdown">
-                    Thao tác <i class="bi bi-caret-down-fill text-xs"></i>
-                </button>
-                <ul class="absolute right-0 mt-1 hidden group-hover:block bg-white shadow-lg border rounded-md dropdown-menu brand z-10">
-                    <li><button class="block px-3 py-2 text-sm hover:bg-slate-100 w-full text-left">Xoá đã chọn</button></li>
-                </ul>
-            </div>
-
-            <button class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium shadow hover:bg-blue-700 transition"
-                    data-bs-toggle="modal" data-bs-target="#srCreateModal">
-                + Tạo phiếu
-            </button>
-        </div>
-    </div>
-
-    <!-- TOOLBAR -->
-    <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-5 space-y-4">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <form method="get" class="flex-1">
-                <div class="relative">
-                    <i class="bi bi-search absolute left-3 top-2.5 text-slate-400"></i>
-                    <input class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-                           type="text" name="q" value="@q" placeholder="Mã / Ghi chú..." />
+    <!-- Toolbar -->
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 mb-6 p-6">
+        <!-- Search and Actions Row -->
+        <form method="get" class="flex items-center justify-between gap-4 mb-4">
+            <!-- Search -->
+            <div class="flex-1 flex items-center gap-3">
+                <div class="relative flex-1 max-w-md">
+                    <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input name="q" value="@q" 
+                           placeholder="Tìm kiếm mã, tên, ghi chú..."
+                           class="w-full pl-10 pr-4 py-3 border-2 border-slate-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all shadow-sm hover:border-green-400" />
                 </div>
-            </form>
-
-            <div class="flex flex-wrap gap-2 justify-start md:justify-end">
-                <a class="px-3 py-1.5 text-sm font-semibold border rounded-full transition @(s==null?"bg-blue-50 text-blue-700 border-blue-200":"text-slate-600 border-slate-300 hover:bg-slate-100")"
-                   asp-action="Index">Tất cả <small class="ml-1 text-xs text-slate-400">@ViewBag.CountAll</small></a>
-
-                <a class="px-3 py-1.5 text-sm font-semibold border rounded-full transition @(s==DocumentStatus.Moi?"bg-indigo-50 text-indigo-700 border-indigo-200":"text-slate-600 border-slate-300 hover:bg-slate-100")"
-                   asp-action="Index" asp-route-status="@DocumentStatus.Moi">Mới <small class="ml-1 text-xs text-slate-400">@ViewBag.CountMoi</small></a>
-
-                <a class="px-3 py-1.5 text-sm font-semibold border rounded-full transition @(s==DocumentStatus.DaXacNhan?"bg-amber-50 text-amber-700 border-amber-200":"text-slate-600 border-slate-300 hover:bg-slate-100")"
-                   asp-action="Index" asp-route-status="@DocumentStatus.DaXacNhan">Đã xác nhận <small class="ml-1 text-xs text-slate-400">@ViewBag.CountXacNhan</small></a>
-
-                <a class="px-3 py-1.5 text-sm font-semibold border rounded-full transition @(s==DocumentStatus.DaNhapHang?"bg-green-50 text-green-700 border-green-200":"text-slate-600 border-slate-300 hover:bg-slate-100")"
-                   asp-action="Index" asp-route-status="@DocumentStatus.DaNhapHang">Đã nhập hàng <small class="ml-1 text-xs text-slate-400">@ViewBag.CountNhap</small></a>
-
-                <a class="px-3 py-1.5 text-sm font-semibold border rounded-full transition @(s==DocumentStatus.DaHuy?"bg-red-50 text-red-700 border-red-200":"text-slate-600 border-slate-300 hover:bg-slate-100")"
-                   asp-action="Index" asp-route-status="@DocumentStatus.DaHuy">Đã huỷ <small class="ml-1 text-xs text-slate-400">@ViewBag.CountHuy</small></a>
+                <select name="warehouseId"
+                        class="border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all shadow-sm hover:border-green-400"
+                        onchange="this.form.submit()">
+                    <option value="">Tất cả các kho</option>
+                    @foreach (var opt in whOpts)
+                    {
+                        <option value="@opt.Value" selected="@(selectedWh==Convert.ToInt32(opt.Value)?"selected":null)">@opt.Text</option>
+                    }
+                </select>
+                <button type="button" class="p-3 border-2 border-slate-300 rounded-xl hover:bg-slate-50 transition">
+                    <i class="bi bi-funnel text-slate-600"></i>
+                </button>
             </div>
-        </div>
+            
+            <!-- Actions -->
+            <div class="flex items-center gap-3 flex-wrap">
+                <!-- Export/Import Dropdown -->
+                <div class="relative">
+                    <button type="button" id="exportImportBtn" class="px-4 py-2 border-2 border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 transition flex items-center gap-2">
+                        <i class="bi bi-download"></i>
+                        Xuất
+                    </button>
+                    <div id="exportImportMenu" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-slate-200 z-10">
+                        <a class="block px-4 py-2 text-sm text-slate-700 hover:bg-green-50 hover:text-green-700 transition" 
+                           asp-action="ExportPdf" asp-route-q="@q" asp-route-status="@s" asp-route-warehouseId="@selectedWh">
+                            <i class="bi bi-file-pdf text-red-600"></i> Xuất PDF
+                        </a>
+                        <a class="block px-4 py-2 text-sm text-slate-700 hover:bg-green-50 hover:text-green-700 transition"
+                           asp-action="ExportCsv" asp-route-q="@q" asp-route-status="@s" asp-route-warehouseId="@selectedWh">
+                            <i class="bi bi-filetype-xls text-green-600"></i> Xuất Excel
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Other Actions -->
+                <button id="btnPrint" type="button" class="px-4 py-2 border-2 border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 transition flex items-center gap-2">
+                    <i class="bi bi-printer"></i> In phiếu
+                </button>
+                
+                <div class="relative">
+                    <button id="colCfgBtn" type="button" class="px-4 py-2 border-2 border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 transition flex items-center gap-2">
+                        <i class="bi bi-columns-gap"></i> Cấu hình cột
+                    </button>
+                    <div id="colCfgPanel" class="hidden absolute right-0 mt-2 bg-white rounded-lg shadow-xl border border-slate-200 z-50 w-60 p-3">
+                        <div class="text-xs text-slate-500 mb-2 font-semibold">Hiện/ẩn cột</div>
+                        <label class="flex items-center gap-2 text-sm py-1"><input type="checkbox" data-colkey="number" checked class="rounded" /> Mã phiếu</label>
+                        <label class="flex items-center gap-2 text-sm py-1"><input type="checkbox" data-colkey="creator" checked class="rounded" /> Người tạo</label>
+                        <label class="flex items-center gap-2 text-sm py-1"><input type="checkbox" data-colkey="warehouse" checked class="rounded" /> Kho</label>
+                        <label class="flex items-center gap-2 text-sm py-1"><input type="checkbox" data-colkey="note" checked class="rounded" /> Ghi chú</label>
+                        <label class="flex items-center gap-2 text-sm py-1"><input type="checkbox" data-colkey="qty" checked class="rounded" /> Số lượng</label>
+                        <label class="flex items-center gap-2 text-sm py-1"><input type="checkbox" data-colkey="amount" checked class="rounded" /> Thành tiền</label>
+                        <label class="flex items-center gap-2 text-sm py-1"><input type="checkbox" data-colkey="status" checked class="rounded" /> Trạng thái</label>
+                        <label class="flex items-center gap-2 text-sm py-1"><input type="checkbox" data-colkey="actions" checked class="rounded" /> Thao tác</label>
+                    </div>
+                </div>
 
-        <div class="flex flex-wrap items-center gap-3">
-            <label class="text-sm font-medium text-slate-600">Kho:</label>
-            <select name="warehouseId"
-                    class="border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
-                    onchange="this.form.submit()">
-                <option value="">Tất cả các kho</option>
-                @foreach (var opt in whOpts)
+                <form id="bulkForm" asp-action="BulkDelete" method="post" class="m-0">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="px-4 py-2 border-2 border-red-300 rounded-xl text-red-600 hover:bg-red-50 transition flex items-center gap-2" 
+                            onclick="return confirm('Xoá các phiếu đã chọn?')">
+                        <i class="bi bi-trash"></i> Xoá đã chọn
+                    </button>
+                </form>
+
+                @if (!User.IsInRole("Admin"))
                 {
-                    <option value="@opt.Value" selected="@(selectedWh==Convert.ToInt32(opt.Value)?"selected":null)">@opt.Text</option>
+                    <button class="px-5 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition flex items-center gap-2"
+                            data-bs-toggle="modal" data-bs-target="#srCreateModal">
+                        <i class="bi bi-plus-circle"></i>
+                         Thêm phiếu nhập mới
+                    </button>
                 }
-            </select>
+            </div>
+        </form>
+
+        <!-- Status Filter Pills -->
+        <div class="flex flex-wrap gap-2">
+            <a class="px-4 py-2 text-sm font-semibold border-2 rounded-full transition @(s==null?"bg-green-50 text-green-700 border-green-200":"text-slate-600 border-slate-300 hover:bg-slate-100")"
+               asp-action="Index" asp-route-warehouseId="@selectedWh" asp-route-q="@q">
+                Tất cả <small class="ml-1 text-xs text-slate-400">@ViewBag.CountAll</small>
+            </a>
+            <a class="px-4 py-2 text-sm font-semibold border-2 rounded-full transition @(s==DocumentStatus.Moi?"bg-indigo-50 text-indigo-700 border-indigo-200":"text-slate-600 border-slate-300 hover:bg-slate-100")"
+               asp-action="Index" asp-route-status="@DocumentStatus.Moi" asp-route-warehouseId="@selectedWh" asp-route-q="@q">
+                Mới <small class="ml-1 text-xs text-slate-400">@ViewBag.CountMoi</small>
+            </a>
+            <a class="px-4 py-2 text-sm font-semibold border-2 rounded-full transition @(s==DocumentStatus.DaXacNhan?"bg-amber-50 text-amber-700 border-amber-200":"text-slate-600 border-slate-300 hover:bg-slate-100")"
+               asp-action="Index" asp-route-status="@DocumentStatus.DaXacNhan" asp-route-warehouseId="@selectedWh" asp-route-q="@q">
+                Đã xác nhận <small class="ml-1 text-xs text-slate-400">@ViewBag.CountXacNhan</small>
+            </a>
+            <a class="px-4 py-2 text-sm font-semibold border-2 rounded-full transition @(s==DocumentStatus.DaNhapHang?"bg-green-50 text-green-700 border-green-200":"text-slate-600 border-slate-300 hover:bg-slate-100")"
+               asp-action="Index" asp-route-status="@DocumentStatus.DaNhapHang" asp-route-warehouseId="@selectedWh" asp-route-q="@q">
+                Đã nhập hàng <small class="ml-1 text-xs text-slate-400">@ViewBag.CountNhap</small>
+            </a>
+            <a class="px-4 py-2 text-sm font-semibold border-2 rounded-full transition @(s==DocumentStatus.DaHuy?"bg-red-50 text-red-700 border-red-200":"text-slate-600 border-slate-300 hover:bg-slate-100")"
+               asp-action="Index" asp-route-status="@DocumentStatus.DaHuy" asp-route-warehouseId="@selectedWh" asp-route-q="@q">
+                Đã huỷ <small class="ml-1 text-xs text-slate-400">@ViewBag.CountHuy</small>
+            </a>
         </div>
     </div>
 
-    <!-- DANH SÁCH PHIẾU -->
-    @if (!(Model?.Any() ?? false))
-    {
-        <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-8 text-center">
-            <h3 class="text-slate-700 font-semibold mb-2">Chưa có phiếu phù hợp bộ lọc</h3>
-            <p class="text-slate-500 mb-3 text-sm">Thử đổi điều kiện tìm kiếm hoặc tạo phiếu mới</p>
-            <button class="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition"
-                    data-bs-toggle="modal" data-bs-target="#srCreateModal">+ Tạo phiếu</button>
-        </div>
-    }
-    else
-    {
-        <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-x-auto">
-            <table class="min-w-full text-sm text-slate-700">
-                <thead class="bg-slate-100 text-slate-600 text-xs uppercase">
+    <!-- Table -->
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto max-h-[600px] relative">
+            <table class="min-w-full divide-y divide-slate-200">
+                <thead class="bg-slate-50 sticky top-0 z-10">
                     <tr>
-                        <th class="px-3 py-2">Mã phiếu</th>
-                        <th class="px-3 py-2">Người tạo</th>
-                        <th class="px-3 py-2">Kho</th>
-                        <th class="px-3 py-2">Ghi chú</th>
-                        <th class="px-3 py-2 text-right">Số lượng</th>
-                        <th class="px-3 py-2 text-right">Thành tiền</th>
-                        <th class="px-3 py-2 text-center">Trạng thái</th>
-                        <th class="px-3 py-2 text-right">Thao tác</th>
+                        <th class="px-6 py-4 w-12">
+                            <input type="checkbox" class="rounded border-slate-300 text-green-600 focus:ring-green-500" id="chkAll" />
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition" data-col="number">
+                            Mã phiếu <i class="bi bi-arrow-down-up text-green-600 ml-1"></i>
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider" data-col="creator">
+                            Người tạo
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider" data-col="warehouse">
+                            Kho
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider" data-col="note">
+                            Ghi chú
+                        </th>
+                        <th class="px-6 py-4 text-right text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition" data-col="qty">
+                            Số lượng <i class="bi bi-arrow-down-up text-green-600 ml-1"></i>
+                        </th>
+                        <th class="px-6 py-4 text-right text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition" data-col="amount">
+                            Thành tiền <i class="bi bi-arrow-down-up text-green-600 ml-1"></i>
+                        </th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider" data-col="status">
+                            Trạng thái
+                        </th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider w-24" data-col="actions">
+                            Thao tác
+                        </th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100">
-                    @foreach (var r in Model)
+                <tbody class="bg-white divide-y divide-slate-200">
+                    @if (Model != null && Model.Any())
                     {
-                        var qty = r.Details?.Sum(d => Convert.ToDecimal(d.Quantity)) ?? 0m;
-                        var amt = r.Details?.Sum(d => Convert.ToDecimal(d.Quantity) * d.UnitPrice) ?? 0m;
-                        <tr class="hover:bg-slate-50 transition">
-                            <td class="px-3 py-2 font-mono font-semibold">@r.ReceiptNumber</td>
-                            <td class="px-3 py-2">@r.CreatedBy?.FullName</td>
-                            <td class="px-3 py-2">@r.Warehouse?.Name</td>
-                            <td class="px-3 py-2 truncate max-w-[240px]">@r.Note</td>
-                            <td class="px-3 py-2 text-right">@qty</td>
-                            <td class="px-3 py-2 text-right">@amt.ToString("n0")</td>
-                            <td class="px-3 py-2 text-center">
-                                @switch (r.Status)
-                                {
-                                    case DocumentStatus.Moi:        <span class="px-2 py-1 text-xs rounded-md bg-indigo-50 text-indigo-700 font-semibold">Mới</span>; break;
-                                    case DocumentStatus.DaXacNhan:  <span class="px-2 py-1 text-xs rounded-md bg-amber-50 text-amber-700 font-semibold">Đã xác nhận</span>; break;
-                                    case DocumentStatus.DaNhapHang: <span class="px-2 py-1 text-xs rounded-md bg-green-50 text-green-700 font-semibold">Đã nhập hàng</span>; break;
-                                    case DocumentStatus.DaHuy:      <span class="px-2 py-1 text-xs rounded-md bg-red-50 text-red-700 font-semibold">Đã huỷ</span>; break;
-                                }
-                            </td>
-                            <td class="px-3 py-2 text-right">
-                                <div class="flex justify-end gap-2">
-                                    <button class="px-2 py-1 text-xs rounded-md border border-blue-200 text-blue-600 hover:bg-blue-50"
-                                            data-bs-toggle="modal" data-bs-target="#detailsModal-@r.Id">
-                                        <i class="bi bi-eye"></i> Xem
-                                    </button>
-                                    @if (User.IsInRole("admin"))
+                        @foreach (var r in Model)
+                        {
+                            var qty = r.Details?.Sum(d => Convert.ToDecimal(d.Quantity)) ?? 0m;
+                            var amt = r.Details?.Sum(d => Convert.ToDecimal(d.Quantity) * d.UnitPrice) ?? 0m;
+                            <tr class="hover:bg-slate-50 transition-colors duration-150">
+                                <td class="px-6 py-4">
+                                    <input type="checkbox" class="sr-chk rounded border-slate-300 text-green-600 focus:ring-green-500" value="@r.Id" form="bulkForm" />
+                                </td>
+                                <td class="px-6 py-4 font-mono font-semibold text-slate-900" data-col="number">@r.ReceiptNumber</td>
+                                <td class="px-6 py-4 text-slate-700" data-col="creator">@r.CreatedBy?.FullName</td>
+                                <td class="px-6 py-4 text-slate-700" data-col="warehouse">@r.Warehouse?.Name</td>
+                                <td class="px-6 py-4 text-slate-600 truncate max-w-[240px]" data-col="note">@r.Note</td>
+                                <td class="px-6 py-4 text-right font-semibold text-slate-900" data-col="qty">@qty.ToString("n0")</td>
+                                <td class="px-6 py-4 text-right font-semibold text-slate-900" data-col="amount">@amt.ToString("n0") đ</td>
+                                <td class="px-6 py-4 text-center" data-col="status">
+                                    @switch (r.Status)
                                     {
-                                        if (r.Status == DocumentStatus.Moi)
-                                        {
-                                            <form asp-action="ApprovePost" method="post" class="inline">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="id" value="@r.Id" />
-                                                <button class="px-2 py-1 text-xs rounded-md border border-amber-300 text-amber-700 hover:bg-amber-50">
-                                                    <i class="bi bi-clipboard-check"></i> Xác nhận
-                                                </button>
-                                            </form>
-                                        }
-                                        else if (r.Status == DocumentStatus.DaXacNhan)
-                                        {
-                                            <form asp-action="ReceivePost" method="post" class="inline">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="id" value="@r.Id" />
-                                                <button class="px-2 py-1 text-xs rounded-md border border-green-300 text-green-700 hover:bg-green-50">
-                                                    <i class="bi bi-box-seam"></i> Nhập hàng
-                                                </button>
-                                            </form>
-                                        }
-                                        if (r.Status != DocumentStatus.DaHuy)
-                                        {
-                                            <form asp-action="RejectPost" method="post" class="inline" onsubmit="return confirm('Huỷ phiếu này?');">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="id" value="@r.Id" />
-                                                <input type="hidden" name="note" value="Huỷ từ danh sách." />
-                                                <button class="px-2 py-1 text-xs rounded-md border border-red-300 text-red-700 hover:bg-red-50">
-                                                    <i class="bi bi-x-circle"></i> Huỷ
-                                                </button>
-                                            </form>
-                                        }
+                                        case DocumentStatus.Moi:        <span class="px-3 py-1.5 text-xs rounded-full bg-indigo-50 text-indigo-700 font-semibold border border-indigo-200">Mới</span>; break;
+                                        case DocumentStatus.DaXacNhan:  <span class="px-3 py-1.5 text-xs rounded-full bg-amber-50 text-amber-700 font-semibold border border-amber-200">Đã xác nhận</span>; break;
+                                        case DocumentStatus.DaNhapHang: <span class="px-3 py-1.5 text-xs rounded-full bg-green-50 text-green-700 font-semibold border border-green-200">Đã nhập hàng</span>; break;
+                                        case DocumentStatus.DaHuy:      <span class="px-3 py-1.5 text-xs rounded-full bg-red-50 text-red-700 font-semibold border border-red-200">Đã huỷ</span>; break;
+                                    }
+                                </td>
+                                <td class="px-6 py-4 text-center" data-col="actions">
+                                    <div class="relative inline-block">
+                                        <button type="button" class="action-menu-btn p-2 hover:bg-slate-100 rounded-lg transition"
+                                                data-id="@r.Id">
+                                            <i class="bi bi-three-dots-vertical text-slate-600"></i>
+                                        </button>
+                                        <div class="action-menu hidden absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-slate-200 z-10">
+                                            <button type="button" data-action="view" data-id="@r.Id" 
+                                                   data-bs-toggle="modal" data-bs-target="#detailsModal-@r.Id"
+                                                   class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-green-50 hover:text-green-700 transition flex items-center gap-2">
+                                                <i class="bi bi-eye text-green-600"></i> Xem
+                                            </button>
+                                            @if (User.IsInRole("Admin"))
+                                            {
+                                                @if (r.Status == DocumentStatus.Moi)
+                                                {
+                                                    <form asp-action="ApprovePost" method="post" class="m-0">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="id" value="@r.Id" />
+                                                        <button type="submit" class="w-full text-left px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 transition flex items-center gap-2">
+                                                            <i class="bi bi-clipboard-check text-amber-600"></i> Xác nhận
+                                                        </button>
+                                                    </form>
+                                                }
+                                                @if (r.Status == DocumentStatus.DaXacNhan)
+                                                {
+                                                    <form asp-action="ReceivePost" method="post" class="m-0">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="id" value="@r.Id" />
+                                                        <button type="submit" class="w-full text-left px-4 py-2 text-sm text-green-700 hover:bg-green-50 transition flex items-center gap-2">
+                                                            <i class="bi bi-box-seam text-green-600"></i> Nhập hàng
+                                                        </button>
+                                                    </form>
+                                                }
+                                                @if (r.Status != DocumentStatus.DaHuy)
+                                                {
+                                                    <hr class="my-1">
+                                                    <form asp-action="RejectPost" method="post" onsubmit="return confirm('Huỷ phiếu này?');" class="m-0">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="id" value="@r.Id" />
+                                                        <input type="hidden" name="note" value="Huỷ từ danh sách." />
+                                                        <button type="submit" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition flex items-center gap-2">
+                                                            <i class="bi bi-x-circle"></i> Từ chối
+                                                        </button>
+                                                    </form>
+                                                }
+                                            }
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="9" class="px-6 py-12 text-center">
+                                <div class="flex flex-col items-center justify-center">
+                                    <i class="bi bi-inbox text-4xl text-slate-300 mb-3"></i>
+                                    <p class="text-slate-500 font-medium">Chưa có phiếu phù hợp bộ lọc</p>
+                                    <p class="text-sm text-slate-400 mt-1">Thử đổi điều kiện tìm kiếm hoặc tạo phiếu mới</p>
+                                    @if (!User.IsInRole("Admin"))
+                                    {
+                                        <button class="mt-4 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl text-sm font-medium hover:shadow-lg transition"
+                                                data-bs-toggle="modal" data-bs-target="#srCreateModal">+ Tạo phiếu</button>
                                     }
                                 </div>
                             </td>
@@ -230,21 +285,47 @@
                 </tbody>
             </table>
         </div>
-    }
+    </div>
 
-    <!-- FOOTER -->
-    <div class="flex flex-col md:flex-row justify-between items-center gap-3 mt-4">
-        <div class="bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm">
-            <span class="text-slate-500">Tổng số hàng:</span> <b>@sumQty</b>
-            <span class="mx-2 text-slate-400">|</span>
+    <!-- Footer Summary and Pagination -->
+    <div class="flex items-center justify-between mt-6">
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 px-6 py-3 text-sm">
+            <span class="text-slate-500">Tổng số hàng:</span> <b class="text-slate-900">@sumQty.ToString("n0")</b>
+            <span class="mx-3 text-slate-400">|</span>
             <span class="text-slate-500">Tổng tiền hàng:</span> <b class="text-green-600">@sumAmt.ToString("n0") đ</b>
         </div>
-        <nav class="flex items-center gap-1">
-            <a href="#" class="px-3 py-1 text-sm rounded-md border border-slate-300 text-slate-600 hover:bg-slate-100">«</a>
-            <a href="#" class="px-3 py-1 text-sm rounded-md border bg-blue-600 text-white border-blue-600">1</a>
-            <a href="#" class="px-3 py-1 text-sm rounded-md border border-slate-300 text-slate-600 hover:bg-slate-100">2</a>
-            <a href="#" class="px-3 py-1 text-sm rounded-md border border-slate-300 text-slate-600 hover:bg-slate-100">»</a>
-        </nav>
+        <div class="flex items-center gap-2">
+            <div class="text-sm text-slate-600 mr-4">
+                Hiển thị <span class="font-semibold">@startItem-@endItem</span> trong tổng <span class="font-semibold">@totalItems</span>
+            </div>
+            @if (page > 1)
+            {
+                <a href="@Url.Action("Index", new { page = page - 1, q = q, status = s, warehouseId = selectedWh, pageSize = pageSize })"
+                   class="px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition">
+                    Trước
+                </a>
+            }
+            else
+            {
+                <button disabled class="px-4 py-2 text-sm font-semibold text-slate-400 bg-white border border-slate-200 rounded-lg opacity-50 cursor-not-allowed">
+                    Trước
+                </button>
+            }
+            
+            @if (page < (ViewBag.TotalPages as int? ?? 1))
+            {
+                <a href="@Url.Action("Index", new { page = page + 1, q = q, status = s, warehouseId = selectedWh, pageSize = pageSize })"
+                   class="px-4 py-2 text-sm font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition">
+                    Tiếp theo
+                </a>
+            }
+            else
+            {
+                <button disabled class="px-4 py-2 text-sm font-semibold text-slate-400 bg-slate-200 rounded-lg opacity-50 cursor-not-allowed">
+                    Tiếp theo
+                </button>
+            }
+        </div>
     </div>
 </div>
 
@@ -252,22 +333,259 @@
 {
     @await Html.PartialAsync("_DetailsModal", r)
 }
-@await Html.PartialAsync("_CreateModal", new MNBEMART.Models.StockReceipt())
+@if (!User.IsInRole("Admin")) { @await Html.PartialAsync("_CreateModal", new MNBEMART.Models.StockReceipt()) }
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
+        // Đảm bảo modal được khởi tạo đúng cách khi bấm nút
+        document.addEventListener('DOMContentLoaded', function() {
+            // Xử lý nút "Add New Receipt" với data-bs-toggle
+            const addBtn = document.querySelector('[data-bs-toggle="modal"][data-bs-target="#srCreateModal"]');
+            if (addBtn) {
+                addBtn.addEventListener('click', function(e) {
+                    // QUAN TRỌNG: Ngăn Bootstrap tự xử lý data-bs-toggle
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    
+                    try {
+                        console.log('[StockReceipts Index] Add button clicked');
+                        const modalEl = document.getElementById('srCreateModal');
+                        if (modalEl) {
+                            // Kiểm tra xem modal đã có instance chưa
+                            let bsModal = bootstrap.Modal.getInstance(modalEl);
+                            if (!bsModal) {
+                                // Tắt backdrop click tạm thời để ngăn modal tự đóng
+                                bsModal = new bootstrap.Modal(modalEl, {
+                                    backdrop: 'static', // Ngăn đóng khi click backdrop
+                                    keyboard: false     // Ngăn đóng khi nhấn ESC
+                                });
+                            } else {
+                                // Cập nhật config nếu đã có instance
+                                bsModal._config.backdrop = 'static';
+                                bsModal._config.keyboard = false;
+                            }
+                            
+                            // Thêm cơ chế ngăn modal đóng trong 500ms đầu
+                            let preventCloseUntil = Date.now() + 500;
+                            const preventCloseHandler = function(e) {
+                                if (Date.now() < preventCloseUntil) {
+                                    console.warn('[StockReceipts Index] Preventing modal close within first 500ms');
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    return false;
+                                }
+                            };
+                            
+                            modalEl.addEventListener('hide.bs.modal', preventCloseHandler);
+                            
+                            // Xóa handler sau 500ms
+                            setTimeout(() => {
+                                if (modalEl) {
+                                    modalEl.removeEventListener('hide.bs.modal', preventCloseHandler);
+                                }
+                                // Khôi phục lại config bình thường
+                                if (bsModal) {
+                                    bsModal._config.backdrop = true;
+                                    bsModal._config.keyboard = true;
+                                }
+                            }, 500);
+                            
+                            bsModal.show();
+                        } else {
+                            console.warn('[StockReceipts Index] Modal element not found');
+                        }
+                    } catch (error) {
+                        console.error('[StockReceipts Index] Error opening modal:', error);
+                    }
+                }, true); // Sử dụng capture phase để chạy trước Bootstrap
+            }
+        });
+
+        // Xử lý query parameter để mở modal
         const url = new URLSearchParams(window.location.search);
         if (url.get('create') === '1') {
-            const el = document.getElementById('srCreateModal') || document.getElementById('createReceiptModal');
-            if (el) new bootstrap.Modal(el).show();
+            setTimeout(() => {
+                try {
+                    const el = document.getElementById('srCreateModal') || document.getElementById('createReceiptModal');
+                    if (el) {
+                        let bsModal = bootstrap.Modal.getInstance(el);
+                        if (!bsModal) {
+                            bsModal = new bootstrap.Modal(el, {
+                                backdrop: true,
+                                keyboard: true
+                            });
+                        }
+                        bsModal.show();
+                    }
+                } catch (error) {
+                    console.error('[StockReceipts Index] Error opening modal from query param:', error);
+                }
+            }, 100);
         }
 
         (function () {
             const openId = '@(TempData["OpenDetailId"] ?? "")';
             if (openId) {
-                const el = document.getElementById('detailsModal-' + openId);
-                if (el) new bootstrap.Modal(el).show();
+                setTimeout(() => {
+                    try {
+                        const el = document.getElementById('detailsModal-' + openId);
+                        if (el) {
+                            let bsModal = bootstrap.Modal.getInstance(el);
+                            if (!bsModal) {
+                                bsModal = new bootstrap.Modal(el);
+                            }
+                            bsModal.show();
+                        }
+                    } catch (error) {
+                        console.error('[StockReceipts Index] Error opening details modal:', error);
+                    }
+                }, 100);
+            }
+        })();
+
+        // Action menu toggle
+        document.querySelectorAll('.action-menu-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const menu = this.nextElementSibling;
+                const isHidden = menu.classList.contains('hidden');
+                
+                // Close all other menus
+                document.querySelectorAll('.action-menu').forEach(m => {
+                    if (m !== menu) {
+                        m.classList.add('hidden');
+                    }
+                });
+                
+                // Toggle current menu
+                if (isHidden) {
+                    menu.classList.remove('hidden');
+                } else {
+                    menu.classList.add('hidden');
+                }
+            });
+        });
+
+        // Close menus when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.action-menu-btn') && !e.target.closest('.action-menu')) {
+                document.querySelectorAll('.action-menu').forEach(menu => {
+                    menu.classList.add('hidden');
+                });
+            }
+        });
+
+        // Export/Import dropdown toggle
+        const exportBtn = document.getElementById('exportImportBtn');
+        const exportMenu = document.getElementById('exportImportMenu');
+        if (exportBtn && exportMenu) {
+            exportBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                exportMenu.classList.toggle('hidden');
+            });
+            document.addEventListener('click', function(e) {
+                if (!exportBtn.contains(e.target) && !exportMenu.contains(e.target)) {
+                    exportMenu.classList.add('hidden');
+                }
+            });
+        }
+
+        // Column config dropdown
+        const colCfgBtn = document.getElementById('colCfgBtn');
+        const colCfgPanel = document.getElementById('colCfgPanel');
+        if (colCfgBtn && colCfgPanel) {
+            // Get the parent container (relative div)
+            const colCfgContainer = colCfgBtn.closest('.relative');
+            
+            colCfgBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                colCfgPanel.classList.toggle('hidden');
+            });
+            
+            // Prevent closing when clicking inside the panel
+            colCfgPanel.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+            
+            // Close when clicking outside
+            document.addEventListener('click', (e) => {
+                // Check if click is outside both the button and panel
+                const isClickInside = colCfgContainer && colCfgContainer.contains(e.target);
+                if (!isClickInside) {
+                    colCfgPanel.classList.add('hidden');
+                }
+            });
+        }
+
+        // Select all checkbox
+        const chkAll = document.getElementById('chkAll');
+        const srChks = document.querySelectorAll('.sr-chk');
+        if (chkAll) {
+            chkAll.addEventListener('change', function() {
+                srChks.forEach(x => x.checked = this.checked);
+            });
+        }
+
+        // Update select all when individual checkboxes change
+        srChks.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const allChecked = Array.from(srChks).every(cb => cb.checked);
+                const someChecked = Array.from(srChks).some(cb => cb.checked);
+                
+                if (chkAll) {
+                    chkAll.checked = allChecked;
+                    chkAll.indeterminate = someChecked && !allChecked;
+                }
+            });
+        });
+
+        // Print functionality
+        (function(){
+            const btn = document.getElementById('btnPrint');
+            if(!btn) return;
+            btn.addEventListener('click', function(){
+                const sel = Array.from(document.querySelectorAll('.sr-chk:checked')).map(x=>x.value);
+                if(sel.length > 0){
+                    const qs = sel.map(id=>'ids='+encodeURIComponent(id)).join('&');
+                    const url = '@Url.Action("PrintSelected","StockReceipts")' + '?' + qs;
+                    window.open(url, '_blank');
+                } else {
+                    const baseUrl = '@Url.Action("PrintAll","StockReceipts")';
+                    const qs = window.location.search || '';
+                    window.open(baseUrl + qs, '_blank');
+                }
+            });
+        })();
+
+        // Column visibility configuration
+        (function () {
+            const key = 'sr.colvis';
+            const btn = document.getElementById('colCfgBtn');
+            const panel = document.getElementById('colCfgPanel');
+            if (!btn || !panel) return;
+            const defaults = { number:true, creator:true, warehouse:true, note:true, qty:true, amount:true, status:true, actions:true };
+            let state = defaults;
+            try { const s = localStorage.getItem(key); if (s) state = Object.assign({}, defaults, JSON.parse(s)); } catch {}
+            panel.querySelectorAll('input[type="checkbox"]').forEach(cb=>{ 
+                const k = cb.dataset.colkey; 
+                cb.checked = !!state[k]; 
+                cb.addEventListener('change', save); 
+            });
+            apply();
+            function save(){ 
+                const obj={}; 
+                panel.querySelectorAll('input[type="checkbox"]').forEach(cb=>obj[cb.dataset.colkey]=cb.checked); 
+                localStorage.setItem(key, JSON.stringify(obj)); 
+                state=obj; 
+                apply(); 
+            }
+            function apply(){ 
+                document.querySelectorAll('[data-col]').forEach(el=>{ 
+                    const k=el.getAttribute('data-col'); 
+                    el.style.display = state[k] ? '' : 'none'; 
+                }); 
             }
         })();
     </script>

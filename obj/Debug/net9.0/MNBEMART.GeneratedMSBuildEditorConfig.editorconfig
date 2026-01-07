@@ -28,12 +28,24 @@ build_property._RazorSourceGeneratorDebug =
 build_property.EffectiveAnalysisLevelStyle = 9.0
 build_property.EnableCodeStyleSeverity = 
 
+[D:/TEXT/MNBEMART/Views/Account/ForgotPassword.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFxGb3Jnb3RQYXNzd29yZC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
 [D:/TEXT/MNBEMART/Views/Account/Login.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFxMb2dpbi5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
 [D:/TEXT/MNBEMART/Views/Account/Register.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFxSZWdpc3Rlci5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Account/ResetPassword.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFxSZXNldFBhc3N3b3JkLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/DocumentManagement/List.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRG9jdW1lbnRNYW5hZ2VtZW50XExpc3QuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
 [D:/TEXT/MNBEMART/Views/Home/Dashboard.cshtml]
@@ -48,6 +60,34 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxQcml2YWN5LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
+[D:/TEXT/MNBEMART/Views/Logs/_LogsList.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTG9nc1xfTG9nc0xpc3QuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Lots/Details.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTG90c1xEZXRhaWxzLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Lots/Expiring.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTG90c1xFeHBpcmluZy5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Lots/History.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTG90c1xIaXN0b3J5LmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Lots/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTG90c1xJbmRleC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Lots/Merge.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTG90c1xNZXJnZS5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Lots/Split.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTG90c1xTcGxpdC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
 [D:/TEXT/MNBEMART/Views/Materials/Delete.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTWF0ZXJpYWxzXERlbGV0ZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
@@ -56,32 +96,152 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTWF0ZXJpYWxzXEVkaXQuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
+[D:/TEXT/MNBEMART/Views/Materials/Expiring.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTWF0ZXJpYWxzXEV4cGlyaW5nLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Materials/Import.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTWF0ZXJpYWxzXEltcG9ydC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
 [D:/TEXT/MNBEMART/Views/Materials/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTWF0ZXJpYWxzXEluZGV4LmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Materials/Overstock.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTWF0ZXJpYWxzXE92ZXJzdG9jay5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
 [D:/TEXT/MNBEMART/Views/Materials/_CreateModal.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTWF0ZXJpYWxzXF9DcmVhdGVNb2RhbC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
+[D:/TEXT/MNBEMART/Views/Materials/_DetailsModal.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTWF0ZXJpYWxzXF9EZXRhaWxzTW9kYWwuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Materials/_MaterialsList.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTWF0ZXJpYWxzXF9NYXRlcmlhbHNMaXN0LmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/NotificationSettings/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTm90aWZpY2F0aW9uU2V0dGluZ3NcSW5kZXguY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Notifications/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTm90aWZpY2F0aW9uc1xJbmRleC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
 [D:/TEXT/MNBEMART/Views/Profile/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUHJvZmlsZVxJbmRleC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/PurchaseRequests/Create.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUHVyY2hhc2VSZXF1ZXN0c1xDcmVhdGUuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/PurchaseRequests/Delete.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUHVyY2hhc2VSZXF1ZXN0c1xEZWxldGUuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/PurchaseRequests/Details.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUHVyY2hhc2VSZXF1ZXN0c1xEZXRhaWxzLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/PurchaseRequests/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUHVyY2hhc2VSZXF1ZXN0c1xJbmRleC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Reports/COGS.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUmVwb3J0c1xDT0dTLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
 [D:/TEXT/MNBEMART/Views/Reports/Inventory.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUmVwb3J0c1xJbnZlbnRvcnkuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
+[D:/TEXT/MNBEMART/Views/Reports/InventoryValuation.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUmVwb3J0c1xJbnZlbnRvcnlWYWx1YXRpb24uY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Reports/InventoryValue.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUmVwb3J0c1xJbnZlbnRvcnlWYWx1ZS5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
 [D:/TEXT/MNBEMART/Views/Reports/Movements.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUmVwb3J0c1xNb3ZlbWVudHMuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Reports/ProfitLoss.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUmVwb3J0c1xQcm9maXRMb3NzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
 [D:/TEXT/MNBEMART/Views/Reports/Revenue.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUmVwb3J0c1xSZXZlbnVlLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
+[D:/TEXT/MNBEMART/Views/Reports/StockAging.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUmVwb3J0c1xTdG9ja0FnaW5nLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Reports/TurnoverRate.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUmVwb3J0c1xUdXJub3ZlclJhdGUuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Roles/_PermissionsForm.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUm9sZXNcX1Blcm1pc3Npb25zRm9ybS5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Roles/_RolesList.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUm9sZXNcX1JvbGVzTGlzdC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Settings/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2V0dGluZ3NcSW5kZXguY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Settings/_NotificationSettings.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2V0dGluZ3NcX05vdGlmaWNhdGlvblNldHRpbmdzLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Shared/Components/ExpiringLotAlert/Default.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXENvbXBvbmVudHNcRXhwaXJpbmdMb3RBbGVydFxEZWZhdWx0LmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Shared/Components/ExpiryAlert/Default.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXENvbXBvbmVudHNcRXhwaXJ5QWxlcnRcRGVmYXVsdC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Shared/Components/NotificationBadge/Default.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXENvbXBvbmVudHNcTm90aWZpY2F0aW9uQmFkZ2VcRGVmYXVsdC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Shared/Components/OverstockAlert/Default.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXENvbXBvbmVudHNcT3ZlcnN0b2NrQWxlcnRcRGVmYXVsdC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Shared/Components/Pagination/Default.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXENvbXBvbmVudHNcUGFnaW5hdGlvblxEZWZhdWx0LmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Shared/Components/PurchaseRequestBadge/Default.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXENvbXBvbmVudHNcUHVyY2hhc2VSZXF1ZXN0QmFkZ2VcRGVmYXVsdC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Shared/Components/UserAvatar/Default.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXENvbXBvbmVudHNcVXNlckF2YXRhclxEZWZhdWx0LmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Shared/Components/UserGreeting/Default.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXENvbXBvbmVudHNcVXNlckdyZWV0aW5nXERlZmF1bHQuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
 [D:/TEXT/MNBEMART/Views/Shared/Error.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXEVycm9yLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Shared/_DocumentManagement.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9Eb2N1bWVudE1hbmFnZW1lbnQuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
 [D:/TEXT/MNBEMART/Views/Shared/_Header.cshtml]
@@ -92,24 +252,16 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9WYWxpZGF0aW9uU2NyaXB0c1BhcnRpYWwuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/TEXT/MNBEMART/Views/StockAdjustments/Create.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3RvY2tBZGp1c3RtZW50c1xDcmVhdGUuY3NodG1s
-build_metadata.AdditionalFiles.CssScope = 
-
-[D:/TEXT/MNBEMART/Views/StockAdjustments/Details.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3RvY2tBZGp1c3RtZW50c1xEZXRhaWxzLmNzaHRtbA==
-build_metadata.AdditionalFiles.CssScope = 
-
-[D:/TEXT/MNBEMART/Views/StockAdjustments/Index.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3RvY2tBZGp1c3RtZW50c1xJbmRleC5jc2h0bWw=
-build_metadata.AdditionalFiles.CssScope = 
-
-[D:/TEXT/MNBEMART/Views/StockAdjustments/_DetailRow.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3RvY2tBZGp1c3RtZW50c1xfRGV0YWlsUm93LmNzaHRtbA==
+[D:/TEXT/MNBEMART/Views/StockIssues/Details.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3RvY2tJc3N1ZXNcRGV0YWlscy5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
 [D:/TEXT/MNBEMART/Views/StockIssues/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3RvY2tJc3N1ZXNcSW5kZXguY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/StockIssues/Print.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3RvY2tJc3N1ZXNcUHJpbnQuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
 [D:/TEXT/MNBEMART/Views/StockIssues/_CreateModal.cshtml]
@@ -120,8 +272,24 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3RvY2tJc3N1ZXNcX0RldGFpbHNNb2RhbC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
+[D:/TEXT/MNBEMART/Views/StockIssues/_IssueLotSelectionModal.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3RvY2tJc3N1ZXNcX0lzc3VlTG90U2VsZWN0aW9uTW9kYWwuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/StockReceipts/Details.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3RvY2tSZWNlaXB0c1xEZXRhaWxzLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
 [D:/TEXT/MNBEMART/Views/StockReceipts/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3RvY2tSZWNlaXB0c1xJbmRleC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/StockReceipts/Print.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3RvY2tSZWNlaXB0c1xQcmludC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/StockReceipts/Suggest.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3RvY2tSZWNlaXB0c1xTdWdnZXN0LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
 [D:/TEXT/MNBEMART/Views/StockReceipts/_CreateModal.cshtml]
@@ -136,10 +304,6 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3RvY2tzXEluZGV4LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/TEXT/MNBEMART/Views/StockTransfers/Create.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3RvY2tUcmFuc2ZlcnNcQ3JlYXRlLmNzaHRtbA==
-build_metadata.AdditionalFiles.CssScope = 
-
 [D:/TEXT/MNBEMART/Views/StockTransfers/Details.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3RvY2tUcmFuc2ZlcnNcRGV0YWlscy5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
@@ -148,8 +312,16 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3RvY2tUcmFuc2ZlcnNcSW5kZXguY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/TEXT/MNBEMART/Views/StockTransfers/_DetailRow.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3RvY2tUcmFuc2ZlcnNcX0RldGFpbFJvdy5jc2h0bWw=
+[D:/TEXT/MNBEMART/Views/StockTransfers/Print.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3RvY2tUcmFuc2ZlcnNcUHJpbnQuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/StockTransfers/_CreateModal.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3RvY2tUcmFuc2ZlcnNcX0NyZWF0ZU1vZGFsLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/StockTransfers/_DetailsModal.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3RvY2tUcmFuc2ZlcnNcX0RldGFpbHNNb2RhbC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
 [D:/TEXT/MNBEMART/Views/Suppliers/Create.cshtml]
@@ -168,6 +340,18 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3VwcGxpZXJzXEluZGV4LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
+[D:/TEXT/MNBEMART/Views/Suppliers/_CreateModal.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3VwcGxpZXJzXF9DcmVhdGVNb2RhbC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Suppliers/_EditModal.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3VwcGxpZXJzXF9FZGl0TW9kYWwuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Suppliers/_SuppliersList.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3VwcGxpZXJzXF9TdXBwbGllcnNMaXN0LmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
 [D:/TEXT/MNBEMART/Views/Users/Create.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcVXNlcnNcQ3JlYXRlLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
@@ -176,8 +360,16 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcVXNlcnNcRWRpdC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/TEXT/MNBEMART/Views/Users/Index.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcVXNlcnNcSW5kZXguY3NodG1s
+[D:/TEXT/MNBEMART/Views/Users/_CreateModal.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcVXNlcnNcX0NyZWF0ZU1vZGFsLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Users/_EditModal.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcVXNlcnNcX0VkaXRNb2RhbC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Users/_UsersList.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcVXNlcnNcX1VzZXJzTGlzdC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
 [D:/TEXT/MNBEMART/Views/Warehouses/Create.cshtml]
@@ -198,6 +390,18 @@ build_metadata.AdditionalFiles.CssScope =
 
 [D:/TEXT/MNBEMART/Views/Warehouses/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcV2FyZWhvdXNlc1xJbmRleC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Warehouses/_CreateModal.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcV2FyZWhvdXNlc1xfQ3JlYXRlTW9kYWwuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Warehouses/_EditModal.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcV2FyZWhvdXNlc1xfRWRpdE1vZGFsLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/TEXT/MNBEMART/Views/Warehouses/_WarehousesList.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcV2FyZWhvdXNlc1xfV2FyZWhvdXNlc0xpc3QuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
 [D:/TEXT/MNBEMART/Views/_ViewImports.cshtml]

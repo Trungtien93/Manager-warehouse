@@ -1,0 +1,1325 @@
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Cài đặt";
+    var isAdmin = ViewBag.IsAdmin as bool? ?? false;
+    var activeTab = ViewBag.ActiveTab as string ?? "notifications";
+    var notificationSettings = ViewBag.NotificationSettings as MNBEMART.Models.NotificationSettings;
+}
+
+<!-- Tailwind + Bootstrap Icons -->
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+
+<div class="max-w-[1200px] mx-auto px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center gap-3 mb-4">
+            <a href="/Home/Index" class="text-slate-600 hover:text-slate-900">
+                <i class="bi bi-arrow-left text-xl"></i>
+            </a>
+            <div>
+                <h1 class="text-3xl font-black text-slate-900 tracking-tight mb-2">
+                    <i class="bi bi-gear text-blue-600 me-2"></i>
+                    Cài đặt
+                </h1>
+                <p class="text-slate-600">Quản lý cài đặt hệ thống và tùy chỉnh của bạn</p>
+            </div>
+        </div>
+    </div>
+
+    @if (TempData["Msg"] != null)
+    {
+        <div class="bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-3 mb-6 flex items-center gap-2">
+            <i class="bi bi-check-circle-fill"></i>
+            <span>@TempData["Msg"]</span>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mb-6 flex items-center gap-2">
+            <i class="bi bi-exclamation-circle-fill"></i>
+            <span>@TempData["Error"]</span>
+        </div>
+    }
+
+    <!-- Tabs -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 mb-6">
+        <div class="border-b border-slate-200">
+            <nav class="flex -mb-px">
+                <a href="/Settings?tab=notifications" 
+                   class="@(activeTab == "notifications" ? "border-blue-500 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300") px-6 py-4 text-sm font-medium border-b-2 transition flex items-center gap-2">
+                    <i class="bi bi-bell"></i>
+                    Thông báo
+                </a>
+                <a href="/Settings?tab=notification-management" 
+                   class="@(activeTab == "notification-management" ? "border-blue-500 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300") px-6 py-4 text-sm font-medium border-b-2 transition flex items-center gap-2">
+                    <i class="bi bi-inbox"></i>
+                    Quản lý thông báo
+                </a>
+                @if (ViewBag.HasRolesPermission == true)
+                {
+                    <a href="/Settings?tab=permissions" 
+                       class="@(activeTab == "permissions" ? "border-blue-500 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300") px-6 py-4 text-sm font-medium border-b-2 transition flex items-center gap-2">
+                        <i class="bi bi-shield-check"></i>
+                        Phân quyền
+                    </a>
+                }
+                @if (ViewBag.HasUsersPermission == true)
+                {
+                    <a href="/Settings?tab=users" 
+                       class="@(activeTab == "users" ? "border-blue-500 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300") px-6 py-4 text-sm font-medium border-b-2 transition flex items-center gap-2">
+                        <i class="bi bi-people"></i>
+                        Người dùng
+                    </a>
+                }
+                @if (ViewBag.HasLogsPermission == true)
+                {
+                    <a href="/Settings?tab=logs" 
+                       class="@(activeTab == "logs" ? "border-blue-500 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300") px-6 py-4 text-sm font-medium border-b-2 transition flex items-center gap-2">
+                        <i class="bi bi-clock-history"></i>
+                        Lịch sử thao tác
+                    </a>
+                }
+                @if (ViewBag.HasSystemPermission == true)
+                {
+                    <a href="/Settings?tab=system" 
+                       class="@(activeTab == "system" ? "border-blue-500 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300") px-6 py-4 text-sm font-medium border-b-2 transition flex items-center gap-2">
+                        <i class="bi bi-gear"></i>
+                        Hệ thống
+                    </a>
+                }
+            </nav>
+        </div>
+    </div>
+
+    <!-- Tab Content -->
+    <style>
+        /* Ensure tab panes are visible by default, but respect hidden class */
+        .tab-pane:not(.hidden) {
+            display: block !important;
+            visibility: visible !important;
+        }
+        .tab-pane.hidden {
+            display: none !important;
+            visibility: hidden !important;
+        }
+    </style>
+    <div class="tab-content">
+        <!-- Notifications Tab -->
+        <div id="tab-notifications" class="tab-pane @(activeTab == "notifications" ? "" : "hidden")">
+            @if (notificationSettings != null)
+            {
+                @await Html.PartialAsync("_NotificationSettings", notificationSettings)
+            }
+            else
+            {
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <p class="text-slate-600">Đang tải cài đặt thông báo...</p>
+                </div>
+            }
+        </div>
+        
+        <!-- Notification Management Tab -->
+        <div id="tab-notification-management" class="tab-pane @(activeTab == "notification-management" ? "" : "hidden")">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <div id="notification-management-content" class="min-h-[600px]">
+                    <div class="flex items-center justify-center py-12">
+                        <div class="text-center">
+                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                            <p class="text-slate-600">Đang tải...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Permissions Tab -->
+        @if (ViewBag.HasRolesPermission == true)
+        {
+            <div id="tab-permissions" class="tab-pane @(activeTab == "permissions" ? "" : "hidden")">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <div class="mb-4 flex items-center justify-between">
+                        <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                            <i class="bi bi-shield-check text-blue-600"></i>
+                            Phân quyền
+                        </h2>
+                    </div>
+                    <div id="permissions-content" class="min-h-[600px]">
+                        <div class="flex items-center justify-center py-12">
+                            <div class="text-center">
+                                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                                <p class="text-slate-600">Đang tải...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+        
+        <!-- Users Tab -->
+        @if (ViewBag.HasUsersPermission == true)
+        {
+            <div id="tab-users" class="tab-pane @(activeTab == "users" ? "" : "hidden")">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <div class="mb-4 flex items-center justify-between">
+                        <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                            <i class="bi bi-people text-blue-600"></i>
+                            Người dùng
+                        </h2>
+                    </div>
+                    <div id="users-content" class="min-h-[600px]">
+                        <div class="flex items-center justify-center py-12">
+                            <div class="text-center">
+                                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                                <p class="text-slate-600">Đang tải...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+        
+        <!-- Logs Tab -->
+        @if (ViewBag.HasLogsPermission == true)
+        {
+            <div id="tab-logs" class="tab-pane @(activeTab == "logs" ? "" : "hidden")">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <div class="mb-4 flex items-center justify-between">
+                        <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                            <i class="bi bi-clock-history text-blue-600"></i>
+                            Lịch sử thao tác
+                        </h2>
+                    </div>
+                    <div id="logs-content" class="min-h-[600px]">
+                        <div class="flex items-center justify-center py-12">
+                            <div class="text-center">
+                                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                                <p class="text-slate-600">Đang tải...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+        
+        <!-- System Tab -->
+        @if (ViewBag.HasSystemPermission == true)
+        {
+            <div id="tab-system" class="tab-pane @(activeTab == "system" ? "" : "hidden")">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h2 class="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+                        <i class="bi bi-gear text-blue-600"></i>
+                        Cài đặt hệ thống
+                    </h2>
+                    <p class="text-slate-600">Các cài đặt hệ thống sẽ được thêm vào đây trong tương lai.</p>
+                    <div class="mt-6 space-y-4">
+                        <div class="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                            <h3 class="font-semibold text-slate-900 mb-2">Các tính năng sắp có:</h3>
+                            <ul class="list-disc list-inside text-sm text-slate-600 space-y-1">
+                                <li>Cấu hình email server</li>
+                                <li>Cấu hình backup tự động</li>
+                                <li>Cấu hình bảo mật</li>
+                                <li>Cấu hình tích hợp bên thứ ba</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const activeTab = '@activeTab';
+    
+    // Function to show a tab pane
+    function showTabPane(pane) {
+        if (pane) {
+            pane.classList.remove('hidden');
+            pane.style.display = 'block';
+            pane.style.visibility = 'visible';
+        }
+    }
+    
+    // Function to hide a tab pane
+    function hideTabPane(pane) {
+        if (pane) {
+            pane.classList.add('hidden');
+            pane.style.display = 'none';
+        }
+    }
+    
+    // Ensure active tab pane is visible on page load
+    const activePane = document.getElementById(`tab-${activeTab}`);
+    if (activePane) {
+        showTabPane(activePane);
+    } else {
+        console.warn(`Active tab pane not found: tab-${activeTab}`);
+    }
+    
+    // Hide all other tab panes
+    document.querySelectorAll('.tab-pane').forEach(pane => {
+        if (pane.id !== `tab-${activeTab}`) {
+            hideTabPane(pane);
+        }
+    });
+    
+    // Load content based on active tab on page load (don't switch tab, just load content)
+    if (activeTab === 'permissions') {
+        loadPermissionsContent();
+    } else if (activeTab === 'users') {
+        loadUsersContent();
+    } else if (activeTab === 'logs') {
+        loadLogsContent();
+    } else if (activeTab === 'notification-management') {
+        loadNotificationManagementContent();
+    }
+    
+    // Handle tab clicks
+    document.querySelectorAll('a[href*="/Settings?tab="]').forEach(link => {
+        link.addEventListener('click', function(e) {
+            const url = new URL(this.href);
+            const tab = url.searchParams.get('tab') || 'notifications';
+            
+            // Prevent default navigation
+            e.preventDefault();
+            
+            // Switch tab immediately (before loading content)
+            switchTab(tab);
+            
+            // Load content after switching
+            if (tab === 'permissions') {
+                loadPermissionsContent();
+            } else if (tab === 'users') {
+                loadUsersContent();
+            } else if (tab === 'logs') {
+                loadLogsContent();
+            } else if (tab === 'notification-management') {
+                loadNotificationManagementContent();
+            }
+        });
+    });
+    
+    function switchTab(tab) {
+        // Hide all tab panes immediately
+        document.querySelectorAll('.tab-pane').forEach(pane => {
+            hideTabPane(pane);
+        });
+        
+        // Show selected tab pane immediately
+        const selectedPane = document.getElementById(`tab-${tab}`);
+        if (selectedPane) {
+            showTabPane(selectedPane);
+        } else {
+            console.warn(`Tab pane not found: tab-${tab}`);
+            // Fallback: try to show first available tab
+            const firstPane = document.querySelector('.tab-pane');
+            if (firstPane) {
+                showTabPane(firstPane);
+            }
+        }
+        
+        // Update active tab styling immediately
+        document.querySelectorAll('a[href*="/Settings?tab="]').forEach(link => {
+            link.classList.remove('border-blue-500', 'text-blue-600');
+            link.classList.add('border-transparent', 'text-slate-500', 'hover:text-slate-700', 'hover:border-slate-300');
+        });
+        
+        const activeLink = document.querySelector(`a[href="/Settings?tab=${tab}"]`);
+        if (activeLink) {
+            activeLink.classList.remove('border-transparent', 'text-slate-500', 'hover:text-slate-700', 'hover:border-slate-300');
+            activeLink.classList.add('border-blue-500', 'text-blue-600');
+        } else {
+            console.warn(`Active link not found for tab: ${tab}`);
+        }
+        
+        // Update URL without reload
+        const newUrl = `/Settings?tab=${tab}`;
+        window.history.pushState({}, '', newUrl);
+    }
+    
+    function loadPermissionsContent() {
+        const container = document.getElementById('permissions-content');
+        if (!container) return;
+        
+        // Check if there's a saved roleId from previous session
+        const savedRoleId = sessionStorage.getItem('permissionsEditingRoleId');
+        if (savedRoleId) {
+            // Auto-load the form for this role
+            loadPermissionsForm(savedRoleId, '');
+            return;
+        }
+        
+        container.innerHTML = `
+            <div class="flex items-center justify-center py-12">
+                <div class="text-center">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p class="text-slate-600">Đang tải...</p>
+                </div>
+            </div>
+        `;
+        
+        fetch('/Roles/Index?partial=true', {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            container.innerHTML = html;
+            attachPermissionButtonListeners();
+            attachSeedDefaultsFormHandler();
+        })
+        .catch(error => {
+            console.error('Error loading permissions:', error);
+            container.innerHTML = '<div class="text-center py-12 text-red-600">Lỗi khi tải dữ liệu</div>';
+        });
+    }
+    
+    function attachPermissionButtonListeners() {
+        document.querySelectorAll('.load-permissions-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const roleId = this.dataset.roleId;
+                const roleName = this.dataset.roleName;
+                loadPermissionsForm(roleId, roleName);
+            });
+        });
+    }
+    
+    function attachSeedDefaultsFormHandler() {
+        const form = document.getElementById('seedDefaultsForm');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(form);
+                const submitBtn = form.querySelector('button[type="submit"]');
+                const originalText = submitBtn.innerHTML;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Đang tạo...';
+                
+                fetch('/Roles/SeedDefaults', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.text())
+                .then(html => {
+                    const container = document.getElementById('permissions-content');
+                    if (container) {
+                        container.innerHTML = html;
+                        attachPermissionButtonListeners();
+                        attachSeedDefaultsFormHandler();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error creating default roles:', error);
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                    alert('Lỗi khi tạo vai trò mặc định. Vui lòng thử lại.');
+                });
+            });
+        }
+    }
+    
+    function loadPermissionsForm(roleId, roleName) {
+        const container = document.getElementById('permissions-content');
+        if (!container) return;
+        
+        // Save roleId to sessionStorage to preserve state when switching tabs
+        sessionStorage.setItem('permissionsEditingRoleId', roleId);
+        
+        container.innerHTML = `
+            <div class="flex items-center justify-center py-12">
+                <div class="text-center">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p class="text-slate-600">Đang tải form phân quyền...</p>
+                </div>
+            </div>
+        `;
+        
+        fetch(`/Roles/Permissions/${roleId}?partial=true`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(async response => {
+            if (response.status === 403) {
+                try {
+                    const json = await response.json();
+                    throw new Error(json.message || 'Không có quyền thực hiện thao tác này');
+                } catch (parseError) {
+                    throw new Error('Không có quyền thực hiện thao tác này. Vui lòng liên hệ quản trị viên.');
+                }
+            }
+            
+            if (!response.ok) {
+                throw new Error(`Lỗi HTTP: ${response.status}`);
+            }
+            
+            return response.text();
+        })
+        .then(html => {
+            container.innerHTML = html;
+            attachPermissionsFormHandlers();
+        })
+        .catch(error => {
+            console.error('Error loading permissions form:', error);
+            // Clear saved roleId on error
+            sessionStorage.removeItem('permissionsEditingRoleId');
+            container.innerHTML = `<div class="text-center py-12">
+                <div class="text-red-600 mb-2">${error.message}</div>
+                <button class="btn btn-sm btn-outline-secondary" onclick="loadPermissionsContent()">Quay lại</button>
+            </div>`;
+        });
+    }
+    
+    // Store handlers to prevent duplicate attachments
+    let permissionsFormSubmitHandler = null;
+    let permissionsBackButtonHandler = null;
+    
+    function attachPermissionsFormHandlers() {
+        // Initialize permissions form handlers (checkbox interactions)
+        if (typeof initPermissionsFormHandlers === 'function') {
+            initPermissionsFormHandlers();
+        }
+        
+        // Back button handler - remove old listener if exists
+        const backBtn = document.getElementById('btnBackToRoles');
+        if (backBtn) {
+            if (permissionsBackButtonHandler) {
+                backBtn.removeEventListener('click', permissionsBackButtonHandler);
+            }
+            permissionsBackButtonHandler = function() {
+                // Clear saved roleId when going back to roles list
+                sessionStorage.removeItem('permissionsEditingRoleId');
+                loadPermissionsContent();
+            };
+            backBtn.addEventListener('click', permissionsBackButtonHandler);
+        }
+        
+        // Form submission handler - remove old listener if exists
+        const form = document.getElementById('permissionsForm');
+        if (form) {
+            // Remove old listener if it exists
+            if (permissionsFormSubmitHandler) {
+                form.removeEventListener('submit', permissionsFormSubmitHandler);
+            }
+            
+            // Flag to prevent multiple simultaneous submissions
+            let isSubmitting = false;
+            
+            permissionsFormSubmitHandler = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Prevent multiple submissions
+                if (isSubmitting) {
+                    return false;
+                }
+                
+                // Check permissions - handle both boolean and string values
+                let canUpdate = window.permissionsCanUpdate;
+                if (typeof canUpdate === 'string') {
+                    canUpdate = canUpdate === 'true';
+                }
+                // Fallback: check data attribute from permissions container
+                if (!canUpdate) {
+                    const permissionsContainer = document.querySelector('.permissions-container');
+                    if (permissionsContainer) {
+                        const dataCanUpdate = permissionsContainer.getAttribute('data-can-update');
+                        if (dataCanUpdate === 'true') {
+                            canUpdate = true;
+                            window.permissionsCanUpdate = true; // Update global flag
+                        }
+                    }
+                }
+                
+                const submitBtn = form.querySelector('button[type="submit"]');
+                
+                if (!canUpdate || (submitBtn && submitBtn.disabled)) {
+                    const messageDiv = document.getElementById('permissionsMessage');
+                    if (messageDiv) {
+                        messageDiv.className = 'bg-red-50 border border-red-200 text-red-700 rounded-md px-4 py-2 mb-3';
+                        messageDiv.innerHTML = '<i class="bi bi-exclamation-circle-fill me-1"></i> Bạn không có quyền cập nhật phân quyền.';
+                        messageDiv.classList.remove('hidden');
+                        setTimeout(() => messageDiv.classList.add('hidden'), 5000);
+                    }
+                    return false;
+                }
+                
+                // Set submitting flag
+                isSubmitting = true;
+                
+                // CRITICAL FIX: Đảm bảo tất cả checkbox values (kể cả false) được gửi đi
+                const formData = new FormData(form);
+                
+                // Extract roleId from form before processing
+                const roleIdInput = form.querySelector('input[name="roleId"]');
+                const roleId = roleIdInput ? roleIdInput.value : null;
+                
+                // Xóa tất cả checkbox values hiện có (vì unchecked checkboxes không gửi giá trị)
+                const keysToRemove = [];
+                for (let key of formData.keys()) {
+                    if (key.includes('.CanRead') || key.includes('.CanCreate') || 
+                        key.includes('.CanUpdate') || key.includes('.CanDelete') || 
+                        key.includes('.CanApprove')) {
+                        keysToRemove.push(key);
+                    }
+                }
+                keysToRemove.forEach(key => formData.delete(key));
+                
+                // Lấy tất cả PermissionId inputs để biết cần xử lý permissions nào
+                const permissionIdInputs = form.querySelectorAll('input[type="hidden"][name*="PermissionId"]');
+                
+                // Với mỗi permission, thêm tất cả checkbox values (checked = "true", unchecked = "false")
+                permissionIdInputs.forEach(permissionIdInput => {
+                    const nameMatch = permissionIdInput.name.match(/permissions\[(\d+)\]\.PermissionId/);
+                    if (!nameMatch) return;
+                    
+                    const index = nameMatch[1];
+                    
+                    // Lấy tất cả checkboxes cho permission này
+                    const checkboxes = {
+                        CanRead: form.querySelector(`input[type="checkbox"][name="permissions[${index}].CanRead"]`),
+                        CanCreate: form.querySelector(`input[type="checkbox"][name="permissions[${index}].CanCreate"]`),
+                        CanUpdate: form.querySelector(`input[type="checkbox"][name="permissions[${index}].CanUpdate"]`),
+                        CanDelete: form.querySelector(`input[type="checkbox"][name="permissions[${index}].CanDelete"]`),
+                        CanApprove: form.querySelector(`input[type="checkbox"][name="permissions[${index}].CanApprove"]`)
+                    };
+                    
+                    // Thêm giá trị cho mỗi checkbox (checked = "true", unchecked = "false")
+                    Object.keys(checkboxes).forEach(key => {
+                        const checkbox = checkboxes[key];
+                        if (checkbox) {
+                            const value = checkbox.checked ? 'true' : 'false';
+                            formData.append(`permissions[${index}].${key}`, value);
+                        }
+                    });
+                });
+                
+                const originalText = submitBtn ? submitBtn.innerHTML : '';
+                
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Đang lưu...';
+                }
+                
+                fetch('/Roles/SavePermissions', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(async response => {
+                    if (response.status === 403) {
+                        try {
+                            const json = await response.json();
+                            throw new Error(json.message || 'Không có quyền thực hiện thao tác này');
+                        } catch (parseError) {
+                            throw new Error('Không có quyền thực hiện thao tác này. Vui lòng liên hệ quản trị viên.');
+                        }
+                    }
+                    
+                    if (!response.ok) {
+                        try {
+                            const json = await response.json();
+                            throw new Error(json.message || `Lỗi HTTP: ${response.status}`);
+                        } catch (parseError) {
+                            const text = await response.text();
+                            throw new Error(text || `Lỗi HTTP: ${response.status} ${response.statusText}`);
+                        }
+                    }
+                    
+                    return response.text();
+                })
+                .then(html => {
+                    const container = document.getElementById('permissions-content');
+                    if (container) {
+                        container.innerHTML = html;
+                        
+                        // Extract and save roleId to sessionStorage after successful save
+                        if (roleId) {
+                            sessionStorage.setItem('permissionsEditingRoleId', roleId);
+                        }
+                        
+                        // Reattach handlers after content update
+                        attachPermissionsFormHandlers();
+                        
+                        const messageDiv = document.getElementById('permissionsMessage');
+                        if (messageDiv) {
+                            messageDiv.className = 'bg-green-50 border border-green-200 text-green-700 rounded-md px-4 py-2 mb-3';
+                            messageDiv.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Cập nhật quyền thành công.';
+                            messageDiv.classList.remove('hidden');
+                            setTimeout(() => messageDiv.classList.add('hidden'), 5000);
+                        }
+                    }
+                    
+                    // Reset submitting flag
+                    isSubmitting = false;
+                })
+                .catch(error => {
+                    console.error('Error saving permissions:', error);
+                    
+                    // Reset submitting flag
+                    isSubmitting = false;
+                    
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalText;
+                    }
+                    
+                    const messageDiv = document.getElementById('permissionsMessage');
+                    if (messageDiv) {
+                        messageDiv.className = 'bg-red-50 border border-red-200 text-red-700 rounded-md px-4 py-2 mb-3';
+                        messageDiv.innerHTML = '<i class="bi bi-exclamation-circle-fill me-1"></i> ' + error.message;
+                        messageDiv.classList.remove('hidden');
+                        setTimeout(() => messageDiv.classList.add('hidden'), 8000);
+                    } else {
+                        alert('Lỗi khi lưu quyền: ' + error.message);
+                    }
+                });
+                
+                return false;
+            };
+            
+            form.addEventListener('submit', permissionsFormSubmitHandler);
+        }
+    }
+    
+    function loadUsersContent() {
+        const container = document.getElementById('users-content');
+        if (!container) return;
+        
+        // Show loading state
+        container.innerHTML = `
+            <div class="flex items-center justify-center py-12">
+                <div class="text-center">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p class="text-slate-600">Đang tải...</p>
+                </div>
+            </div>
+        `;
+        
+        fetch('/Users/Index?partial=true', {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            container.innerHTML = html;
+            attachUsersEventHandlers();
+        })
+        .catch(error => {
+            console.error('Error loading users:', error);
+            container.innerHTML = '<div class="text-center py-12 text-red-600">Lỗi khi tải dữ liệu</div>';
+        });
+    }
+    
+    function attachUsersEventHandlers() {
+        // Status tab buttons
+        document.querySelectorAll('.status-tab-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const status = this.dataset.status;
+                loadUsersByStatus(status);
+            });
+        });
+        
+        // User action forms (Approve, Reject, Delete, ResetPassword)
+        document.querySelectorAll('.user-action-form').forEach(form => {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(form);
+                const action = form.getAttribute('action') || form.action;
+                const submitBtn = form.querySelector('button[type="submit"]');
+                const originalText = submitBtn ? submitBtn.innerHTML : '';
+                
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+                }
+                
+                fetch(action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.text())
+                .then(html => {
+                    const container = document.getElementById('users-content');
+                    if (container) {
+                        container.innerHTML = html;
+                        attachUsersEventHandlers();
+                        
+                        // Close modals if open
+                        const modals = document.querySelectorAll('.modal.show');
+                        modals.forEach(modal => {
+                            const bsModal = bootstrap.Modal.getInstance(modal);
+                            if (bsModal) bsModal.hide();
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error submitting form:', error);
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalText;
+                    }
+                    alert('Lỗi khi xử lý yêu cầu. Vui lòng thử lại.');
+                });
+            });
+        });
+        
+        // Create user modal form
+        const createForm = document.querySelector('#createUserModal form');
+        if (createForm) {
+            createForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(createForm);
+                const submitBtn = createForm.querySelector('button[type="submit"]');
+                const originalText = submitBtn ? submitBtn.innerHTML : '';
+                
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang lưu...';
+                }
+                
+                fetch('/Users/Create', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.text())
+                .then(html => {
+                    const container = document.getElementById('users-content');
+                    if (container) {
+                        container.innerHTML = html;
+                        attachUsersEventHandlers();
+                        
+                        // Close create modal
+                        const createModal = bootstrap.Modal.getInstance(document.getElementById('createUserModal'));
+                        if (createModal) createModal.hide();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error creating user:', error);
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalText;
+                    }
+                    alert('Lỗi khi tạo người dùng. Vui lòng thử lại.');
+                });
+            });
+        }
+        
+        // Edit user modal forms
+        document.querySelectorAll('[id^="editUserModal-"] form').forEach(form => {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(form);
+                const status = document.querySelector('.status-tab-btn.bg-blue-600')?.dataset.status || 'all';
+                formData.append('status', status);
+                
+                const submitBtn = form.querySelector('button[type="submit"]');
+                const originalText = submitBtn ? submitBtn.innerHTML : '';
+                
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang cập nhật...';
+                }
+                
+                fetch('/Users/Edit', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.text())
+                .then(html => {
+                    const container = document.getElementById('users-content');
+                    if (container) {
+                        container.innerHTML = html;
+                        attachUsersEventHandlers();
+                        
+                        // Close edit modal
+                        const modalId = form.closest('.modal').id;
+                        const editModal = bootstrap.Modal.getInstance(document.getElementById(modalId));
+                        if (editModal) editModal.hide();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error updating user:', error);
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalText;
+                    }
+                    alert('Lỗi khi cập nhật người dùng. Vui lòng thử lại.');
+                });
+            });
+        });
+    }
+    
+    function loadUsersByStatus(status) {
+        const container = document.getElementById('users-content');
+        if (!container) return;
+        
+        // Update active tab styling
+        document.querySelectorAll('.status-tab-btn').forEach(btn => {
+            btn.classList.remove('bg-blue-600', 'text-white');
+            btn.classList.add('text-slate-600', 'hover:bg-slate-100');
+        });
+        const activeBtn = document.querySelector(`.status-tab-btn[data-status="${status}"]`);
+        if (activeBtn) {
+            activeBtn.classList.remove('text-slate-600', 'hover:bg-slate-100');
+            activeBtn.classList.add('bg-blue-600', 'text-white');
+        }
+        
+        // Show loading state
+        const originalContent = container.innerHTML;
+        container.innerHTML = `
+            <div class="flex items-center justify-center py-12">
+                <div class="text-center">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p class="text-slate-600">Đang tải...</p>
+                </div>
+            </div>
+        `;
+        
+        fetch(`/Users/Index?partial=true&status=${status}`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            container.innerHTML = html;
+            attachUsersEventHandlers();
+        })
+        .catch(error => {
+            console.error('Error loading users:', error);
+            container.innerHTML = originalContent;
+            alert('Lỗi khi tải dữ liệu. Vui lòng thử lại.');
+        });
+    }
+    
+    function loadLogsContent() {
+        const container = document.getElementById('logs-content');
+        if (!container) return;
+        
+        // Show loading state
+        container.innerHTML = `
+            <div class="flex items-center justify-center py-12">
+                <div class="text-center">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p class="text-slate-600">Đang tải...</p>
+                </div>
+            </div>
+        `;
+        
+        fetch('/Logs/Index?partial=true', {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            container.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error loading logs:', error);
+            container.innerHTML = '<div class="text-center py-12 text-red-600">Lỗi khi tải dữ liệu</div>';
+        });
+    }
+    
+    function loadNotificationManagementContent() {
+        const container = document.getElementById('notification-management-content');
+        if (!container) return;
+        
+        // Show loading state
+        container.innerHTML = `
+            <div class="flex items-center justify-center py-12">
+                <div class="text-center">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p class="text-slate-600">Đang tải...</p>
+                </div>
+            </div>
+        `;
+        
+        fetch('/Notifications/Index?partial=true', {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            container.innerHTML = html;
+            attachNotificationManagementHandlers();
+        })
+        .catch(error => {
+            console.error('Error loading notification management:', error);
+            container.innerHTML = '<div class="text-center py-12 text-red-600">Lỗi khi tải dữ liệu</div>';
+        });
+    }
+    
+    // Helper function to get CSRF token
+    function getCSRFToken() {
+        // Try to get from hidden input first (most reliable)
+        const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+        if (tokenInput && tokenInput.value) {
+            return tokenInput.value;
+        }
+        
+        // Try to get from cookie
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }
+        
+        const cookieToken = getCookie('__RequestVerificationToken');
+        if (cookieToken) return cookieToken;
+        
+        // Try meta tag
+        const metaToken = document.querySelector('meta[name="__RequestVerificationToken"]');
+        if (metaToken && metaToken.content) {
+            return metaToken.content;
+        }
+        
+        return '';
+    }
+
+    function attachNotificationManagementHandlers() {
+        // Handle form submissions (MarkAsRead, MarkAllAsRead, Delete, etc.)
+        document.querySelectorAll('#notification-management-content form').forEach(form => {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(form);
+                const action = form.getAttribute('action') || form.action;
+                const method = form.getAttribute('method') || 'POST';
+                const submitBtn = form.querySelector('button[type="submit"]');
+                const originalText = submitBtn ? submitBtn.innerHTML : '';
+                
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+                }
+                
+                fetch(action, {
+                    method: method,
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => {
+                    if (response.headers.get('content-type')?.includes('application/json')) {
+                        return response.json().then(json => {
+                            if (json.success) {
+                                // Reload content after successful action
+                                loadNotificationManagementContent();
+                                return null;
+                            }
+                            throw new Error(json.message || 'Có lỗi xảy ra');
+                        });
+                    }
+                    return response.text();
+                })
+                .then(html => {
+                    if (html) {
+                        const container = document.getElementById('notification-management-content');
+                        if (container) {
+                            container.innerHTML = html;
+                            attachNotificationManagementHandlers();
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error submitting form:', error);
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalText;
+                    }
+                    alert('Lỗi khi xử lý yêu cầu: ' + error.message);
+                });
+            });
+        });
+        
+        // Handle filter form submission
+        const filterForm = document.querySelector('#notification-management-content #filterForm');
+        if (filterForm) {
+            filterForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(filterForm);
+                const params = new URLSearchParams(formData);
+                params.append('partial', 'true');
+                
+                const container = document.getElementById('notification-management-content');
+                if (!container) return;
+                
+                container.innerHTML = `
+                    <div class="flex items-center justify-center py-12">
+                        <div class="text-center">
+                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                            <p class="text-slate-600">Đang tải...</p>
+                        </div>
+                    </div>
+                `;
+                
+                fetch(`/Notifications/Index?${params.toString()}`, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.text())
+                .then(html => {
+                    container.innerHTML = html;
+                    attachNotificationManagementHandlers();
+                })
+                .catch(error => {
+                    console.error('Error loading filtered notifications:', error);
+                    container.innerHTML = '<div class="text-center py-12 text-red-600">Lỗi khi tải dữ liệu</div>';
+                });
+            });
+        }
+        
+        // Handle all tab links (Tất cả, Chưa đọc, Đã đọc, Quan trọng, Lưu trữ)
+        document.querySelectorAll('#notification-management-content .notification-tab-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const url = new URL(this.href);
+                url.searchParams.append('partial', 'true');
+                
+                const container = document.getElementById('notification-management-content');
+                if (!container) return;
+                
+                container.innerHTML = `
+                    <div class="flex items-center justify-center py-12">
+                        <div class="text-center">
+                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                            <p class="text-slate-600">Đang tải...</p>
+                        </div>
+                    </div>
+                `;
+                
+                fetch(url.toString(), {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.text())
+                .then(html => {
+                    container.innerHTML = html;
+                    attachNotificationManagementHandlers();
+                })
+                .catch(error => {
+                    console.error('Error loading notifications tab:', error);
+                    container.innerHTML = '<div class="text-center py-12 text-red-600">Lỗi khi tải dữ liệu</div>';
+                });
+            });
+        });
+        
+        // Handle pagination links
+        document.querySelectorAll('#notification-management-content a[href*="/Notifications/Index"]').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const url = new URL(this.href);
+                url.searchParams.append('partial', 'true');
+                
+                const container = document.getElementById('notification-management-content');
+                if (!container) return;
+                
+                container.innerHTML = `
+                    <div class="flex items-center justify-center py-12">
+                        <div class="text-center">
+                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                            <p class="text-slate-600">Đang tải...</p>
+                        </div>
+                    </div>
+                `;
+                
+                fetch(url.toString(), {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.text())
+                .then(html => {
+                    container.innerHTML = html;
+                    attachNotificationManagementHandlers();
+                })
+                .catch(error => {
+                    console.error('Error loading notifications page:', error);
+                    container.innerHTML = '<div class="text-center py-12 text-red-600">Lỗi khi tải dữ liệu</div>';
+                });
+            });
+        });
+        
+        // Handle Toggle Important buttons
+        document.querySelectorAll('#notification-management-content .toggle-important-btn').forEach(btn => {
+            // Remove existing listeners to avoid duplicates
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            
+            newBtn.addEventListener('click', async function() {
+                const id = this.dataset.id;
+                const isImportant = this.dataset.important === 'true';
+                const endpoint = isImportant ? '/Notifications/UnmarkAsImportant' : '/Notifications/MarkAsImportant';
+                
+                const csrfToken = getCSRFToken();
+                if (!csrfToken) {
+                    console.error('CSRF token not found');
+                    alert('Không tìm thấy token bảo mật. Vui lòng tải lại trang.');
+                    return;
+                }
+                
+                const formData = new FormData();
+                formData.append('id', id);
+                formData.append('__RequestVerificationToken', csrfToken);
+                
+                try {
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'RequestVerificationToken': csrfToken
+                        },
+                        body: formData
+                    });
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error('Error response:', response.status, errorText);
+                        alert('Lỗi khi thay đổi trạng thái quan trọng. Vui lòng thử lại.');
+                        return;
+                    }
+                    
+                    const data = await response.json();
+                    if (data.success) {
+                        // Update UI without reload
+                        const notificationItem = this.closest('[data-notification-id]');
+                        const icon = this.querySelector('i');
+                        const isNowImportant = !isImportant;
+                        
+                        // Update button data attribute
+                        this.dataset.important = isNowImportant.toString();
+                        
+                        // Update icon
+                        if (isNowImportant) {
+                            icon.classList.remove('bi-star');
+                            icon.classList.add('bi-star-fill');
+                        } else {
+                            icon.classList.remove('bi-star-fill');
+                            icon.classList.add('bi-star');
+                        }
+                        
+                        // Update badge if exists
+                        if (notificationItem) {
+                            const badgeContainer = notificationItem.querySelector('.flex.items-center.gap-2.mb-1');
+                            const existingBadge = badgeContainer?.querySelector('.bg-yellow-100');
+                            
+                            if (isNowImportant && !existingBadge && badgeContainer) {
+                                // Add important badge
+                                const newBadge = document.createElement('span');
+                                newBadge.className = 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800';
+                                newBadge.innerHTML = '<i class="bi bi-star-fill text-[10px] me-1"></i> Quan trọng';
+                                badgeContainer.appendChild(newBadge);
+                            } else if (!isNowImportant && existingBadge) {
+                                existingBadge.remove();
+                            }
+                        }
+                    } else {
+                        alert('Không thể thay đổi trạng thái quan trọng. Vui lòng thử lại.');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Đã xảy ra lỗi khi thay đổi trạng thái quan trọng. Vui lòng thử lại.');
+                }
+            });
+        });
+        
+        // Handle Delete notification buttons
+        document.querySelectorAll('#notification-management-content .delete-notification-btn').forEach(btn => {
+            // Remove existing listeners to avoid duplicates
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            
+            newBtn.addEventListener('click', async function() {
+                const id = this.dataset.id;
+                if (!confirm('Bạn có chắc muốn xóa thông báo này?')) return;
+
+                const csrfToken = getCSRFToken();
+                if (!csrfToken) {
+                    console.error('CSRF token not found');
+                    alert('Không tìm thấy token bảo mật. Vui lòng tải lại trang.');
+                    return;
+                }
+                
+                const formData = new FormData();
+                formData.append('id', id);
+                formData.append('__RequestVerificationToken', csrfToken);
+                
+                try {
+                    const response = await fetch(`/Notifications/Delete/${id}`, {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'RequestVerificationToken': csrfToken
+                        },
+                        body: formData
+                    });
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error('Delete failed:', response.status, errorText);
+                        alert('Không thể xóa thông báo. Vui lòng thử lại.');
+                        return;
+                    }
+                    
+                    const data = await response.json();
+                    if (data.success) {
+                        // Find notification element to remove
+                        const notificationElement = this.closest('[data-notification-id]');
+                        if (notificationElement) {
+                            notificationElement.style.transition = 'opacity 0.3s';
+                            notificationElement.style.opacity = '0';
+                            setTimeout(() => {
+                                notificationElement.remove();
+                                // Reload content to update counts and ensure consistency
+                                loadNotificationManagementContent();
+                            }, 300);
+                        } else {
+                            // If can't find element, reload content
+                            loadNotificationManagementContent();
+                        }
+                    } else {
+                        alert('Không thể xóa thông báo. Vui lòng thử lại.');
+                    }
+                } catch (error) {
+                    console.error('Error deleting notification:', error);
+                    alert('Đã xảy ra lỗi khi xóa thông báo. Vui lòng thử lại.');
+                }
+            });
+        });
+    }
+});
+</script>
+

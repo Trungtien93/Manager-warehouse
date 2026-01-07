@@ -1,0 +1,60 @@
+{
+  "name": "BEMART - Quản lý kho",
+  "short_name": "BEMART",
+  "description": "Hệ thống quản lý kho hàng BEMART - Quản lý tồn kho, nhập xuất, báo cáo",
+  "start_url": "/Home/Dashboard",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1e293b",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "vi-VN",
+  "dir": "ltr",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/images/screenshot1.png",
+      "sizes": "540x720",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Trang chủ",
+      "description": "Xem dashboard tổng quan",
+      "url": "/Home/Dashboard",
+      "icons": [{ "src": "/favicon.ico", "sizes": "any" }]
+    },
+    {
+      "name": "Nguyên liệu",
+      "short_name": "Vật tư",
+      "description": "Quản lý nguyên liệu",
+      "url": "/Materials/Index",
+      "icons": [{ "src": "/favicon.ico", "sizes": "any" }]
+    },
+    {
+      "name": "Nhập kho",
+      "short_name": "Nhập",
+      "description": "Tạo phiếu nhập kho",
+      "url": "/StockReceipts/Index",
+      "icons": [{ "src": "/favicon.ico", "sizes": "any" }]
+    },
+    {
+      "name": "Xuất kho",
+      "short_name": "Xuất",
+      "description": "Tạo phiếu xuất kho",
+      "url": "/StockIssues/Index",
+      "icons": [{ "src": "/favicon.ico", "sizes": "any" }]
+    }
+  ]
+}
+
+

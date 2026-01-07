@@ -1,0 +1,887 @@
+@model MNBEMART.Models.StockTransfer
+@using MNBEMART.Models
+@{
+    var materials = (IEnumerable<MNBEMART.Models.Material>)(ViewBag.Materials ?? Enumerable.Empty<MNBEMART.Models.Material>());
+}
+<div class="modal fade" id="stCreateModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-fullscreen-md-down">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Tạo phiếu chuyển kho</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+      </div>
+
+      <form asp-action="Create" method="post" id="transferForm">
+        @Html.AntiForgeryToken()
+
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-lg-3">
+              <div class="border rounded p-3 bg-light">
+                <div class="mb-3">
+                  <label class="form-label">Kho đi <span class="text-danger">*</span></label>
+                  <select asp-for="FromWarehouseId" class="form-select" asp-items="ViewBag.WarehouseOptions" id="fromWarehouse" required>
+                    <option value="">-- Chọn kho đi --</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Kho đến <span class="text-danger">*</span></label>
+                  <select asp-for="ToWarehouseId" class="form-select" asp-items="ViewBag.WarehouseOptions" id="toWarehouse" required>
+                    <option value="">-- Chọn kho đến --</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Ghi chú</label>
+                  <textarea asp-for="Note" rows="3" class="form-control"></textarea>
+                </div>
+                <div class="small text-muted">Người lập: @User.Identity?.Name</div>
+              </div>
+            </div>
+
+            <div class="col-lg-9">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="input-group input-group-sm" style="max-width:400px">
+                  <span class="input-group-text">🔍</span>
+                  <input id="matSearch" class="form-control" placeholder="Nhập mã/tên vật tư...">
+                </div>
+                <button type="button" id="btnAddEmpty" class="btn btn-outline-secondary btn-sm">+ Thêm dòng trống</button>
+              </div>
+
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered align-middle" id="transferDetailsTable">
+                  <thead class="table-light">
+                    <tr>
+                      <th style="width:25%">Vật tư</th>
+                      <th style="width:8%" class="text-end">SL</th>
+                      <th style="width:8%">ĐVT</th>
+                      <th style="width:12%">Lô</th>
+                      <th style="width:10%">NSX</th>
+                      <th style="width:10%">HSD</th>
+                      <th style="width:10%" class="text-end">Tồn (kho đi)</th>
+                      <th style="width:10%">Ghi chú</th>
+                      <th style="width:5%"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="transferDetailBody"></tbody>
+                </table>
+              </div>
+
+              <div class="d-flex justify-content-end mt-2">
+                <div class="text-end">
+                  <div><strong>Tổng SL:</strong> <span id="sumItems">0</span></div>
+                </div>
+              </div>
+
+              <div class="text-muted small mt-1">* Nhấn Enter trong ô tìm kiếm để thêm dòng nhanh</div>
+              <div class="text-muted small">* Ctrl+V để dán nhiều dòng (Mã vật tư, Số lượng)</div>
+              <div class="text-muted small">* Tự động chặn chọn trùng vật tư</div>
+
+              <!-- Footer dính -->
+              <div class="sticky-actions">
+                <div class="me-auto text-danger" id="formError"></div>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Đóng</button>
+                <button type="submit" class="btn btn-primary" id="btnSubmit">Tạo phiếu</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<style>
+  #stCreateModal .modal-dialog {
+    max-width: 95vw;
+    max-height: 95vh;
+    margin: 1rem auto;
+  }
+  
+  #stCreateModal .modal-content {
+    max-height: 95vh;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  #stCreateModal .modal-body {
+    overflow-y: auto;
+    padding: 1.25rem;
+    flex: 1 1 auto;
+  }
+  
+  #stCreateModal .border.rounded {
+    padding: 1rem !important;
+  }
+  
+  #stCreateModal .form-label {
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+  }
+  
+  #stCreateModal .mb-3 {
+    margin-bottom: 1rem !important;
+  }
+  
+  #stCreateModal .table-responsive {
+    margin-bottom: 1rem;
+    max-height: 450px;
+    overflow-y: auto;
+    overflow-x: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+  }
+  
+  #stCreateModal .table-responsive .table thead {
+    position: sticky;
+    top: 0;
+    background-color: #f8f9fa;
+    z-index: 10;
+    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+  }
+  
+  #stCreateModal .sticky-actions {
+    position: sticky;
+    bottom: 0;
+    background: white;
+    padding: 1rem;
+    margin: 1rem -1.25rem -1.25rem;
+    border-top: 1px solid #dee2e6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+  }
+  
+  body.modal-open.allow-scroll {
+    overflow: auto !important;
+    padding-right: 0 !important;
+  }
+  
+  @@media (max-width: 992px) {
+    #stCreateModal .modal-dialog {
+      max-width: 98vw;
+      margin: 0.5rem auto;
+    }
+    
+    #stCreateModal .modal-body {
+      padding: 1rem;
+    }
+  }
+</style>
+
+<script>
+(function(){
+  try {
+    console.log('[StockTransfer Modal] Initializing...');
+    const modal = document.getElementById('stCreateModal');
+    if(!modal){ 
+      console.warn('[StockTransfer Modal] Modal element not found');
+      return; 
+    }
+
+    // DATA vật tư từ server
+    const mats = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+      materials.Select(m => new { m.Id, m.Code, m.Name, m.Unit })
+    ));
+
+    // GETTER functions
+    const tbody = () => modal?.querySelector('#transferDetailBody') || null;
+    const search = () => modal?.querySelector('#matSearch') || null;
+    const sumItemsEl = () => modal?.querySelector('#sumItems') || null;
+    const fromWh = () => modal?.querySelector('#fromWarehouse') || null;
+    const toWh = () => modal?.querySelector('#toWarehouse') || null;
+    const submitBtn = () => modal?.querySelector('#btnSubmit') || null;
+    const errorBox = () => modal?.querySelector('#formError') || null;
+    const form = () => modal?.querySelector('#transferForm') || null;
+
+    let isModalInitialized = false;
+    let onhandCache = {}; // key: `${wid}:${matId}` -> number
+    let lotsCache = {}; // key: `${wid}:${matId}` -> array
+
+    // Utility functions
+    function uid(){ 
+      return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'k'+Date.now()+Math.random().toString(16).slice(2); 
+    }
+
+    function toInt(v) {
+      const n = parseInt((v ?? '').toString().trim(), 10);
+      return Number.isNaN(n) ? 0 : n;
+    }
+
+    function fmtQty(v) {
+      if (v == null || v === undefined) return '—';
+      const num = Number(v);
+      if (Number.isNaN(num)) return '—';
+      return (num % 1 === 0) ? String(num | 0) : num.toFixed(2).replace(/\.?0+$/, '');
+    }
+
+    // Refresh material option states (prevent duplicates)
+    function refreshOptionStates(){
+      try {
+        const selects = modal.querySelectorAll('.mat-select');
+        const chosen = new Set([...selects].map(s => s.value).filter(Boolean));
+        selects.forEach(sel => {
+          const keep = sel.value;
+          [...sel.options].forEach(opt => {
+            if(!opt.value) return;
+            opt.disabled = (chosen.has(opt.value) && opt.value !== keep);
+          });
+        });
+      } catch (e) {
+        console.warn('[StockTransfer Modal] Error in refreshOptionStates:', e);
+      }
+    }
+
+    // Load on-hand quantity
+    async function loadOnHand(materialIds) {
+      const wid = toInt(fromWh()?.value);
+      if(!wid || !materialIds?.length) return;
+      
+      const need = materialIds.filter(id => onhandCache[`${wid}:${id}`] == null);
+      if(!need.length) return;
+      
+      try {
+        const url = `/StockTransfers/OnHand?fromWarehouseId=${wid}&ids=${need.join(',')}`;
+        const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+        if(!res.ok) return;
+        
+        const data = await res.json();
+        need.forEach(id => {
+          onhandCache[`${wid}:${id}`] = Number(data[id]) || 0;
+        });
+      } catch (e) {
+        console.warn('[StockTransfer Modal] Error loading on-hand:', e);
+        need.forEach(id => {
+          onhandCache[`${wid}:${id}`] = 0;
+        });
+      }
+    }
+
+    // Update on-hand display for a row
+    function updateRowOnHand(tr) {
+      if(!tr || !tr.parentElement) return;
+      
+      const wid = toInt(fromWh()?.value);
+      const sel = tr.querySelector('.mat-select');
+      const ohBadge = tr.querySelector('.onhand-badge');
+      
+      if(!ohBadge) return;
+      
+      const matId = sel?.value;
+      if(!wid || !matId) {
+        ohBadge.dataset.onhand = '0';
+        ohBadge.textContent = '—';
+        return;
+      }
+      
+      const key = `${wid}:${matId}`;
+      const v = onhandCache[key];
+      
+      if(v == null) {
+        ohBadge.dataset.onhand = '0';
+        ohBadge.textContent = '...';
+      } else {
+        ohBadge.dataset.onhand = String(v);
+        ohBadge.textContent = fmtQty(v);
+        ohBadge.className = v === 0 ? 'onhand-badge text-danger' : 'onhand-badge';
+      }
+    }
+
+    // Load lots for a row
+    async function loadLotsForRow(tr, materialId) {
+      if(!tr || !tr.parentElement) return;
+      
+      const fromId = toInt(fromWh()?.value);
+      const lotSelect = tr.querySelector('.lot-select');
+      
+      if(!fromId || !materialId || !lotSelect) {
+        if(lotSelect) lotSelect.innerHTML = '<option value="">-- Chọn lô --</option>';
+        return;
+      }
+      
+      const cacheKey = `${fromId}:${materialId}`;
+      if(lotsCache[cacheKey]) {
+        populateLotSelect(lotSelect, lotsCache[cacheKey]);
+        return;
+      }
+      
+      try {
+        const res = await fetch(`/StockTransfers/GetAvailableLots?warehouseId=${fromId}&materialId=${materialId}`);
+        if(!res.ok) return;
+        
+        if(!tr.parentElement) return;
+        
+        const data = await res.json();
+        if(!data.success || !data.lots) {
+          if(lotSelect && tr.contains(lotSelect)) {
+            lotSelect.innerHTML = '<option value="">-- Không có lô --</option>';
+          }
+          return;
+        }
+        
+        lotsCache[cacheKey] = data.lots;
+        
+        if(!tr.parentElement) return;
+        
+        if(lotSelect && tr.contains(lotSelect)) {
+          populateLotSelect(lotSelect, data.lots);
+        }
+      } catch (e) {
+        console.warn('[StockTransfer Modal] Error loading lots:', e);
+        if(lotSelect && tr.contains(lotSelect)) {
+          lotSelect.innerHTML = '<option value="">-- Lỗi tải lô --</option>';
+        }
+      }
+    }
+
+    // Populate lot select dropdown
+    function populateLotSelect(select, lots) {
+      if(!select) return;
+      
+      select.innerHTML = '<option value="">-- Chọn lô --</option>';
+      
+      lots.forEach(lot => {
+        const option = document.createElement('option');
+        option.value = lot.lotId;
+        const mfgDate = lot.mfgDate ? new Date(lot.mfgDate).toLocaleDateString('vi-VN') : '';
+        const expDate = lot.expDate ? new Date(lot.expDate).toLocaleDateString('vi-VN') : '';
+        option.textContent = `${lot.lotNumber} (Tồn: ${lot.qty})${mfgDate ? ' | NSX: ' + mfgDate : ''}${expDate ? ' | HSD: ' + expDate : ''}`;
+        option.dataset.mfgDate = lot.mfgDate || '';
+        option.dataset.expDate = lot.expDate || '';
+        option.dataset.qty = lot.qty || '0';
+        select.appendChild(option);
+      });
+    }
+
+    // Handle lot selection change
+    function handleLotChange(tr) {
+      if(!tr || !tr.parentElement) return;
+      
+      const lotSelect = tr.querySelector('.lot-select');
+      const nsxInput = tr.querySelector('.nsx-input');
+      const hsdInput = tr.querySelector('.hsd-input');
+      const qtyInput = tr.querySelector('.qty');
+      
+      if(!lotSelect) return;
+      
+      const selectedOption = lotSelect.options[lotSelect.selectedIndex];
+      
+      if(selectedOption && selectedOption.value) {
+        const mfgDate = selectedOption.dataset.mfgDate;
+        const expDate = selectedOption.dataset.expDate;
+        const lotQty = parseFloat(selectedOption.dataset.qty || '0');
+        
+        if(nsxInput && mfgDate) {
+          const mfgDateObj = new Date(mfgDate);
+          if(!isNaN(mfgDateObj.getTime())) {
+            nsxInput.value = mfgDateObj.toISOString().split('T')[0];
+          }
+        }
+        
+        if(hsdInput && expDate) {
+          const expDateObj = new Date(expDate);
+          if(!isNaN(expDateObj.getTime())) {
+            hsdInput.value = expDateObj.toISOString().split('T')[0];
+          }
+        }
+        
+        if(qtyInput && lotQty > 0) {
+          const qty = parseFloat(qtyInput.value || '0');
+          if(qty > lotQty) {
+            qtyInput.classList.add('is-invalid');
+            qtyInput.title = `Số lượng vượt tồn lô (${qty} > ${lotQty})`;
+          } else {
+            qtyInput.classList.remove('is-invalid');
+            qtyInput.removeAttribute('title');
+          }
+        }
+      } else {
+        if(nsxInput) nsxInput.value = '';
+        if(hsdInput) hsdInput.value = '';
+      }
+    }
+
+    // Validate a row
+    function validateRow(tr) {
+      if(!tr || !tr.parentElement) return;
+      
+      const qtyInput = tr.querySelector('.qty');
+      const ohBadge = tr.querySelector('.onhand-badge');
+      const lotSelect = tr.querySelector('.lot-select');
+      const unitInput = tr.querySelector('.unit');
+      const nsxInput = tr.querySelector('.nsx-input');
+      const hsdInput = tr.querySelector('.hsd-input');
+      
+      if(!qtyInput) return;
+      
+      // Remove invalid classes
+      qtyInput.classList.remove('is-invalid');
+      qtyInput.removeAttribute('title');
+      if(unitInput) {
+        unitInput.classList.remove('is-invalid');
+        unitInput.removeAttribute('title');
+      }
+      if(lotSelect) {
+        lotSelect.classList.remove('is-invalid');
+        lotSelect.removeAttribute('title');
+      }
+      if(nsxInput) {
+        nsxInput.classList.remove('is-invalid');
+        nsxInput.removeAttribute('title');
+      }
+      if(hsdInput) {
+        hsdInput.classList.remove('is-invalid');
+        hsdInput.removeAttribute('title');
+      }
+      
+      const qty = toInt(qtyInput.value);
+      if(qty < 1) {
+        qtyInput.value = '1';
+        return;
+      }
+      
+      const onhand = toInt(ohBadge?.dataset.onhand || '0');
+      
+      if(qty > onhand) {
+        qtyInput.classList.add('is-invalid');
+        qtyInput.title = onhand === 0 
+          ? 'Kho đang hết hàng (tồn = 0).' 
+          : `Số lượng vượt tồn (${qty} > ${onhand})`;
+      }
+      
+      if(lotSelect && lotSelect.value) {
+        const selectedOption = lotSelect.options[lotSelect.selectedIndex];
+        if(selectedOption) {
+          const lotQty = parseFloat(selectedOption.dataset.qty || '0');
+          if(qty > lotQty) {
+            qtyInput.classList.add('is-invalid');
+            qtyInput.title = `Số lượng vượt tồn lô (${qty} > ${lotQty})`;
+          }
+        }
+      }
+    }
+
+    // Render a new row
+    function renderRow(prefill){
+      try {
+        const tbodyEl = tbody();
+        if (!tbodyEl) {
+          console.warn('[StockTransfer Modal] tbody not found');
+          return;
+        }
+
+        const key = uid();
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>
+            <input type="hidden" name="Details.index" value="${key}" />
+            <select name="Details[${key}].MaterialId" class="form-select form-select-sm mat-select" required>
+              <option value="">-- Chọn vật tư --</option>
+              ${mats.map(m => `<option value="${m.Id}">${(m.Code ?? '').trim()} ${m.Name}</option>`).join('')}
+            </select>
+          </td>
+          <td>
+            <input name="Details[${key}].Quantity" type="number" min="1" step="1" class="form-control form-control-sm text-end qty" value="${prefill?.q ?? 1}" required/>
+          </td>
+          <td>
+            <input name="Details[${key}].Unit" class="form-control form-control-sm unit" required />
+          </td>
+          <td>
+            <select name="Details[${key}].LotId" class="form-select form-select-sm lot-select" required>
+              <option value="">-- Chọn lô --</option>
+            </select>
+          </td>
+          <td>
+            <input name="Details[${key}].ManufactureDate" type="date" class="form-control form-select-sm nsx-input" required />
+          </td>
+          <td>
+            <input name="Details[${key}].ExpiryDate" type="date" class="form-control form-select-sm hsd-input" required />
+          </td>
+          <td class="text-end">
+            <span class="onhand-badge" data-onhand="0">—</span>
+          </td>
+          <td>
+            <input name="Details[${key}].Note" class="form-control form-control-sm" placeholder="Ghi chú" />
+          </td>
+          <td class="text-center">
+            <button type="button" class="btn btn-outline-danger btn-sm btn-del-row">✕</button>
+          </td>`;
+        
+        tbodyEl.appendChild(tr);
+
+        // Setup event listeners
+        const sel = tr.querySelector('.mat-select');
+        const qtyInput = tr.querySelector('.qty');
+        const delBtn = tr.querySelector('.btn-del-row');
+        const lotSelect = tr.querySelector('.lot-select');
+        const unitInput = tr.querySelector('.unit');
+
+        // Material selection change
+        sel?.addEventListener('change', async (e) => {
+          const val = (e.target.value || '').trim();
+          
+          if(!val) {
+            refreshOptionStates();
+            updateRowOnHand(tr);
+            calc();
+            if (isModalInitialized) validateForm();
+            return;
+          }
+
+          // Check duplicate
+          const dup = [...modal.querySelectorAll('.mat-select')].some(s => s !== sel && s.value === val);
+          if(dup) {
+            alert('Vật tư này đã được chọn ở dòng khác. Vui lòng chọn vật tư khác.');
+            sel.value = '';
+            refreshOptionStates();
+            return;
+          }
+
+          refreshOptionStates();
+          
+          // Load unit, lots, on-hand
+          const m = mats.find(x => String(x.Id) === String(val));
+          if(unitInput && m) {
+            unitInput.value = m.Unit || '';
+          }
+          
+          await Promise.all([
+            loadLotsForRow(tr, val),
+            loadOnHand([val])
+          ]);
+          
+          updateRowOnHand(tr);
+          validateRow(tr);
+          calc();
+          if (isModalInitialized) validateForm();
+        });
+
+        // Quantity input
+        qtyInput?.addEventListener('input', () => {
+          qtyInput.value = qtyInput.value.replace(/[^\d]/g,'');
+          validateRow(tr);
+          calc();
+          if (isModalInitialized) validateForm();
+        });
+        qtyInput?.addEventListener('blur', () => {
+          qtyInput.value = Math.max(1, Math.floor(Number(qtyInput.value||1)));
+          validateRow(tr);
+          calc();
+          if (isModalInitialized) validateForm();
+        });
+
+        // Lot selection change
+        lotSelect?.addEventListener('change', () => {
+          handleLotChange(tr);
+          validateRow(tr);
+          if (isModalInitialized) validateForm();
+        });
+        
+        // NSX and HSD input change
+        const nsxInput = tr.querySelector('.nsx-input');
+        const hsdInput = tr.querySelector('.hsd-input');
+        nsxInput?.addEventListener('change', () => {
+          if (isModalInitialized) validateForm();
+        });
+        hsdInput?.addEventListener('change', () => {
+          if (isModalInitialized) validateForm();
+        });
+        
+        // Unit input change
+        unitInput?.addEventListener('input', () => {
+          if (isModalInitialized) validateForm();
+        });
+
+        // Delete row
+        delBtn?.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const tbodyEl = tbody();
+          if(!tbodyEl) return;
+          
+          const rows = tbodyEl.querySelectorAll('tr');
+          if(rows.length <= 1) {
+            alert('Phải có ít nhất 1 dòng chi tiết.');
+            return;
+          }
+          
+          tr.remove();
+          refreshOptionStates();
+          calc();
+          if (isModalInitialized) validateForm();
+        });
+
+        refreshOptionStates();
+        calc();
+        
+        return tr;
+      } catch (e) {
+        console.error('[StockTransfer Modal] Error in renderRow:', e);
+      }
+    }
+
+    // Calculate totals
+    function calc(){
+      try {
+        let items = 0;
+        const tbodyEl = tbody();
+        if (!tbodyEl) return;
+        
+        tbodyEl.querySelectorAll('tr').forEach(tr=>{
+          const q = toInt(tr.querySelector('.qty')?.value || 0);
+          if(q>0) items += q;
+        });
+        
+        if(sumItemsEl()) sumItemsEl().textContent = items.toLocaleString('vi-VN');
+      } catch (e) {
+        console.warn('[StockTransfer Modal] Error in calc:', e);
+      }
+    }
+
+    // Validate form
+    function validateForm(){
+      try {
+        if (!isModalInitialized) {
+          console.log('[StockTransfer Modal] validateForm: Modal not initialized, returning true');
+          return true;
+        }
+
+        const formEl = form();
+        const errorBoxEl = errorBox();
+        const submitBtnEl = submitBtn();
+        if(!formEl || !errorBoxEl) {
+          console.log('[StockTransfer Modal] validateForm: Form or errorBox not found, returning true');
+          return true;
+        }
+
+        const fromId = toInt(fromWh()?.value);
+        const toId = toInt(toWh()?.value);
+        const allRows = tbody()?.querySelectorAll('tr') || [];
+        
+        console.log('[StockTransfer Modal] validateForm: fromId=', fromId, 'toId=', toId, 'rows=', allRows.length);
+        
+        const rows = Array.from(allRows).filter(tr => {
+          if(!tr || !tr.parentElement) return false;
+          const matSelect = tr.querySelector('.mat-select');
+          return matSelect !== null;
+        });
+        
+        console.log('[StockTransfer Modal] validateForm: filtered rows=', rows.length);
+        
+        let errors = [];
+        
+        if(!fromId) errors.push('Vui lòng chọn kho đi.');
+        if(!toId) errors.push('Vui lòng chọn kho đến.');
+        if(fromId && toId && fromId === toId) {
+          errors.push('Kho đi và kho đến không được trùng nhau.');
+        }
+        
+        let hasValidRow = false;
+        
+        rows.forEach((tr, index) => {
+          const matSelect = tr.querySelector('select.mat-select');
+          const qtyInput = tr.querySelector('input.qty');
+          
+          if(!matSelect || !qtyInput) return;
+          
+          const materialId = (matSelect.value || '').trim();
+          const qtyStr = (qtyInput.value || '').trim();
+          const qtyNum = toInt(qtyStr);
+          
+          const unitInput = tr.querySelector('.unit');
+          const lotSelect = tr.querySelector('.lot-select');
+          const nsxInput = tr.querySelector('.nsx-input');
+          const hsdInput = tr.querySelector('.hsd-input');
+          
+          const unit = unitInput ? (unitInput.value || '').trim() : '';
+          const lotId = lotSelect ? (lotSelect.value || '').trim() : '';
+          const nsx = nsxInput ? (nsxInput.value || '').trim() : '';
+          const hsd = hsdInput ? (hsdInput.value || '').trim() : '';
+          
+          console.log(`[StockTransfer Modal] validateForm: Row ${index + 1}: materialId=${materialId}, qty=${qtyNum}, unit=${unit}, lotId=${lotId}, nsx=${nsx}, hsd=${hsd}`);
+          
+          const hasMaterial = materialId && materialId !== '' && materialId !== '0';
+          const hasQuantity = qtyNum > 0;
+          const hasUnit = unit && unit !== '';
+          const hasLot = lotId && lotId !== '';
+          const hasNSX = nsx && nsx !== '';
+          const hasHSD = hsd && hsd !== '';
+          
+          const isValid = hasMaterial && hasQuantity && hasUnit && hasLot && hasNSX && hasHSD;
+          
+          if(isValid) {
+            hasValidRow = true;
+            console.log(`[StockTransfer Modal] validateForm: Row ${index + 1} is valid`);
+          } else {
+            if(!hasMaterial) errors.push(`Dòng ${index + 1}: Vui lòng chọn vật tư.`);
+            if(!hasQuantity) errors.push(`Dòng ${index + 1}: Vui lòng nhập số lượng > 0.`);
+            if(!hasUnit) errors.push(`Dòng ${index + 1}: Vui lòng nhập đơn vị tính.`);
+            if(!hasLot) errors.push(`Dòng ${index + 1}: Vui lòng chọn lô.`);
+            if(!hasNSX) errors.push(`Dòng ${index + 1}: Vui lòng nhập ngày sản xuất.`);
+            if(!hasHSD) errors.push(`Dòng ${index + 1}: Vui lòng nhập hạn sử dụng.`);
+          }
+          
+          if(qtyInput.classList.contains('is-invalid')) {
+            errors.push(`Dòng ${index + 1}: Số lượng vượt tồn kho hoặc tồn lô.`);
+          }
+        });
+        
+        if(!hasValidRow) {
+          errors.push('Vui lòng nhập ít nhất 1 dòng vật tư với đầy đủ thông tin.');
+        }
+
+        console.log('[StockTransfer Modal] validateForm: errors=', errors, 'hasValidRow=', hasValidRow);
+
+        if(errors.length > 0){
+          errorBoxEl.textContent = errors[0];
+          errorBoxEl.style.display = 'block';
+          if(submitBtnEl) submitBtnEl.disabled = true;
+          console.log('[StockTransfer Modal] validateForm: Validation failed, returning false');
+          return false;
+        } else {
+          errorBoxEl.textContent = '';
+          errorBoxEl.style.display = 'none';
+          if(submitBtnEl) submitBtnEl.disabled = false;
+          console.log('[StockTransfer Modal] validateForm: Validation passed, returning true');
+          return true;
+        }
+      } catch (e) {
+        console.error('[StockTransfer Modal] Error in validateForm:', e);
+        return true; // Allow submit on error
+      }
+    }
+
+    // Validate warehouses on change
+    fromWh()?.addEventListener('change', () => {
+      onhandCache = {};
+      lotsCache = {};
+      const rows = tbody()?.querySelectorAll('tr') || [];
+      rows.forEach(tr => {
+        const sel = tr.querySelector('.mat-select');
+        if(sel && sel.value) {
+          loadOnHand([sel.value]).then(() => {
+            updateRowOnHand(tr);
+            validateRow(tr);
+          });
+          loadLotsForRow(tr, sel.value);
+        }
+      });
+      if (isModalInitialized) validateForm();
+    });
+
+    toWh()?.addEventListener('change', () => {
+      if (isModalInitialized) validateForm();
+    });
+
+    // Add empty row button
+    modal.addEventListener('click', (e)=>{
+      const btn = e.target.closest('#btnAddEmpty');
+      if(!btn) return;
+      e.preventDefault();
+      renderRow();
+    });
+
+    // Enter in search to add row
+    search()?.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter') {
+        e.preventDefault();
+        renderRow();
+      }
+    });
+
+    // Paste multiple lines (Ctrl+V)
+    tbody()?.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData('text');
+      const lines = text.split('\n').filter(line => line.trim());
+      
+      lines.forEach((line, index) => {
+        const parts = line.split('\t').map(p => p.trim());
+        const materialCode = parts[0];
+        const qty = toInt(parts[1] || '1');
+        
+        const mat = mats.find(m => {
+          const code = (m.Code || '').trim();
+          return code.toLowerCase() === materialCode.toLowerCase();
+        });
+        
+        if(mat) {
+          setTimeout(() => {
+            const tr = renderRow({ q: qty });
+            if(tr) {
+              const sel = tr.querySelector('.mat-select');
+              if(sel) {
+                sel.value = mat.Id;
+                sel.dispatchEvent(new Event('change'));
+              }
+            }
+          }, index * 50);
+        }
+      });
+    });
+
+    // Form submission - use standard form submit (not AJAX)
+    const formEl = form();
+    if (formEl) {
+      formEl.addEventListener('submit', (e) => {
+        try {
+          console.log('[StockTransfer Modal] Form submit event triggered');
+          const isValid = validateForm();
+          console.log('[StockTransfer Modal] Validation result:', isValid);
+          if(!isValid){
+            console.warn('[StockTransfer Modal] Form validation failed, preventing submit');
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+          }
+          console.log('[StockTransfer Modal] Form validation passed, allowing submit');
+          // Allow form to submit normally if valid
+        } catch (error) {
+          console.error('[StockTransfer Modal] Error in form submit:', error);
+          // Don't prevent submit on error - let server handle it
+        }
+      });
+      
+      // Also handle button click to ensure form submits
+      const submitBtnEl = submitBtn();
+      if (submitBtnEl) {
+        submitBtnEl.addEventListener('click', (e) => {
+          console.log('[StockTransfer Modal] Submit button clicked');
+          // Let form submit handler handle validation
+        });
+      }
+    }
+
+    // Modal show event
+    modal.addEventListener('shown.bs.modal', () => {
+      isModalInitialized = false;
+      const tbodyEl = tbody();
+      if(tbodyEl) tbodyEl.innerHTML = '';
+      
+      setTimeout(() => {
+        renderRow();
+        setTimeout(() => {
+          calc();
+          isModalInitialized = true;
+          validateForm();
+        }, 100);
+      }, 100);
+    });
+
+    // Modal hide event
+    modal.addEventListener('hidden.bs.modal', () => {
+      const tbodyEl = tbody();
+      if(tbodyEl) tbodyEl.innerHTML = '';
+      const formEl = form();
+      if(formEl) formEl.reset();
+      onhandCache = {};
+      lotsCache = {};
+      isModalInitialized = false;
+    });
+
+    console.log('[StockTransfer Modal] Initialization complete');
+  } catch (error) {
+    console.error('[StockTransfer Modal] Initialization error:', error);
+  }
+})();
+</script>

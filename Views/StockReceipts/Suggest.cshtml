@@ -1,0 +1,32 @@
+@model IEnumerable<MNBEMART.Models.Stock>
+@{
+    ViewData["Title"] = "Gợi ý nhập hàng";
+}
+<div class="p-6">
+  <h3 class="mb-3">Gợi ý nhập hàng (tồn thấp)</h3>
+  <div class="table-responsive">
+    <table class="table table-sm table-striped align-middle">
+      <thead>
+        <tr>
+          <th>Mã</th>
+          <th>Tên</th>
+          <th>ĐVT</th>
+          <th>Kho</th>
+          <th class="text-end">Tồn</th>
+        </tr>
+      </thead>
+      <tbody>
+        @foreach (var s in Model)
+        {
+          <tr>
+            <td class="fw-semibold">@s.Material?.Code</td>
+            <td>@s.Material?.Name</td>
+            <td>@s.Material?.Unit</td>
+            <td>@s.Warehouse?.Name</td>
+            <td class="text-end">@s.Quantity</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

@@ -2,10 +2,13 @@ using System.Diagnostics;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;           // <— THÊM DÒNG NÀY
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Caching.Memory;
 using MNBEMART.Data;
 using MNBEMART.Models;
+using MNBEMART.Services;
 
 namespace MNBEMART.Controllers;
 
@@ -13,7 +16,17 @@ namespace MNBEMART.Controllers;
 public class HomeController : Controller
 {
     private readonly AppDbContext _context;
-    public HomeController(AppDbContext context) => _context = context;
+    private readonly IStockoutPredictionService _stockoutService;
+    private readonly ILogger<HomeController> _logger;
+    private readonly IMemoryCache _cache;
+    
+    public HomeController(AppDbContext context, IStockoutPredictionService stockoutService, ILogger<HomeController> logger, IMemoryCache cache)
+    {
+        _context = context;
+        _stockoutService = stockoutService;
+        _logger = logger;
+        _cache = cache;
+    }
 
     [Authorize]
     public IActionResult Index()
@@ -25,8 +38,14 @@ public class HomeController : Controller
     }
 
     // ==== DASHBOARD (ASYNC) ====
+    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public async Task<IActionResult> Dashboard()
     {
+        // Buộc trình duyệt luôn lấy mới (không dùng cache) để sidebar phản ánh đúng user hiện tại
+        Response.Headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0";
+        Response.Headers["Pragma"] = "no-cache";
+        Response.Headers["Expires"] = "0";
+
         // KPIs cơ bản
         ViewBag.TotalMaterials = await _context.Materials.CountAsync();
         ViewBag.TotalWarehouses = await _context.Warehouses.CountAsync();
@@ -98,14 +117,43 @@ public class HomeController : Controller
             .OrderByDescending(x => x.Qty)
             .ToListAsync();
 
-        // ===== DỮ LIỆU CHO 2 MODAL “Tạo nhanh” =====
-        ViewBag.WarehouseOptions = new SelectList(
-            await _context.Warehouses.AsNoTracking()
-                .OrderBy(w => w.Name).ToListAsync(),
-            "Id", "Name");
+        // ===== DỮ LIỆU CHO 2 MODAL "Tạo nhanh" - Cached =====
+        const string warehousesCacheKey = "home_warehouses_list";
+        const string materialsCacheKey = "home_materials_list";
+        
+        if (!_cache.TryGetValue(warehousesCacheKey, out List<SelectListItem>? cachedWarehouses))
+        {
+            cachedWarehouses = (await _context.Warehouses.AsNoTracking()
+                .OrderBy(w => w.Name)
+                .Select(w => new SelectListItem { Value = w.Id.ToString(), Text = w.Name })
+                .ToListAsync());
+            _cache.Set(warehousesCacheKey, cachedWarehouses, TimeSpan.FromMinutes(30));
+        }
+        ViewBag.WarehouseOptions = new SelectList(cachedWarehouses ?? new List<SelectListItem>(), "Value", "Text");
 
-        ViewBag.Materials = await _context.Materials.AsNoTracking()
-            .OrderBy(m => m.Name).ToListAsync();
+        if (!_cache.TryGetValue(materialsCacheKey, out List<Material>? cachedMaterials))
+        {
+            cachedMaterials = await _context.Materials.AsNoTracking()
+                .OrderBy(m => m.Name)
+                .ToListAsync();
+            _cache.Set(materialsCacheKey, cachedMaterials, TimeSpan.FromMinutes(30));
+        }
+        ViewBag.Materials = cachedMaterials ?? new List<Material>();
+
+        // Stockout predictions (AI)
+        try
+        {
+            var stockoutPredictions = await _stockoutService.PredictStockoutsAsync(daysAhead: 14);
+            ViewBag.StockoutPredictions = stockoutPredictions.Take(10).ToList(); // Top 10 nguy cơ cao nhất
+            ViewBag.StockoutPredictionsCount = stockoutPredictions.Count; // Debug info
+        }
+        catch (Exception ex)
+        {
+            // Log error để debug
+            _logger.LogError(ex, "Error loading stockout predictions");
+            ViewBag.StockoutPredictions = new List<object>();
+            ViewBag.StockoutPredictionsCount = 0;
+        }
 
 
 
@@ -155,8 +203,48 @@ public class HomeController : Controller
                 Unit = s.Material.Unit
             }).ToListAsync();
 
+        // Cảnh báo lô sắp hết hạn (HSD <= 30 ngày hoặc đã hết hạn)
+        var today = DateTime.Now.Date;
+        var warningDate = today.AddDays(30);
+        
+        ViewBag.ExpiringLots = await _context.StockLots.AsNoTracking()
+            .Include(l => l.Material).Include(l => l.Warehouse)
+            .Where(l => l.Quantity > 0 && l.ExpiryDate != null && l.ExpiryDate <= warningDate)
+            .OrderBy(l => l.ExpiryDate)
+            .Take(10)
+            .Select(l => new
+            {
+                LotNumber = l.LotNumber,
+                MaterialCode = l.Material.Code,
+                MaterialName = l.Material.Name,
+                WarehouseName = l.Warehouse.Name,
+                Quantity = l.Quantity,
+                Unit = l.Material.Unit,
+                ManufactureDate = l.ManufactureDate,
+                ExpiryDate = l.ExpiryDate,
+                DaysLeft = l.ExpiryDate != null ? (int)(l.ExpiryDate.Value.Date - today).TotalDays : 0
+            })
+            .ToListAsync();
+
+        // Tổng số lô hàng đang quản lý
+        ViewBag.TotalLots = await _context.StockLots
+            .Where(l => l.Quantity > 0)
+            .CountAsync();
+
+        // Tổng số lô đã hết hạn
+        ViewBag.ExpiredLots = await _context.StockLots
+            .Where(l => l.Quantity > 0 && l.ExpiryDate != null && l.ExpiryDate < today)
+            .CountAsync();
+
+        // Tổng số lô sắp hết hạn (7-30 ngày)
+        var sevenDays = today.AddDays(7);
+        ViewBag.ExpiringSoonLots = await _context.StockLots
+            .Where(l => l.Quantity > 0 && l.ExpiryDate != null && 
+                   l.ExpiryDate >= today && l.ExpiryDate <= warningDate)
+            .CountAsync();
+
                 
-        return View();        
+        return View();
 
     }
 
@@ -164,4 +252,93 @@ public class HomeController : Controller
 
     public IActionResult Error() =>
         View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+
+    // ===== CHART API ENDPOINTS =====
+    
+    [HttpGet]
+    public async Task<IActionResult> GetTrendsChartData()
+    {
+        // Last 30 days receipt/issue trends
+        var endDate = DateTime.Today;
+        var startDate = endDate.AddDays(-29);
+        
+        var dates = Enumerable.Range(0, 30)
+            .Select(i => startDate.AddDays(i))
+            .ToList();
+
+        var receipts = await _context.StockBalances
+            .Where(sb => sb.Date >= startDate && sb.Date <= endDate)
+            .GroupBy(sb => sb.Date)
+            .Select(g => new { Date = g.Key, Total = g.Sum(x => x.InQty) })
+            .ToDictionaryAsync(x => x.Date, x => x.Total);
+
+        var issues = await _context.StockBalances
+            .Where(sb => sb.Date >= startDate && sb.Date <= endDate)
+            .GroupBy(sb => sb.Date)
+            .Select(g => new { Date = g.Key, Total = g.Sum(x => x.OutQty) })
+            .ToDictionaryAsync(x => x.Date, x => x.Total);
+
+        return Json(new
+        {
+            labels = dates.Select(d => d.ToString("dd/MM")).ToArray(),
+            datasets = new[]
+            {
+                new
+                {
+                    label = "Nhập kho",
+                    data = dates.Select(d => receipts.GetValueOrDefault(d, 0)).ToArray(),
+                    borderColor = "rgb(16, 185, 129)",
+                    backgroundColor = "rgba(16, 185, 129, 0.1)",
+                    tension = 0.4
+                },
+                new
+                {
+                    label = "Xuất kho",
+                    data = dates.Select(d => issues.GetValueOrDefault(d, 0)).ToArray(),
+                    borderColor = "rgb(239, 68, 68)",
+                    backgroundColor = "rgba(239, 68, 68, 0.1)",
+                    tension = 0.4
+                }
+            }
+        });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetDistributionChartData()
+    {
+        // Stock distribution by warehouse
+        var distribution = await _context.Stocks
+            .GroupBy(s => s.Warehouse.Name)
+            .Select(g => new
+            {
+                Warehouse = g.Key,
+                TotalQty = g.Sum(s => s.Quantity)
+            })
+            .OrderByDescending(x => x.TotalQty)
+            .ToListAsync();
+
+        return Json(new
+        {
+            labels = distribution.Select(x => x.Warehouse).ToArray(),
+            datasets = new[]
+            {
+                new
+                {
+                    label = "Tồn kho",
+                    data = distribution.Select(x => x.TotalQty).ToArray(),
+                    backgroundColor = new[]
+                    {
+                        "rgba(59, 130, 246, 0.8)",
+                        "rgba(16, 185, 129, 0.8)",
+                        "rgba(251, 146, 60, 0.8)",
+                        "rgba(139, 92, 246, 0.8)",
+                        "rgba(236, 72, 153, 0.8)",
+                        "rgba(14, 165, 233, 0.8)"
+                    },
+                    borderWidth = 2,
+                    borderColor = "#fff"
+                }
+            }
+        });
+    }
 }

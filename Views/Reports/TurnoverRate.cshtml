@@ -1,0 +1,564 @@
+@model List<MNBEMART.ViewModels.TurnoverRateVM>
+@using System.Globalization
+@using Microsoft.AspNetCore.Mvc.Rendering
+
+@{
+    ViewData["Title"] = "Báo cáo tỷ lệ quay vòng hàng tồn kho";
+    dynamic f = ViewBag.Filter;
+    var now = DateTime.Now;
+    DateTime displayFrom = (f?.From as DateTime?)?.Date ?? new DateTime(now.Year, now.Month, 1);
+    DateTime displayTo   = (f?.To as DateTime?)?.Date   ?? new DateTime(now.Year, now.Month, 1).AddMonths(1).AddDays(-1);
+    int? warehouseId = f?.WarehouseId as int?;
+    int totalMaterials = ViewBag.TotalMaterials ?? Model.Count;
+    int fastCount = ViewBag.FastCount ?? Model.Count(d => d.Category == "Fast");
+    int mediumCount = ViewBag.MediumCount ?? Model.Count(d => d.Category == "Medium");
+    int slowCount = ViewBag.SlowCount ?? Model.Count(d => d.Category == "Slow");
+
+    string FormatMoney(decimal v) {
+        return v.ToString("N0", CultureInfo.InvariantCulture) + " đ";
+    }
+
+    string FormatQty(decimal v) {
+        return (v % 1m == 0m) ? ((long)v).ToString() : v.ToString("0.##");
+    }
+}
+
+<!-- Tailwind + Chart.js -->
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<style>
+    /* Animations */
+    @@keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @@keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+    
+    .animate-fade-in-up {
+        animation: fadeInUp 0.5s ease-out;
+    }
+    
+    .animate-slide-in {
+        animation: slideIn 0.3s ease-out;
+    }
+    
+    /* Table improvements */
+    .turnover-table thead {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    
+    .turnover-table tbody tr {
+        transition: all 0.2s ease;
+    }
+    
+    .turnover-table tbody tr:hover {
+        background-color: #f8fafc !important;
+        transform: translateX(2px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    /* Stats card hover effect */
+    .stat-card {
+        transition: all 0.3s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    }
+</style>
+
+<div class="max-w-[1600px] mx-auto px-4 sm:px-4 lg:px-6 py-4 lg:py-6">
+    <!-- Header -->
+    @* <div class="mb-4 animate-fade-in-up">
+        <div class="bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl shadow-lg p-5 text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-black tracking-tight mb-2 flex items-center gap-3">
+                        <div class="bg-white/20 backdrop-blur-sm rounded-xl p-2">
+                            <i class="bi bi-arrow-repeat text-xl"></i>
+                        </div>
+                        Báo cáo tỷ lệ quay vòng hàng tồn kho
+                    </h1>
+                    <p class="text-green-100 text-sm mt-2">Phân tích tốc độ quay vòng hàng tồn kho của từng nguyên liệu</p>
+                </div>
+            </div>
+        </div>
+    </div> *@
+
+    <!-- Filter Section -->
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 mb-6 p-4 animate-fade-in-up" style="animation-delay: 0.1s">
+        <form id="filterForm" method="get" asp-controller="Reports" asp-action="TurnoverRate">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                <div>
+                    <label class="text-sm font-semibold text-slate-700 mb-2 block flex items-center gap-2">
+                        <i class="bi bi-building text-green-600"></i>Kho
+                    </label>
+                    <select name="WarehouseId" asp-items="ViewBag.Warehouses" 
+                            class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all shadow-sm hover:border-green-400">
+                        <option value="">Tất cả kho</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-slate-700 mb-2 block flex items-center gap-2">
+                        <i class="bi bi-calendar-event text-green-600"></i>Từ ngày
+                    </label>
+                    <input type="date" name="From" value="@displayFrom.ToString("yyyy-MM-dd")" 
+                           class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all shadow-sm hover:border-green-400" />
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-slate-700 mb-2 block flex items-center gap-2">
+                        <i class="bi bi-calendar-check text-green-600"></i>Đến ngày
+                    </label>
+                    <input type="date" name="To" value="@displayTo.ToString("yyyy-MM-dd")" 
+                           class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all shadow-sm hover:border-green-400" />
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button type="submit" 
+                        class="px-4 py-2 text-xs font-semibold rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg flex items-center gap-2 whitespace-nowrap">
+                    <i class="bi bi-funnel-fill"></i>
+                    Xem
+                </button>
+                <button type="submit" formaction="/Reports/ExportPdfTurnoverRate"
+                        class="px-4 py-2 text-xs font-semibold rounded-xl bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-700 hover:to-red-800 transition-all shadow-md hover:shadow-lg flex items-center gap-2 whitespace-nowrap">
+                    <i class="bi bi-file-earmark-pdf text-lg"></i>
+                    Xuất PDF
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+        <div class="stat-card bg-gradient-to-br from-green-500 to-emerald-600 border-0 rounded-2xl p-4 shadow-xl text-white animate-fade-in-up" style="animation-delay: 0.2s">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-green-100 uppercase tracking-wide mb-1">Tổng số nguyên liệu</p>
+                    <h4 class="text-2xl font-black">@totalMaterials</h4>
+                </div>
+                <div class="bg-white/20 backdrop-blur-sm rounded-xl p-3">
+                    <i class="bi bi-box-seam text-white text-2xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card bg-gradient-to-br from-green-500 to-emerald-600 border-0 rounded-2xl p-4 shadow-xl text-white animate-fade-in-up" style="animation-delay: 0.3s">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-green-100 uppercase tracking-wide mb-1">Quay vòng nhanh (>12)</p>
+                    <h4 class="text-2xl font-black">@fastCount</h4>
+                </div>
+                <div class="bg-white/20 backdrop-blur-sm rounded-xl p-3">
+                    <i class="bi bi-speedometer2 text-white text-2xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card bg-gradient-to-br from-orange-500 to-amber-600 border-0 rounded-2xl p-4 shadow-xl text-white animate-fade-in-up" style="animation-delay: 0.4s">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-orange-100 uppercase tracking-wide mb-1">Quay vòng trung bình (4-12)</p>
+                    <h4 class="text-2xl font-black">@mediumCount</h4>
+                </div>
+                <div class="bg-white/20 backdrop-blur-sm rounded-xl p-3">
+                    <i class="bi bi-graph-up text-white text-2xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card bg-gradient-to-br from-red-500 to-rose-600 border-0 rounded-2xl p-4 shadow-xl text-white animate-fade-in-up" style="animation-delay: 0.5s">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-red-100 uppercase tracking-wide mb-1">Quay vòng chậm (<4)</p>
+                    <h4 class="text-2xl font-black">@slowCount</h4>
+                </div>
+                <div class="bg-white/20 backdrop-blur-sm rounded-xl p-3">
+                    <i class="bi bi-graph-down text-white text-2xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart Section -->
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 mb-4 p-4 animate-fade-in-up" style="animation-delay: 0.6s">
+        <div class="mb-4">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-800 flex items-center gap-3 mb-1">
+                        <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl p-1.5 text-white">
+                            <i class="bi bi-bar-chart-line text-lg"></i>
+                        </div>
+                        Phân bố Tỷ lệ quay vòng
+                    </h2>
+                    <p class="text-sm text-slate-500 ml-12">Phân tích tỷ lệ quay vòng theo từng nguyên liệu</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <label class="text-xs font-medium text-slate-600">Lọc theo:</label>
+                    <select id="categoryFilter" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all">
+                        <option value="all">Tất cả</option>
+                        <option value="Fast">Nhanh (>12)</option>
+                        <option value="Medium">Trung bình (4-12)</option>
+                        <option value="Slow">Chậm (<4)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="relative" style="height: 400px;">
+            <canvas id="turnoverChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Table Section -->
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden animate-fade-in-up" style="animation-delay: 0.7s">
+        <div class="p-4 border-b border-slate-200">
+            <h2 class="text-lg font-bold text-slate-800 flex items-center gap-3">
+                <div class="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl p-1.5 text-white">
+                    <i class="bi bi-table text-lg"></i>
+                </div>
+                Chi tiết báo cáo
+            </h2>
+        </div>
+        <div class="overflow-x-auto max-h-[500px]">
+            <table class="turnover-table min-w-full divide-y divide-slate-200">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            <i class="bi bi-hash text-green-600"></i> Mã NL
+                        </th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            <i class="bi bi-box text-green-600"></i> Tên nguyên liệu
+                        </th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            <i class="bi bi-building text-green-600"></i> Kho
+                        </th>
+                        <th class="px-4 py-3 text-right text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            <i class="bi bi-archive text-green-600"></i> Tồn TB
+                        </th>
+                        <th class="px-4 py-3 text-right text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            <i class="bi bi-arrow-up-circle text-green-600"></i> Tổng xuất
+                        </th>
+                        <th class="px-4 py-3 text-right text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            <i class="bi bi-arrow-repeat text-green-600"></i> Tỷ lệ quay vòng
+                        </th>
+                        <th class="px-4 py-3 text-right text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            <i class="bi bi-calendar-range text-green-600"></i> Số ngày quay vòng
+                        </th>
+                        <th class="px-4 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            <i class="bi bi-tags text-green-600"></i> Phân loại
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-slate-200">
+                    @if (Model.Any())
+                    {
+                        @foreach (var r in Model)
+                        {
+                            string rowClass = r.Category == "Fast" ? "bg-green-50/50" : r.Category == "Medium" ? "bg-orange-50/50" : "bg-red-50/50";
+                            string badgeClass = r.Category == "Fast" ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white" : r.Category == "Medium" ? "bg-gradient-to-r from-orange-500 to-amber-600 text-white" : "bg-gradient-to-r from-red-500 to-rose-600 text-white";
+                            
+                            <tr class="@rowClass hover:bg-slate-50 transition-colors duration-150">
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <span class="font-mono font-bold text-slate-900">@r.MaterialCode</span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="font-medium text-slate-900">@r.MaterialName</span>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <span class="text-slate-700">@(r.WarehouseName ?? "Không có")</span>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-right">
+                                    <span class="font-mono font-semibold text-slate-900">@FormatQty(r.AverageStock)</span>
+                                    <span class="text-xs text-slate-500 ml-1">@r.Unit</span>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-right">
+                                    <span class="font-mono font-semibold text-slate-900">@FormatQty(r.TotalIssued)</span>
+                                    <span class="text-xs text-slate-500 ml-1">@r.Unit</span>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-right">
+                                    <span class="font-bold font-mono text-base @(r.Category == "Fast" ? "text-green-600" : r.Category == "Medium" ? "text-orange-600" : "text-red-600")">
+                                        @r.TurnoverRate.ToString("N2")
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-right">
+                                    <span class="font-mono font-semibold text-slate-700">
+                                        @(r.DaysToTurnover == 999 ? "Không có" : r.DaysToTurnover.ToString("N1"))
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-center">
+                                    <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold shadow-sm @badgeClass">
+                                        @(r.Category == "Fast" ? "Nhanh" : r.Category == "Medium" ? "Trung bình" : "Chậm")
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="8" class="px-4 py-12 text-center">
+                                <div class="flex flex-col items-center justify-center">
+                                    <i class="bi bi-inbox text-5xl text-slate-300 mb-4"></i>
+                                    <p class="text-slate-500 text-lg font-medium">Không có dữ liệu</p>
+                                    <p class="text-slate-400 text-sm mt-2">Vui lòng chọn khoảng thời gian khác để xem báo cáo</p>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                @if (Model.Any())
+                {
+                    <tfoot class="bg-slate-50">
+                        <tr class="font-bold">
+                            <td class="px-4 py-3 text-right text-slate-700" colspan="3">
+                                <span class="text-sm uppercase tracking-wide">Tổng</span>
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-right">
+                                <span class="font-mono text-slate-900">@FormatQty(Model.Sum(r => r.AverageStock))</span>
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-right">
+                                <span class="font-mono text-slate-900">@FormatQty(Model.Sum(r => r.TotalIssued))</span>
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-right">
+                                <span class="font-mono text-base text-slate-900">
+                                    @(Model.Count > 0 ? Model.Average(r => r.TurnoverRate).ToString("N2") : "0")
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-right">
+                                <span class="text-slate-500">-</span>
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-center">
+                                <span class="text-slate-900">@totalMaterials</span>
+                            </td>
+                        </tr>
+                    </tfoot>
+                }
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+const turnoverData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+    Model.Select(x => new { 
+        material = x.MaterialCode + " - " + x.MaterialName, 
+        rate = x.TurnoverRate,
+        category = x.Category 
+    })
+));
+
+const categoryData = {
+    Fast: @fastCount,
+    Medium: @mediumCount,
+    Slow: @slowCount
+};
+
+let turnoverChart;
+const ctx = document.getElementById('turnoverChart').getContext('2d');
+const categoryFilter = document.getElementById('categoryFilter');
+
+function createChart(filterValue = 'all') {
+    let filteredData = turnoverData;
+    if (filterValue !== 'all') {
+        filteredData = turnoverData.filter(d => d.category === filterValue);
+    }
+
+    // Group data by category for stacked visualization
+    const labels = filteredData.map(d => {
+        const name = d.material.length > 15 ? d.material.substring(0, 15) + '...' : d.material;
+        return name;
+    });
+
+    // Create datasets for each category
+    const fastData = filteredData.map(d => d.category === 'Fast' ? d.rate : 0);
+    const mediumData = filteredData.map(d => d.category === 'Medium' ? d.rate : 0);
+    const slowData = filteredData.map(d => d.category === 'Slow' ? d.rate : 0);
+
+    const chartData = {
+        labels: labels,
+        datasets: [
+            {
+                label: 'Quay vòng nhanh (>12)',
+                data: fastData,
+                backgroundColor: 'rgba(34, 197, 94, 0.8)',
+                borderColor: 'rgb(34, 197, 94)',
+                borderWidth: 2,
+                borderRadius: 6,
+                borderSkipped: false,
+            },
+            {
+                label: 'Quay vòng trung bình (4-12)',
+                data: mediumData,
+                backgroundColor: 'rgba(249, 115, 22, 0.8)',
+                borderColor: 'rgb(249, 115, 22)',
+                borderWidth: 2,
+                borderRadius: 6,
+                borderSkipped: false,
+            },
+            {
+                label: 'Quay vòng chậm (<4)',
+                data: slowData,
+                backgroundColor: 'rgba(239, 68, 68, 0.8)',
+                borderColor: 'rgb(239, 68, 68)',
+                borderWidth: 2,
+                borderRadius: 6,
+                borderSkipped: false,
+            }
+        ]
+    };
+
+    if (turnoverChart) {
+        turnoverChart.destroy();
+    }
+
+    turnoverChart = new Chart(ctx, {
+        type: 'bar',
+        data: chartData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    align: 'end',
+                    labels: {
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        padding: 15,
+                        font: {
+                            size: 12,
+                            weight: '500'
+                        },
+                        color: '#475569',
+                        generateLabels: function(chart) {
+                            const original = Chart.defaults.plugins.legend.labels.generateLabels;
+                            const labels = original(chart);
+                            labels.forEach(label => {
+                                if (label.text === 'Quay vòng nhanh (>12)') {
+                                    label.fillStyle = 'rgba(34, 197, 94, 0.8)';
+                                    label.strokeStyle = 'rgb(34, 197, 94)';
+                                } else if (label.text === 'Quay vòng trung bình (4-12)') {
+                                    label.fillStyle = 'rgba(249, 115, 22, 0.8)';
+                                    label.strokeStyle = 'rgb(249, 115, 22)';
+                                } else if (label.text === 'Quay vòng chậm (<4)') {
+                                    label.fillStyle = 'rgba(239, 68, 68, 0.8)';
+                                    label.strokeStyle = 'rgb(239, 68, 68)';
+                                }
+                            });
+                            return labels;
+                        }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                    padding: 12,
+                    titleFont: {
+                        size: 13,
+                        weight: 'bold'
+                    },
+                    bodyFont: {
+                        size: 12
+                    },
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: 'rgba(148, 163, 184, 0.2)',
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                    displayColors: true,
+                    callbacks: {
+                        label: function(context) {
+                            if (context.parsed.y === 0) return '';
+                            const label = context.dataset.label || '';
+                            const value = context.parsed.y.toFixed(2);
+                            return label + ': ' + value;
+                        },
+                        filter: function(tooltipItem) {
+                            return tooltipItem.parsed.y !== 0;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    stacked: false,
+                    grid: {
+                        color: 'rgba(148, 163, 184, 0.1)',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: '#64748b',
+                        font: {
+                            size: 11
+                        },
+                        padding: 8
+                    },
+                    title: {
+                        display: true,
+                        text: 'Tỷ lệ quay vòng',
+                        color: '#475569',
+                        font: {
+                            size: 13,
+                            weight: '600'
+                        },
+                        padding: {
+                            bottom: 10
+                        }
+                    }
+                },
+                x: {
+                    stacked: false,
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        color: '#64748b',
+                        font: {
+                            size: 10
+                        },
+                        maxRotation: 45,
+                        minRotation: 0,
+                        padding: 8
+                    }
+                }
+            },
+            animation: {
+                duration: 750,
+                easing: 'easeInOutQuart'
+            }
+        }
+    });
+}
+
+// Initialize chart
+createChart('all');
+
+// Filter change handler
+if (categoryFilter) {
+    categoryFilter.addEventListener('change', function() {
+        createChart(this.value);
+    });
+}
+</script>

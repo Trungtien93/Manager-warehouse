@@ -1,0 +1,330 @@
+@model List<MNBEMART.ViewModels.ProfitLossReportVM>
+@using System.Globalization
+@using Microsoft.AspNetCore.Mvc.Rendering
+
+@{
+    ViewData["Title"] = "Báo cáo lợi nhuận (P&L)";
+    dynamic f = ViewBag.Filter;
+    var now = DateTime.Now;
+    DateTime displayFrom = (f?.From as DateTime?)?.Date ?? new DateTime(now.Year, now.Month, 1);
+    DateTime displayTo   = (f?.To as DateTime?)?.Date   ?? new DateTime(now.Year, now.Month, 1).AddMonths(1).AddDays(-1);
+    string groupBy = f?.GroupBy as string ?? "day";
+    int? warehouseId = f?.WarehouseId as int?;
+    decimal totalRevenue = ViewBag.TotalRevenue is decimal d ? d : Model.Sum(x => x.Revenue);
+    decimal totalCOGS = ViewBag.TotalCOGS is decimal c ? c : Model.Sum(x => x.COGS);
+    decimal totalGrossProfit = ViewBag.TotalGrossProfit is decimal g ? g : Model.Sum(x => x.GrossProfit);
+    decimal totalNetProfit = ViewBag.TotalNetProfit is decimal n ? n : Model.Sum(x => x.NetProfit);
+
+    string TrimDec(decimal v, int maxDecimals = 2) {
+        var fmt = "0." + new string('#', maxDecimals);
+        return v.ToString(fmt, CultureInfo.InvariantCulture);
+    }
+
+    string FormatMoney(decimal v) {
+        return v.ToString("N0", CultureInfo.InvariantCulture) + " đ";
+    }
+
+    var groupByItems = new List<SelectListItem> {
+        new("day","Ngày"){Selected=groupBy=="day"},
+        new("month","Tháng"){Selected=groupBy=="month"},
+        new("year","Năm"){Selected=groupBy=="year"}
+    };
+}
+
+<!-- Tailwind + Chart.js -->
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<div class="max-w-[1600px] mx-auto px-6 lg:px-8 py-8">
+    <!-- Large Header -->
+    @* <div class="mb-6">
+        <div class="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl shadow-lg p-8 text-white">
+            <div class="flex items-center gap-3">
+                <div class="bg-white/20 backdrop-blur-sm rounded-xl p-3">
+                    <i class="bi bi-graph-up-arrow text-3xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-4xl font-black tracking-tight mb-2">
+                        Báo cáo lợi nhuận (P&L)
+                    </h1>
+                    <p class="text-purple-100 text-lg">Phân tích doanh thu, giá vốn và lợi nhuận</p>
+                </div>
+            </div>
+        </div>
+    </div> *@
+
+    <!-- Filter Section -->
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 mb-6 p-6">
+        <form id="filterForm" method="get" asp-controller="Reports" asp-action="ProfitLoss">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                        <i class="bi bi-building text-purple-600"></i>Kho
+                    </label>
+                    <select name="WarehouseId" asp-items="ViewBag.Warehouses" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all shadow-sm hover:border-purple-400">
+                        <option value="">Tất cả kho</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                        <i class="bi bi-calendar-event text-purple-600"></i>Từ ngày
+                    </label>
+                    <input type="date" name="From" value="@displayFrom.ToString("yyyy-MM-dd")" 
+                           class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all shadow-sm hover:border-purple-400" />
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                        <i class="bi bi-calendar-check text-purple-600"></i>Đến ngày
+                    </label>
+                    <input type="date" name="To" value="@displayTo.ToString("yyyy-MM-dd")" 
+                           class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all shadow-sm hover:border-purple-400" />
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                        <i class="bi bi-list-ul text-purple-600"></i>Nhóm theo
+                    </label>
+                    <select name="GroupBy" asp-items="groupByItems" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all shadow-sm hover:border-purple-400"></select>
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button class="w-full md:w-auto bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold px-5 py-3 rounded-xl text-sm transition-all shadow-md hover:shadow-lg flex items-center gap-2">
+                    <i class="bi bi-funnel-fill"></i> Xem
+                </button>
+                <button type="submit" formaction="/Reports/ExportPdfProfitLoss"
+                        class="w-full md:w-auto bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold px-4 py-3 rounded-xl text-sm transition-all shadow-md hover:shadow-lg flex items-center gap-2">
+                    <i class="bi bi-file-earmark-pdf"></i> PDF
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        <div class="bg-gradient-to-br from-green-500 to-emerald-600 border-0 rounded-2xl p-6 shadow-xl text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-green-100 uppercase tracking-wide mb-2">Tổng doanh thu</p>
+                    <h4 class="text-4xl font-black">@FormatMoney(totalRevenue)</h4>
+                </div>
+                <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
+                    <i class="bi bi-cash-stack text-white text-3xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-gradient-to-br from-red-500 to-red-600 border-0 rounded-2xl p-6 shadow-xl text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-red-100 uppercase tracking-wide mb-2">Tổng giá vốn (COGS)</p>
+                    <h4 class="text-4xl font-black">@FormatMoney(totalCOGS)</h4>
+                </div>
+                <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
+                    <i class="bi bi-cart-x text-white text-3xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-gradient-to-br from-blue-500 to-indigo-600 border-0 rounded-2xl p-6 shadow-xl text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-blue-100 uppercase tracking-wide mb-2">Lợi nhuận gộp</p>
+                    <h4 class="text-4xl font-black">@FormatMoney(totalGrossProfit)</h4>
+                    <p class="text-xs text-blue-100 mt-1">
+                        Tỷ suất: @(totalRevenue > 0 ? ((totalGrossProfit / totalRevenue) * 100).ToString("N2") : "0")%
+                    </p>
+                </div>
+                <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
+                    <i class="bi bi-graph-up text-white text-3xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-gradient-to-br from-purple-500 to-indigo-600 border-0 rounded-2xl p-6 shadow-xl text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-purple-100 uppercase tracking-wide mb-2">Lợi nhuận ròng</p>
+                    <h4 class="text-4xl font-black">@FormatMoney(totalNetProfit)</h4>
+                    <p class="text-xs text-purple-100 mt-1">
+                        Tỷ suất: @(totalRevenue > 0 ? ((totalNetProfit / totalRevenue) * 100).ToString("N2") : "0")%
+                    </p>
+                </div>
+                <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
+                    <i class="bi bi-trophy text-white text-3xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart Section -->
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 mb-6 p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <i class="bi bi-bar-chart-line text-purple-600"></i> So sánh Doanh thu vs Giá vốn
+            </h2>
+        </div>
+        <canvas id="plChart" height="100"></canvas>
+    </div>
+
+    <!-- Table Section -->
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto max-h-[600px] relative">
+            <table class="min-w-full divide-y divide-slate-200">
+                <thead class="bg-slate-50 sticky top-0 z-10">
+                    <tr>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition">
+                            Kỳ <i class="bi bi-arrow-down-up text-purple-600 ml-1"></i>
+                        </th>
+                        <th class="px-6 py-4 text-right text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition">
+                            Doanh thu <i class="bi bi-arrow-down-up text-purple-600 ml-1"></i>
+                        </th>
+                        <th class="px-6 py-4 text-right text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition">
+                            Giá vốn (COGS) <i class="bi bi-arrow-down-up text-purple-600 ml-1"></i>
+                        </th>
+                        <th class="px-6 py-4 text-right text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition">
+                            Lợi nhuận gộp <i class="bi bi-arrow-down-up text-purple-600 ml-1"></i>
+                        </th>
+                        <th class="px-6 py-4 text-right text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            Tỷ suất LN gộp
+                        </th>
+                        <th class="px-6 py-4 text-right text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition">
+                            Lợi nhuận ròng <i class="bi bi-arrow-down-up text-purple-600 ml-1"></i>
+                        </th>
+                        <th class="px-6 py-4 text-right text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            Tỷ suất LN ròng
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-slate-200">
+                    @if (Model.Any())
+                    {
+                        @foreach (var r in Model)
+                        {
+                            <tr class="hover:bg-slate-50 transition-colors duration-150">
+                                <td class="px-6 py-4 font-medium text-slate-900">@r.Period</td>
+                                <td class="px-6 py-4 text-right font-bold text-green-600">@FormatMoney(r.Revenue)</td>
+                                <td class="px-6 py-4 text-right font-bold text-red-600">@FormatMoney(r.COGS)</td>
+                                <td class="px-6 py-4 text-right font-bold @(r.GrossProfit >= 0 ? "text-blue-600" : "text-red-600")">@FormatMoney(r.GrossProfit)</td>
+                                <td class="px-6 py-4 text-right font-semibold text-slate-700">@r.GrossProfitMargin.ToString("N2")%</td>
+                                <td class="px-6 py-4 text-right font-bold @(r.NetProfit >= 0 ? "text-purple-600" : "text-red-600")">@FormatMoney(r.NetProfit)</td>
+                                <td class="px-6 py-4 text-right font-semibold text-slate-700">@r.NetProfitMargin.ToString("N2")%</td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="7" class="px-6 py-12 text-center">
+                                <div class="flex flex-col items-center justify-center">
+                                    <i class="bi bi-inbox text-4xl text-slate-300 mb-3"></i>
+                                    <p class="text-slate-500 font-medium">Không có dữ liệu</p>
+                                    <p class="text-sm text-slate-400 mt-1">Thử thay đổi bộ lọc</p>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                @if (Model.Any())
+                {
+                    <tfoot class="bg-gradient-to-r from-slate-50 to-slate-100 border-t-2 border-slate-200">
+                        <tr>
+                            <td class="px-6 py-4 text-right font-bold text-slate-900">Tổng</td>
+                            <td class="px-6 py-4 text-right font-bold text-green-600 text-lg">@FormatMoney(totalRevenue)</td>
+                            <td class="px-6 py-4 text-right font-bold text-red-600 text-lg">@FormatMoney(totalCOGS)</td>
+                            <td class="px-6 py-4 text-right font-bold @(totalGrossProfit >= 0 ? "text-blue-600" : "text-red-600") text-lg">@FormatMoney(totalGrossProfit)</td>
+                            <td class="px-6 py-4 text-right font-bold text-slate-700">@(totalRevenue > 0 ? ((totalGrossProfit / totalRevenue) * 100).ToString("N2") : "0")%</td>
+                            <td class="px-6 py-4 text-right font-bold @(totalNetProfit >= 0 ? "text-purple-600" : "text-red-600") text-lg">@FormatMoney(totalNetProfit)</td>
+                            <td class="px-6 py-4 text-right font-bold text-slate-700">@(totalRevenue > 0 ? ((totalNetProfit / totalRevenue) * 100).ToString("N2") : "0")%</td>
+                        </tr>
+                    </tfoot>
+                }
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+const plData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+    Model.Select(x => new { period = x.Period, revenue = x.Revenue, cogs = x.COGS, grossProfit = x.GrossProfit, netProfit = x.NetProfit })
+));
+
+const ctx = document.getElementById('plChart').getContext('2d');
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: plData.map(d => d.period),
+        datasets: [
+            {
+                label: 'Doanh thu',
+                data: plData.map(d => d.revenue),
+                borderColor: 'rgb(34, 197, 94)',
+                backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                tension: 0.4,
+                fill: true,
+                borderWidth: 2
+            },
+            {
+                label: 'Giá vốn (COGS)',
+                data: plData.map(d => d.cogs),
+                borderColor: 'rgb(239, 68, 68)',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                tension: 0.4,
+                fill: true,
+                borderWidth: 2
+            },
+            {
+                label: 'Lợi nhuận gộp',
+                data: plData.map(d => d.grossProfit),
+                borderColor: 'rgb(59, 130, 246)',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                tension: 0.4,
+                fill: false,
+                borderWidth: 2
+            },
+            {
+                label: 'Lợi nhuận ròng',
+                data: plData.map(d => d.netProfit),
+                borderColor: 'rgb(147, 51, 234)',
+                backgroundColor: 'rgba(147, 51, 234, 0.1)',
+                tension: 0.4,
+                fill: false,
+                borderWidth: 2
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                position: 'top',
+            },
+            tooltip: {
+                backgroundColor: '#1e293b',
+                titleColor: '#fff',
+                bodyColor: '#fff',
+                padding: 10,
+                cornerRadius: 8,
+                callbacks: {
+                    label: function(context) {
+                        return context.dataset.label + ': ' + new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(context.parsed.y);
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    color: '#64748b',
+                    callback: function(value) {
+                        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', notation: 'compact' }).format(value);
+                    }
+                }
+            },
+            x: {
+                ticks: {
+                    color: '#64748b'
+                }
+            }
+        }
+    }
+});
+</script>

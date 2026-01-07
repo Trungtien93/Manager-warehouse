@@ -1,0 +1,360 @@
+@model List<MNBEMART.Models.PurchaseRequest>
+@using System.Linq
+@{
+    ViewData["Title"] = "Đề xuất đặt hàng";
+    string statusFilter = ViewBag.StatusFilter as string ?? "all";
+    
+    // Calculate pagination display
+    var page = ViewBag.Page as int? ?? 1;
+    var pageSize = ViewBag.PageSize as int? ?? 30;
+    var totalItems = ViewBag.TotalItems as int? ?? Model.Count();
+    var totalPages = ViewBag.TotalPages as int? ?? 1;
+    var startItem = (page - 1) * pageSize + 1;
+    var endItem = Math.Min(page * pageSize, totalItems);
+}
+
+<!-- Tailwind + Bootstrap Icons -->
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+
+<div class="max-w-[1600px] mx-auto px-6 lg:px-8 py-8">
+    <!-- Large Header -->
+    @* <div class="mb-6">
+        <h1 class="text-4xl font-black text-slate-900 tracking-tight mb-2">
+            Đề xuất đặt hàng
+        </h1>
+        <p class="text-lg text-slate-600">
+            Quản lý yêu cầu đặt hàng vật tư
+        </p>
+    </div> *@
+
+    <!-- Alerts -->
+    @if (TempData["Msg"] != null)
+    {
+        <div class="mb-6 px-4 py-3 bg-green-50 border-2 border-green-200 text-green-800 rounded-xl shadow-sm flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <i class="bi bi-check-circle-fill text-green-600"></i>
+                <span>@TempData["Msg"]</span>
+            </div>
+            <button type="button" onclick="this.parentElement.remove()" class="text-green-600 hover:text-green-800">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="mb-6 px-4 py-3 bg-red-50 border-2 border-red-200 text-red-800 rounded-xl shadow-sm flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <i class="bi bi-exclamation-circle-fill text-red-600"></i>
+                <span>@TempData["Error"]</span>
+            </div>
+            <button type="button" onclick="this.parentElement.remove()" class="text-red-600 hover:text-red-800">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+    }
+
+    <!-- Toolbar -->
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 mb-6 p-6">
+        <div class="flex items-center justify-between gap-4">
+            <div class="flex-1 flex items-center gap-3">
+                <div class="relative flex-1 max-w-md">
+                    <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input name="q" value="" 
+                           placeholder="Tìm kiếm số đề xuất, người tạo..."
+                           class="w-full pl-10 pr-4 py-3 border-2 border-slate-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all shadow-sm hover:border-green-400" />
+                </div>
+                <button type="button" class="p-3 border-2 border-slate-300 rounded-xl hover:bg-slate-50 transition">
+                    <i class="bi bi-funnel text-slate-600"></i>
+                </button>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <form asp-action="CheckLowStock" method="post" class="m-0">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="px-5 py-3 bg-gradient-to-r from-orange-600 to-orange-700 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition flex items-center gap-2">
+                        <i class="bi bi-lightning-charge-fill"></i>
+                        Kiểm tra tồn thấp
+                    </button>
+                </form>
+                <a asp-action="Create" class="px-5 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition flex items-center gap-2 no-underline">
+                    <i class="bi bi-plus-circle"></i>
+                    + Thêm đề xuất mới
+                </a>
+            </div>
+        </div>
+
+        <!-- Status Filter Pills -->
+        <div class="flex flex-wrap gap-2 mt-4">
+            <a class="px-4 py-2 text-sm font-semibold border-2 rounded-full transition @(statusFilter == "all" ? "bg-green-50 text-green-700 border-green-200" : "text-slate-600 border-slate-300 hover:bg-slate-100")"
+               asp-action="Index" asp-route-status="all">
+                Tất cả <small class="ml-1 text-xs text-slate-400">@ViewBag.AllCount</small>
+            </a>
+            <a class="px-4 py-2 text-sm font-semibold border-2 rounded-full transition @(statusFilter == "pending" ? "bg-amber-50 text-amber-700 border-amber-200" : "text-slate-600 border-slate-300 hover:bg-slate-100")"
+               asp-action="Index" asp-route-status="pending">
+                Chờ duyệt <small class="ml-1 text-xs text-slate-400">@ViewBag.PendingCount</small>
+            </a>
+            <a class="px-4 py-2 text-sm font-semibold border-2 rounded-full transition @(statusFilter == "approved" ? "bg-green-50 text-green-700 border-green-200" : "text-slate-600 border-slate-300 hover:bg-slate-100")"
+               asp-action="Index" asp-route-status="approved">
+                Đã duyệt <small class="ml-1 text-xs text-slate-400">@ViewBag.ApprovedCount</small>
+            </a>
+            <a class="px-4 py-2 text-sm font-semibold border-2 rounded-full transition @(statusFilter == "ordered" ? "bg-blue-50 text-blue-700 border-blue-200" : "text-slate-600 border-slate-300 hover:bg-slate-100")"
+               asp-action="Index" asp-route-status="ordered">
+                Đã đặt hàng <small class="ml-1 text-xs text-slate-400">@ViewBag.OrderedCount</small>
+            </a>
+            <a class="px-4 py-2 text-sm font-semibold border-2 rounded-full transition @(statusFilter == "cancelled" ? "bg-red-50 text-red-700 border-red-200" : "text-slate-600 border-slate-300 hover:bg-slate-100")"
+               asp-action="Index" asp-route-status="cancelled">
+                Đã hủy <small class="ml-1 text-xs text-slate-400">@ViewBag.CancelledCount</small>
+            </a>
+        </div>
+    </div>
+
+    <!-- Table -->
+    @if (Model.Any())
+    {
+        <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+            <div class="overflow-x-auto max-h-[600px] relative">
+                <table class="min-w-full divide-y divide-slate-200">
+                    <thead class="bg-slate-50 sticky top-0 z-10">
+                        <tr>
+                            <th class="px-6 py-4 w-12">
+                                <input type="checkbox" class="rounded border-slate-300 text-green-600 focus:ring-green-500" id="chkAllPR" />
+                            </th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition">
+                                Số đề xuất <i class="bi bi-arrow-down-up text-green-600 ml-1"></i>
+                            </th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition">
+                                Ngày tạo <i class="bi bi-arrow-down-up text-green-600 ml-1"></i>
+                            </th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                Người tạo
+                            </th>
+                            <th class="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                Số vật tư
+                            </th>
+                            <th class="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                Trạng thái
+                            </th>
+                            <th class="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider w-24">
+                                Thao tác
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-slate-200">
+                        @foreach (var item in Model)
+                        {
+                            string statusBadge = item.Status switch
+                            {
+                                MNBEMART.Models.PRStatus.Pending => "bg-amber-50 text-amber-700 border border-amber-200",
+                                MNBEMART.Models.PRStatus.Approved => "bg-green-50 text-green-700 border border-green-200",
+                                MNBEMART.Models.PRStatus.Ordered => "bg-blue-50 text-blue-700 border border-blue-200",
+                                MNBEMART.Models.PRStatus.Cancelled => "bg-red-50 text-red-700 border border-red-200",
+                                _ => "bg-slate-50 text-slate-700 border border-slate-200"
+                            };
+
+                            string statusText = item.Status switch
+                            {
+                                MNBEMART.Models.PRStatus.Pending => "Chờ duyệt",
+                                MNBEMART.Models.PRStatus.Approved => "Đã duyệt",
+                                MNBEMART.Models.PRStatus.Ordered => "Đã đặt hàng",
+                                MNBEMART.Models.PRStatus.Cancelled => "Đã hủy",
+                                _ => item.Status.ToString()
+                            };
+
+                            <tr class="hover:bg-slate-50 transition-colors duration-150">
+                                <td class="px-6 py-4">
+                                    <input type="checkbox" class="pr-chk rounded border-slate-300 text-green-600 focus:ring-green-500" value="@item.Id" />
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="font-mono text-sm font-semibold text-slate-900">@item.RequestNumber</div>
+                                    @if (item.IsAutoGenerated)
+                                    {
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 mt-1">
+                                            <i class="bi bi-robot me-1"></i> Tự động
+                                        </span>
+                                    }
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                                    @item.RequestDate.ToString("dd/MM/yyyy")
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
+                                    @(item.RequestedBy?.Username ?? "N/A")
+                                </td>
+                                <td class="px-6 py-4 text-center whitespace-nowrap">
+                                    <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold bg-slate-100 text-slate-800 border border-slate-200">
+                                        @item.Details.Count
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-center whitespace-nowrap">
+                                    <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold @statusBadge">
+                                        @statusText
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <div class="relative inline-block">
+                                        <button type="button" class="action-menu-btn p-2 hover:bg-slate-100 rounded-lg transition"
+                                                data-id="@item.Id">
+                                            <i class="bi bi-three-dots-vertical text-slate-600"></i>
+                                        </button>
+                                        <div class="action-menu hidden absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-slate-200 z-10">
+                                            <a asp-action="Details" asp-route-id="@item.Id" 
+                                               class="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-green-50 hover:text-green-700 transition flex items-center gap-2">
+                                                <i class="bi bi-eye text-green-600"></i> Xem
+                                            </a>
+                                            @if (item.Status == MNBEMART.Models.PRStatus.Pending)
+                                            {
+                                                <form asp-action="Approve" asp-route-id="@item.Id" method="post" class="m-0">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit" class="w-full text-left px-4 py-2 text-sm text-green-700 hover:bg-green-50 transition flex items-center gap-2">
+                                                        <i class="bi bi-check-circle text-green-600"></i> Duyệt
+                                                    </button>
+                                                </form>
+                                            }
+                                            <hr class="my-1">
+                                            @if (item.Status != MNBEMART.Models.PRStatus.Ordered)
+                                            {
+                                                <a asp-action="Delete" asp-route-id="@item.Id" 
+                                                   class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition flex items-center gap-2"
+                                                   onclick="return confirm('Bạn có chắc chắn muốn xóa đề xuất này?');">
+                                                    <i class="bi bi-trash"></i> Xóa
+                                                </a>
+                                            }
+                                            else
+                                            {
+                                                <span class="block w-full text-left px-4 py-2 text-sm text-slate-400 cursor-not-allowed flex items-center gap-2"
+                                                      title="Không thể xóa đề xuất đã đặt hàng">
+                                                    <i class="bi bi-trash"></i> Xóa
+                                                </span>
+                                            }
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Footer Summary and Pagination -->
+        <div class="flex items-center justify-between mt-6">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 px-6 py-3 text-sm">
+                <span class="text-slate-500">Tổng đề xuất:</span> <b class="text-slate-900">@totalItems</b>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="text-sm text-slate-600 mr-4">
+                    Hiển thị <span class="font-semibold">@startItem-@endItem</span> trong tổng <span class="font-semibold">@totalItems</span>
+                </div>
+                @if (page > 1)
+                {
+                    <a href="@Url.Action("Index", new { page = page - 1, status = statusFilter, pageSize = pageSize })"
+                       class="px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition">
+                        Trước
+                    </a>
+                }
+                else
+                {
+                    <button disabled class="px-4 py-2 text-sm font-semibold text-slate-400 bg-white border border-slate-200 rounded-lg opacity-50 cursor-not-allowed">
+                        Trước
+                    </button>
+                }
+                
+                @if (page < totalPages)
+                {
+                    <a href="@Url.Action("Index", new { page = page + 1, status = statusFilter, pageSize = pageSize })"
+                       class="px-4 py-2 text-sm font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition">
+                        Tiếp theo
+                    </a>
+                }
+                else
+                {
+                    <button disabled class="px-4 py-2 text-sm font-semibold text-slate-400 bg-slate-200 rounded-lg opacity-50 cursor-not-allowed">
+                        Tiếp theo
+                    </button>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Empty State -->
+        <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-16 text-center">
+            <div class="inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 mb-6 shadow-lg">
+                <i class="bi bi-inbox text-slate-500 text-5xl"></i>
+            </div>
+            <h3 class="text-2xl font-black text-slate-900 mb-3">Chưa có đề xuất nào</h3>
+            <p class="text-slate-600 mb-6 text-lg">Bắt đầu bằng cách tạo đề xuất mới hoặc kiểm tra tồn thấp</p>
+            <div class="flex gap-3 justify-center">
+                <form asp-action="CheckLowStock" method="post" class="m-0">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="px-6 py-3 bg-gradient-to-r from-orange-600 to-orange-700 text-white font-semibold rounded-xl transition-all shadow-md hover:shadow-lg flex items-center gap-2">
+                        <i class="bi bi-lightning-charge-fill"></i>
+                        Kiểm tra tồn thấp
+                    </button>
+                </form>
+                <a asp-action="Create" class="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-xl transition-all shadow-md hover:shadow-lg flex items-center gap-2 no-underline">
+                    <i class="bi bi-plus-circle"></i>
+                    Tạo đề xuất
+                </a>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        // Action menu toggle
+        document.querySelectorAll('.action-menu-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const menu = this.nextElementSibling;
+                const isHidden = menu.classList.contains('hidden');
+                
+                // Close all other menus
+                document.querySelectorAll('.action-menu').forEach(m => {
+                    if (m !== menu) {
+                        m.classList.add('hidden');
+                    }
+                });
+                
+                // Toggle current menu
+                if (isHidden) {
+                    menu.classList.remove('hidden');
+                } else {
+                    menu.classList.add('hidden');
+                }
+            });
+        });
+
+        // Close menus when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.action-menu-btn') && !e.target.closest('.action-menu')) {
+                document.querySelectorAll('.action-menu').forEach(menu => {
+                    menu.classList.add('hidden');
+                });
+            }
+        });
+
+        // Select all checkbox
+        const chkAllPR = document.getElementById('chkAllPR');
+        const prChks = document.querySelectorAll('.pr-chk');
+        if (chkAllPR) {
+            chkAllPR.addEventListener('change', function() {
+                prChks.forEach(x => x.checked = this.checked);
+            });
+        }
+
+        // Update select all when individual checkboxes change
+        prChks.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const allChecked = Array.from(prChks).every(cb => cb.checked);
+                const someChecked = Array.from(prChks).some(cb => cb.checked);
+                
+                if (chkAllPR) {
+                    chkAllPR.checked = allChecked;
+                    chkAllPR.indeterminate = someChecked && !allChecked;
+                }
+            });
+        });
+    </script>
+}

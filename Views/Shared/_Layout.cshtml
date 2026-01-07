@@ -121,6 +121,11 @@
                         <li><a class="dropdown-item" href="/Reports/Revenue">Doanh thu</a></li>
                         <li><a class="dropdown-item" href="/Reports/Movements">Nhập/Xuất</a></li>
                         <li><a class="dropdown-item" href="/Reports/Inventory">Tồn kho</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header">Kế toán kho</h6></li>
+                        <li><a class="dropdown-item" href="/Reports/InventoryValue"><i class="bi bi-cash-stack me-2"></i>NXT theo giá trị</a></li>
+                        <li><a class="dropdown-item" href="/Reports/COGS"><i class="bi bi-calculator me-2"></i>Giá vốn hàng bán</a></li>
+                        <li><a class="dropdown-item" href="/Reports/InventoryValuation"><i class="bi bi-currency-dollar me-2"></i>Định giá tồn kho</a></li>
                     </ul>
                 </li>
                 @if (User.IsInRole("admin"))
@@ -129,11 +134,8 @@
                         <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Kho</a>
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="/StockTransfers/Index">Chuyển kho</a></li>
-                            <li><a class="dropdown-item" href="/StockAdjustments/Index">Điều chỉnh tồn</a></li>
                         </ul>
                     </li>
-                    <li><a href="/Users/Index" class="nav-link"><i class="fas fa-users me-2"></i>Người dùng</a></li>
-                    <li><a href="/Roles" class="nav-link"><i class="fas fa-user-shield me-2"></i>Phân quyền</a></li>
                 }
             </ul>
         </div>
@@ -166,13 +168,17 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
-</html> *@
+</html> 
 
+@using System.Security.Claims
 @{
     ViewData["Title"] ??= "BEMART";
     var username = User?.Identity?.IsAuthenticated == true
         ? (User.Identity!.Name ?? "Người dùng")
         : "Khách";
+
+    var userRole = User.FindFirst(ClaimTypes.Role)?.Value ?? "User";
+    var isAdmin = string.Equals(userRole, "Admin", StringComparison.OrdinalIgnoreCase);
 }
 <!DOCTYPE html>
 <html lang="vi" class="h-full">
@@ -187,204 +193,1551 @@
     <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
 
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
 
-    <!-- Font Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
-
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Inter','system-ui','sans-serif'] },
-                    colors: {
-                        primary: {500:'#3b82f6',600:'#2563eb',700:'#1d4ed8'}
-                    }
-                }
-            }
-        }
-    </script>
+    <!-- Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .nav-active { 
-            background-color: rgba(59,130,246,0.15) !important; 
-            color: #2563eb !important;
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
+        aside a {
+            display: flex; align-items: center;
+            gap: .65rem; padding: .55rem .85rem;
+            border-radius: .5rem; color: #334155;
+            font-size: .915rem; font-weight: 500;
+            text-decoration: none !important;
+            transition: all .2s ease;
+        }
+        aside a:hover { background: #f1f5f9; color: #111827; }
+        aside a.active {
+            background: #0f172a !important;
+            color: #fff !important;
             font-weight: 600;
         }
-        .dropdown-menu { z-index: 2000 !important; }
-        /* Sidebar links: loại bỏ underline & đồng nhất hiệu ứng */
-        aside a {
-        text-decoration: none !important;
-        transition: all 0.15s ease;
+        aside p.section-title {
+            font-size: .75rem;
+            color: #94a3b8;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin: 1rem .25rem .5rem;
         }
-
-        aside a:hover {
-        text-decoration: none !important;
-        background-color: #f1f5f9 !important; /* slate-100 */
-        }
-
-        aside a:focus,
-        aside a:active {
-        text-decoration: none !important;
-        outline: none !important;
-        box-shadow: none !important;
-        }
-
-        /* Active nav highlight (màu xanh BEMART) */
-        aside .nav-active {
-        background-color: rgba(59,130,246,0.15) !important;
-        color: #2563eb !important;
-        font-weight: 600;
-        text-decoration: none !important;
-        }
-        aside a {
-        border-radius: 0.5rem; /* bo góc */
-        padding: 0.5rem 0.75rem;
-        }
-
-        aside a:hover {
-        background: linear-gradient(to right, #eff6ff, #f8fafc);
-        }
-
-
+        header { background: #fff; border-bottom: 1px solid #e5e7eb; }
+        header i { color: #64748b; transition: color .2s ease; cursor: pointer; }
+        header i:hover { color: #1e293b; }
     </style>
 </head>
-<body class="h-full bg-slate-50">
 
+<body class="h-full">
 <div class="flex h-screen">
 
+    
     <!-- Sidebar -->
-    <aside class="w-64 bg-white border-r border-slate-200 flex flex-col">
-        <div class="p-5 border-b border-slate-200 flex items-center gap-3">
-            <i class="fas fa-cube text-primary-600 text-2xl"></i>
-            <h1 class="text-xl font-bold text-slate-800">BEMART</h1>
-        </div>
+<aside id="sidebar"
+       class="w-64 bg-white border-r border-slate-200 flex flex-col transition-all duration-300 ease-in-out">
+    <div class="p-5 border-b border-slate-200 flex items-center gap-3">
+        <img src="/uploads/logos/logobemartkotext.png" alt="BEMART Logo" class="h-10 object-contain" />
+    </div>
 
-        <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-            <a href="/Home/Dashboard" data-page="dashboard" class="block px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100"><i class="fas fa-home me-2"></i> Trang chủ</a>
-            <a href="/Materials/Index" data-page="materials" class="block px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100"><i class="fas fa-boxes me-2"></i> Nguyên liệu</a>
-            <a href="/Warehouses/Index" data-page="warehouses" class="block px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100"><i class="fas fa-warehouse me-2"></i> Kho hàng</a>
-            <a href="/Suppliers/Index" data-page="suppliers" class="block px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100"><i class="fas fa-truck-loading me-2"></i> Nhà cung cấp</a>
-            <a href="/StockReceipts/Index" data-page="stockreceipts" class="block px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100"><i class="fas fa-arrow-down me-2"></i> Nhập kho</a>
-            <a href="/StockIssues/Index" data-page="stockissues" class="block px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100"><i class="fas fa-arrow-up me-2"></i> Xuất kho</a>
-            <a href="/Stocks/Index" data-page="stocks" class="block px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100"><i class="fas fa-layer-group me-2"></i> Tồn kho</a>
+    <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+        <a href="/Home/Dashboard"><i class="bi bi-house"></i> <span class="nav-text">Trang chủ</span></a>
+        @if (hasMaterials)
+        {
+            <a href="/Materials/Index"><i class="bi bi-boxes"></i> <span class="nav-text">Nguyên liệu</span></a>
+        }
+        @if (hasWarehouses)
+        {
+            <a href="/Warehouses/Index"><i class="bi bi-buildings"></i> <span class="nav-text">Kho hàng</span></a>
+        }
+        @if (hasSuppliers)
+        {
+            <a href="/Suppliers/Index"><i class="bi bi-truck"></i> <span class="nav-text">Nhà cung cấp</span></a>
+        }
+        @if (hasReceipts)
+        {
+            <a href="/StockReceipts/Index"><i class="bi bi-arrow-down-circle"></i> <span class="nav-text">Nhập kho</span></a>
+        }
+        @if (hasIssues)
+        {
+            <a href="/StockIssues/Index"><i class="bi bi-arrow-up-circle"></i> <span class="nav-text">Xuất kho</span></a>
+        }
+        @if (hasStocks)
+        {
+            <a href="/Stocks/Index"><i class="bi bi-layers"></i> <span class="nav-text">Tồn kho</span></a>
+        }
+        @if (hasLots)
+        {
+            <a href="/Lots/Index"><i class="bi bi-boxes"></i> <span class="nav-text">Quản lý Lô</span></a>
+        }
+        @if (hasTransfers)
+        {
+            <a href="/StockTransfers/Index"><i class="bi bi-arrow-left-right"></i> <span class="nav-text">Chuyển kho</span></a>
+        }
 
-            <div class="mt-4 pt-3 border-t border-slate-200">
-                <p class="px-3 text-xs uppercase text-slate-400 mb-2">Quản trị</p>
-                <a href="/Reports/Revenue" class="block px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100"><i class="fas fa-chart-line me-2"></i> Báo cáo doanh thu</a>
-                <a href="/Reports/Movements" class="block px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100"><i class="fas fa-exchange-alt me-2"></i> Báo cáo nhập xuất</a>
-                <a href="/Reports/Inventory" class="block px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100"><i class="fas fa-clipboard-list me-2"></i> Báo cáo tồn kho</a>
-                
-                <a href="/StockTransfers/Index" class="block px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100"><i class="fas fa-route me-2"></i> Chuyển kho</a>
-                <a href="/StockAdjustments/Index" class="block px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100"><i class="fas fa-balance-scale me-2"></i> Điều chỉnh tồn</a>
-                <a href="/Users/Index" data-page="users" class="block px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100"><i class="fas fa-users me-2"></i> Người dùng</a>
-                <a href="/Roles" data-page="roles" class="block px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100"><i class="fas fa-user-shield me-2"></i> Phân quyền</a>
-            </div>
-        </nav>
-
-        <div class="p-4 border-t border-slate-200">
-            <div class="flex items-center gap-3">
-                <img src="/uploads/user.jpg" class="w-10 h-10 rounded-full object-cover" />
-                <div>
-                    <p class="text-sm font-semibold text-slate-700">@username</p>
-                    <p class="text-xs text-slate-400">Đang online</p>
+        @if (hasAdminSection)
+        {
+            <div class="mt-4 pt-3 border-t border-slate-200 transition-all duration-300 ease-in-out" id="admin-section">
+                <p class="section-title px-3 flex justify-between items-center cursor-pointer select-none"
+                   onclick="toggleAdminMenu()">
+                    <span>Quản trị</span>
+                    <i id="admin-arrow" class="bi bi-chevron-down text-slate-500 text-xs"></i>
+                </p>
+                <div id="admin-menu" class="overflow-hidden max-h-0 transition-all duration-300 ease-in-out">
+                    @if (hasPurchaseRequests)
+                    {
+                        <a href="/PurchaseRequests/Index" class="relative"><i class="bi bi-cart-plus"></i> <span class="nav-text">Đề xuất đặt hàng</span>@await Component.InvokeAsync("PurchaseRequestBadge")</a>
+                    }
+                    @if (hasReports)
+                    {
+                        <a href="/Reports/Revenue"><i class="bi bi-graph-up"></i> <span class="nav-text">Báo cáo doanh thu</span></a>
+                        <a href="/Reports/Movements"><i class="bi bi-shuffle"></i> <span class="nav-text">Báo cáo nhập xuất</span></a>
+                        <a href="/Reports/Inventory"><i class="bi bi-clipboard-data"></i> <span class="nav-text">Báo cáo tồn kho</span></a>
+                        <div class="nav-divider my-2"></div>
+                        <div class="nav-section-title px-3 py-1 text-xs text-slate-400 uppercase">Kế toán kho</div>
+                        <a href="/Reports/InventoryValue"><i class="bi bi-cash-stack"></i> <span class="nav-text">NXT theo giá trị</span></a>
+                        <a href="/Reports/COGS"><i class="bi bi-calculator"></i> <span class="nav-text">Giá vốn hàng bán</span></a>
+                        <a href="/Reports/InventoryValuation"><i class="bi bi-currency-dollar"></i> <span class="nav-text">Định giá tồn kho</span></a>
+                    }
+                    @if (hasNotifications)
+                    {
+                        <a href="/Notifications/Index"><i class="bi bi-bell"></i> <span class="nav-text">Thông báo</span></a>
+                    }
+                    @if (hasDocuments)
+                    {
+                        <a href="/DocumentManagement/List"><i class="bi bi-file-earmark-arrow-up"></i> <span class="nav-text">Quản lý tài liệu</span></a>
+                    }
                 </div>
             </div>
-        </div>
-    </aside>
+        }
+    </nav>
+
+</aside>
+
 
     <!-- Main -->
-    <div class="flex-1 flex flex-col">
+    <div class="flex-1 flex flex-col overflow-hidden">
+
         <!-- Header -->
-        <header class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-slate-800">@ViewData["Title"]</h2>
+        <header class="px-6 py-3 flex items-center justify-between relative">
+            <div class="flex items-center gap-2 text-sm text-slate-500">
+                <i class="bi bi-house"></i>
+                <span>Menu</span>
+                <i class="bi bi-chevron-right text-xs"></i>
+                <span class="font-semibold text-slate-700">@ViewData["Title"]</span>
+            </div>
 
-            <div class="flex items-center gap-4">
-                <!-- Search -->
-                <div class="hidden md:flex items-center bg-slate-100 rounded-lg px-3 py-1">
-                    <i class="fas fa-search text-slate-400 me-2"></i>
-                    <input type="text" placeholder="Tìm kiếm..." class="bg-transparent outline-none text-sm" />
-                </div>
-
-                <!-- Notifications -->
-                <div class="dropdown">
-                    <button class="btn btn-link position-relative" data-bs-toggle="dropdown">
-                        <i class="fas fa-bell text-slate-600"></i>
-                        <span class="position-absolute top-0 start-100 translate-middle badge bg-danger rounded-pill">3</span>
+            <div class="flex items-center gap-5">
+                <div class="relative" id="notification-menu">
+                    <button type="button" id="notification-bell" class="relative inline-block p-2 hover:bg-slate-100 rounded-lg transition">
+                        <i class="bi bi-bell text-xl"></i>
+                        @await Component.InvokeAsync("NotificationBadge")
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow rounded-3">
-                        <li><span class="dropdown-item-text">Không có thông báo mới</span></li>
-                    </ul>
-                </div>
-
-                <!-- User -->
-                <div class="dropdown relative">
-                  <button class="flex items-center gap-2 p-1.5 rounded-xl hover:bg-slate-100"
-                          data-bs-toggle="dropdown" aria-expanded="false">
-                      <img src="/uploads/user.jpg" 
-                          class="w-10 h-10 rounded-full object-cover ring-2 ring-blue-500" />
-                      <i class="fas fa-chevron-down text-xs text-slate-400"></i>
-                  </button>
-                  <ul class="dropdown-menu dropdown-menu-end shadow rounded-3 mt-2"
-                      style="z-index:3000; min-width:220px;">
-                      <li class="px-3 py-2 border-bottom">
-                        <div class="d-flex align-items-center gap-2">
-                          <img src="/uploads/user.jpg" class="rounded-circle" width="44" height="44"/>
-                          <div>
-                            <div class="fw-semibold text-dark">@username</div>
-                            <div class="text-muted small">Đã đăng nhập</div>
-                          </div>
+                    
+                    <!-- Dropdown Panel -->
+                    <div id="notification-dropdown" class="hidden absolute right-0 mt-2 w-[380px] bg-white rounded-xl border border-slate-200 shadow-2xl z-[9999] overflow-hidden">
+                        <!-- Header -->
+                        <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-slate-50">
+                            <h3 class="font-bold text-slate-900">Thông báo</h3>
+                            <a href="/Notifications/Index" class="text-sm text-blue-600 hover:text-blue-800 font-medium">Xem tất cả</a>
                         </div>
-                      </li>
-                      <li><a class="dropdown-item" asp-controller="Profile" asp-action="Index"><i class="fas fa-user-circle"></i> Hồ sơ</a></li>
-                      <li><a class="dropdown-item" href="#"><i class="fas fa-cog"></i> Cài đặt</a></li>
-                      <li><hr class="dropdown-divider"/></li>
-                      <li><a class="dropdown-item text-danger" href="/Account/Login"><i class="fas fa-sign-out-alt"></i> Đăng xuất</a></li>
-                  </ul>
+                        
+                        <!-- Notifications List -->
+                        <div id="notification-list" class="max-h-[500px] overflow-y-auto">
+                            <div class="flex items-center justify-center py-8 text-slate-500">
+                                <div class="text-center">
+                                    <i class="bi bi-inbox text-3xl mb-2 block"></i>
+                                    <p class="text-sm">Đang tải...</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Footer -->
+                        <div class="border-t border-slate-200 bg-slate-50 px-4 py-3">
+                            <a href="/Notifications/Index" class="block text-center text-sm text-blue-600 hover:text-blue-800 font-medium">
+                                Xem tất cả thông báo <i class="bi bi-arrow-right"></i>
+                            </a>
+                        </div>
+                    </div>
                 </div>
+                <i class="bi bi-envelope"></i>
 
+                <img src="/uploads/avarta.png" class="w-9 h-9 rounded-full object-cover ring-2 ring-green-400" />
             </div>
         </header>
 
         <!-- Content -->
-        <main class="flex-1 overflow-y-auto p-6 bg-slate-50">
+        <main class="flex-1 overflow-y-auto p-6 bg-slate-50" style="height: calc(100vh - 120px);">
             @RenderBody()
         </main>
-
-        <!-- Footer -->
-        <footer class="bg-white border-t border-slate-200 px-6 py-3 text-sm text-slate-500 flex justify-between">
-            <span>© @DateTime.Now.Year BEMART - Quản lý kho</span>
-            <span>v2.0.0</span>
-        </footer>
     </div>
 </div>
+
+<!-- =================== MODAL HOST FIX =================== -->
+<div id="modal-host"></div>
+@RenderSection("Modals", required: false)
+<!-- ===================================================== -->
+<script>
+    // Toggle admin menu
+    function toggleAdminMenu() {
+        const menu = document.getElementById('admin-menu');
+        const arrow = document.getElementById('admin-arrow');
+        if (menu.classList.contains('max-h-0')) {
+            menu.classList.remove('max-h-0');
+            menu.classList.add('max-h-[500px]');
+            arrow.classList.add('rotate-180');
+        } else {
+            menu.classList.add('max-h-0');
+            menu.classList.remove('max-h-[500px]');
+            arrow.classList.remove('rotate-180');
+        }
+    }
+
+    // Tự thu sidebar nếu role = user
+    document.addEventListener('DOMContentLoaded', () => {
+        const role = '@userRole'.toLowerCase();
+        const sidebar = document.getElementById('sidebar');
+        if (role === 'user') {
+            sidebar.classList.add('w-20');
+            document.querySelectorAll('.nav-text').forEach(el => el.classList.add('hidden'));
+        }
+        sidebar.addEventListener('mouseenter', () => {
+            sidebar.classList.remove('w-20');
+            document.querySelectorAll('.nav-text').forEach(el => el.classList.remove('hidden'));
+        });
+        sidebar.addEventListener('mouseleave', () => {
+            if (role === 'user') {
+                sidebar.classList.add('w-20');
+                document.querySelectorAll('.nav-text').forEach(el => el.classList.add('hidden'));
+            }
+        });
+    });
+</script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     // Active nav highlight
     (function () {
         const current = location.pathname.toLowerCase();
-        const map = [
-            ['dashboard', '/home/dashboard'],
-            ['materials', '/materials'],
-            ['warehouses', '/warehouses'],
-            ['suppliers', '/suppliers'],
-            ['stockreceipts', '/stockreceipts'],
-            ['stockissues', '/stockissues'],
-            ['stocks', '/stocks'],
-            ['users', '/users'],
-            ['roles', '/roles'],
-        ];
-        for (const [key, path] of map) {
-            if (current.startsWith(path)) {
-                document.querySelector(`[data-page="${key}"]`)?.classList.add('nav-active');
-                break;
+        document.querySelectorAll('aside a').forEach(a => {
+            const href = a.getAttribute('href').toLowerCase();
+            if (current.startsWith(href)) a.classList.add('active');
+        });
+    })();
+
+
+    // Fix modal hiển thị đúng lớp phủ
+    document.addEventListener('show.bs.modal', e => {
+        document.body.appendChild(e.target);
+    });
+</script>
+
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>*@
+
+
+@using System.Security.Claims
+@using MNBEMART.Services
+@inject IPermissionService PermissionService
+@{
+    ViewData["Title"] ??= "BEMART";
+    var username = User?.Identity?.IsAuthenticated == true
+        ? (User.Identity!.Name ?? "Người dùng")
+        : "Khách";
+
+    var userRole = User?.FindFirst(ClaimTypes.Role)?.Value ?? "User";
+    var isAdmin = string.Equals(userRole, "Admin", StringComparison.OrdinalIgnoreCase);
+    
+    // Pre-check permissions để tránh gọi async nhiều lần
+    var userIdStr = User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    int? userId = int.TryParse(userIdStr, out var uid) ? uid : null;
+    
+    var hasMaterials = isAdmin || (userId.HasValue && await PermissionService.HasAsync(userId.Value, "Materials", "Read"));
+    var hasWarehouses = isAdmin || (userId.HasValue && await PermissionService.HasAsync(userId.Value, "Warehouses", "Read"));
+    var hasSuppliers = isAdmin || (userId.HasValue && await PermissionService.HasAsync(userId.Value, "Suppliers", "Read"));
+    var hasReceipts = isAdmin || (userId.HasValue && await PermissionService.HasAsync(userId.Value, "Receipts", "Read"));
+    var hasIssues = isAdmin || (userId.HasValue && await PermissionService.HasAsync(userId.Value, "Issues", "Read"));
+    var hasStocks = isAdmin || (userId.HasValue && await PermissionService.HasAsync(userId.Value, "Stocks", "Read"));
+    var hasLots = isAdmin || (userId.HasValue && await PermissionService.HasAsync(userId.Value, "Lots", "Read"));
+    var hasTransfers = isAdmin || (userId.HasValue && await PermissionService.HasAsync(userId.Value, "Transfers", "Read"));
+    var hasPurchaseRequests = isAdmin || (userId.HasValue && await PermissionService.HasAsync(userId.Value, "PurchaseRequests", "Read"));
+    var hasReports = isAdmin || (userId.HasValue && await PermissionService.HasAsync(userId.Value, "Reports", "Read"));
+    var hasUsers = isAdmin || (userId.HasValue && await PermissionService.HasAsync(userId.Value, "Users", "Read"));
+    var hasRoles = isAdmin || (userId.HasValue && await PermissionService.HasAsync(userId.Value, "Roles", "Read"));
+    var hasLogs = isAdmin || (userId.HasValue && await PermissionService.HasAsync(userId.Value, "Logs", "Read"));
+    var hasNotifications = isAdmin || (userId.HasValue && await PermissionService.HasAsync(userId.Value, "Notifications", "Read"));
+    
+    // Always allow authenticated users to see Documents menu
+    // Permission check will be enforced at controller level via RequirePermissionAttribute
+    // Force true for now to ensure menu displays
+    bool hasDocuments = true;
+    
+    // Check xem có hiển thị section "Quản trị" không
+    var hasAdminSection = hasPurchaseRequests || hasReports || hasUsers || hasRoles || hasLogs || hasNotifications || hasTransfers || hasDocuments;
+    
+    var langCookie = Context.Request.Cookies["bemart_lang"] ?? "vi";
+    var htmlLang = langCookie == "en" ? "en" : "vi";
+}
+<!DOCTYPE html>
+<html lang="@htmlLang" class="h-full">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] - BEMART</title>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json?v=4">
+    <meta name="theme-color" content="#1e293b">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="BEMART">
+    <link rel="apple-touch-icon" href="/favicon.ico">
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+
+    <!-- Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <!-- Toast Notifications -->
+    <link rel="stylesheet" href="~/css/toast.css" asp-append-version="true" />
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+
+        /* Dark theme overrides */
+        body.theme-dark {
+            background-color: #020617; /* tổng nền */
+            color: #e5e7eb;
+        }
+
+        /* Main background & cards */
+        body.theme-dark main,
+        body.theme-dark .bg-slate-50 {
+            background-color: #020617 !important;
+        }
+        body.theme-dark .bg-white {
+            background-color: #0b1120 !important; /* card / panel */
+            color: #e5e7eb !important;
+        }
+
+        /* Sidebar & header */
+        body.theme-dark #sidebar {
+            background-color: #020617 !important;
+            border-color: #111827 !important;
+        }
+        body.theme-dark header {
+            background-color: #020617 !important;
+            border-bottom-color: #111827 !important;
+        }
+
+        body.theme-dark .border-slate-200 {
+            border-color: #1f2937 !important;
+        }
+        body.theme-dark .bg-slate-100 {
+            background-color: #111827 !important;
+        }
+        body.theme-dark .text-slate-700 { color: #e5e7eb !important; }
+        body.theme-dark .text-slate-500 { color: #9ca3af !important; }
+
+        /* Sidebar item */
+        aside a {
+            position: relative;
+            display: flex; align-items: center;
+            gap: .65rem; padding: .6rem .9rem;
+            border-radius: .6rem; color: #334155;
+            font-size: .915rem; font-weight: 500;
+            text-decoration: none !important;
+            transition: transform .15s ease, background .15s ease, color .15s ease, box-shadow .15s ease;
+        }
+        aside a i { color: #64748b; transition: color .15s ease; }
+        aside a:hover { background: #ecfdf5; color: #065f46; transform: translateX(2px); }
+        aside a:hover i { color: #059669; }
+        /* Chevron indicator (shows on hover/active) */
+        aside a::after {
+            content: '';
+            margin-left: auto; font-weight: 700; color: #94a3b8; opacity: 0; transition: opacity .15s ease, color .15s ease;
+        }
+        aside a:hover::after { content: '›'; opacity: 1; color: #059669; }
+        /* Active state = green pill like TradoX */
+        aside a.active {
+            background: #10b981 !important; /* green-500 */
+            color: #fff !important; font-weight: 600;
+            box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+        }
+        aside a.active i { color: #fff; }
+        aside a.active::after { content: '›'; opacity: 1; color: #fff; }
+        /* Left accent bar for active */
+        aside a.active::before {
+            content: '';
+            position: absolute; left: -6px; top: 15%; height: 70%; width: 4px;
+            background: #10b981; border-radius: 9999px;
+        }
+        /* Section title */
+        aside p.section-title {
+            font-size: .75rem; color: #94a3b8; font-weight: 600;
+            text-transform: uppercase; margin: 1rem .25rem .5rem;
+        }
+        header { background: #fff; border-bottom: 1px solid #e5e7eb; }
+        header i { color: #64748b; transition: color .2s ease; cursor: pointer; }
+        header i:hover { color: #1e293b; }
+    </style>
+</head>
+
+<body class="h-full">
+@Html.AntiForgeryToken()
+<div class="flex min-h-screen">
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-72 md:w-64 bg-white border-r border-slate-200 flex flex-col transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out md:static md:h-auto overflow-x-hidden">
+        <div class="p-5 border-b border-slate-200 flex items-center justify-between">
+            <img src="/uploads/logos/logobemartkotext.png" alt="BEMART Logo" class="h-10 object-contain" />
+        </div>
+
+        <nav class="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 space-y-1">
+        <a href="/Home/Dashboard"><i class="bi bi-house"></i> <span class="nav-text">@SR["Nav_Home"]</span></a>
+        @if (hasMaterials)
+        {
+            <a href="/Materials/Index" class="relative"><i class="bi bi-boxes"></i> <span class="nav-text">@SR["Nav_Materials"]</span>@await Component.InvokeAsync("ExpiryAlert")@await Component.InvokeAsync("OverstockAlert")</a>
+        }
+        @if (hasWarehouses)
+        {
+            <a href="/Warehouses/Index"><i class="bi bi-buildings"></i> <span class="nav-text">@SR["Nav_Warehouses"]</span></a>
+        }
+        @if (hasSuppliers)
+        {
+            <a href="/Suppliers/Index"><i class="bi bi-truck"></i> <span class="nav-text">@SR["Nav_Suppliers"]</span></a>
+        }
+        @if (hasReceipts)
+        {
+            <a href="/StockReceipts/Index"><i class="bi bi-arrow-down-circle"></i> <span class="nav-text">@SR["Nav_StockReceipts"]</span></a>
+        }
+        @if (hasIssues)
+        {
+            <a href="/StockIssues/Index"><i class="bi bi-arrow-up-circle"></i> <span class="nav-text">@SR["Nav_StockIssues"]</span></a>
+        }
+        @if (hasStocks)
+        {
+            <a href="/Stocks/Index"><i class="bi bi-layers"></i> <span class="nav-text">@SR["Nav_Stocks"]</span></a>
+        }
+        @if (hasLots)
+        {
+            <a href="/Lots/Index" class="relative"><i class="bi bi-boxes"></i> <span class="nav-text">Quản lý Lô</span>@await Component.InvokeAsync("ExpiringLotAlert")</a>
+        }
+        @if (hasTransfers)
+        {
+            <a href="/StockTransfers/Index"><i class="bi bi-arrow-left-right"></i> <span class="nav-text">@SR["Nav_StockTransfers"]</span></a>
+        }
+
+            @if (hasAdminSection)
+            {
+                <div class="mt-4 pt-3 border-t border-slate-200 transition-all duration-300 ease-in-out" id="admin-section">
+                    <p class="section-title px-3 flex justify-between items-center cursor-pointer select-none"
+                       onclick="toggleAdminMenu()">
+                        <span>@SR["Nav_Admin"]</span>
+                        <i id="admin-arrow" class="bi bi-chevron-down text-slate-500 text-xs rotate-180"></i>
+                    </p>
+                    <div id="admin-menu" class="overflow-y-auto overflow-x-hidden max-h-screen transition-all duration-300 ease-in-out">
+                        @if (hasPurchaseRequests)
+                        {
+                            <a href="/PurchaseRequests/Index" class="relative"><i class="bi bi-cart-plus"></i> <span class="nav-text">Đề xuất đặt hàng</span>@await Component.InvokeAsync("PurchaseRequestBadge")</a>
+                        }
+                        @if (hasReports)
+                        {
+                            <a href="/Reports/Revenue"><i class="bi bi-graph-up"></i> <span class="nav-text">Báo cáo doanh thu</span></a>
+                            <a href="/Reports/Movements"><i class="bi bi-shuffle"></i> <span class="nav-text">Báo cáo nhập xuất</span></a>
+                            <a href="/Reports/Inventory"><i class="bi bi-clipboard-data"></i> <span class="nav-text">Báo cáo tồn kho</span></a>
+                            <a href="/Reports/ProfitLoss"><i class="bi bi-graph-up-arrow"></i> <span class="nav-text">Báo cáo lợi nhuận (P&L)</span></a>
+                            <a href="/Reports/TurnoverRate"><i class="bi bi-arrow-repeat"></i> <span class="nav-text">Tỷ lệ quay vòng</span></a>
+                            @if (hasDocuments)
+                            {
+                                <a href="/DocumentManagement/List"><i class="bi bi-file-earmark-arrow-up"></i> <span class="nav-text">Quản lý tài liệu</span></a>
+                            }
+                            <div class="nav-divider my-2"></div>
+                            <div class="nav-section-title px-3 py-1 text-xs text-slate-400 uppercase">Kế toán kho</div>
+                            <a href="/Reports/InventoryValue"><i class="bi bi-cash-stack"></i> <span class="nav-text">NXT theo giá trị</span></a>
+                            <a href="/Reports/COGS"><i class="bi bi-calculator"></i> <span class="nav-text">Giá vốn hàng bán</span></a>
+                            <a href="/Reports/InventoryValuation"><i class="bi bi-currency-dollar"></i> <span class="nav-text">Định giá tồn kho</span></a>
+                        }
+                    </div>
+                </div>
+            }
+        </nav>
+
+    </aside>
+
+    <!-- Mobile backdrop -->
+    <div id="sidebarBackdrop" class="fixed inset-0 bg-black/30 z-30 hidden md:hidden"></div>
+
+    <!-- Main -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+
+        <!-- Header -->
+        <header class="px-6 py-4 flex items-center justify-between relative bg-white border-b border-slate-200">
+            <div class="flex items-center gap-3">
+                <button id="mobileMenuBtn" class="md:hidden inline-flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 mr-2 hover:border-green-300 hover:bg-green-50 transition">
+                    <i class="bi bi-list text-lg text-slate-600"></i>
+                </button>
+                <div class="flex flex-col">
+                    <div class="flex items-center gap-2 text-sm text-slate-500">
+                        <i class="bi bi-house text-green-600"></i>
+                        <span>Menu</span>
+                        <i class="bi bi-chevron-right text-xs"></i>
+                        <span class="font-semibold text-slate-700">@ViewData["Title"]</span>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-0.5">Chào mừng trở lại, <span class="font-semibold text-green-600">@username</span>! Hãy quản lý kho hàng của bạn ngay hôm nay</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-5">
+                <div class="relative" id="notification-menu">
+                    <button type="button" id="notification-bell" class="relative inline-block p-2 hover:bg-green-50 rounded-lg transition">
+                        <i class="bi bi-bell text-xl text-slate-600 hover:text-green-600"></i>
+                        @await Component.InvokeAsync("NotificationBadge")
+                    </button>
+                    
+                    <!-- Dropdown Panel -->
+                    <div id="notification-dropdown" class="hidden absolute right-0 mt-2 w-[380px] bg-white rounded-xl border border-slate-200 shadow-2xl z-[9999] overflow-hidden">
+                        <!-- Header -->
+                        <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-slate-50">
+                            <h3 class="font-bold text-slate-900">Thông báo</h3>
+                            <a href="/Notifications/Index" class="text-sm text-green-600 hover:text-green-700 font-medium">Xem tất cả</a>
+                        </div>
+                        
+                        <!-- Notifications List -->
+                        <div id="notification-list" class="max-h-[500px] overflow-y-auto">
+                            <div class="flex items-center justify-center py-8 text-slate-500">
+                                <div class="text-center">
+                                    <i class="bi bi-inbox text-3xl mb-2 block"></i>
+                                    <p class="text-sm">Đang tải...</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Footer -->
+                        <div class="border-t border-slate-200 bg-slate-50 px-4 py-3">
+                            <a href="/Notifications/Index" class="block text-center text-sm text-green-600 hover:text-green-700 font-medium">
+                                Xem tất cả thông báo <i class="bi bi-arrow-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    @await Component.InvokeAsync("UserGreeting")
+                    @await Component.InvokeAsync("UserAvatar")
+                </div>
+            </div>
+        </header>
+
+        <!-- Content -->
+        <main class="flex-1 overflow-y-auto p-6 bg-slate-50" style="height: calc(100vh - 120px);">
+            @RenderBody()
+        </main>
+    </div>
+</div>
+
+<!-- =================== MODAL HOST FIX =================== -->
+<div id="modal-host"></div>
+@RenderSection("Modals", required: false)
+<!-- ===================================================== -->
+
+<!-- Chatbot floating widget -->
+<div id="chatbot-root" class="fixed bottom-6 right-6 z-50 text-sm">
+    <div id="chatbot-panel" class="hidden bg-white shadow-2xl mb-3 flex flex-col overflow-hidden relative chatbot-panel-responsive" style="width: 800px; height: 650px; max-width: calc(100vw - 3rem); border-radius: 8px; border: 1px solid rgba(0, 0, 0, 0.1);">
+        <div class="px-4 py-3 text-white flex items-center justify-between relative" style="background-color: #0084FF; border-radius: 8px 8px 0 0;">
+            <div class="flex items-center gap-2">
+                <i class="bi bi-robot"></i>
+                <div>
+                    <p class="text-sm font-semibold">Trợ lý BEMART AI</p>
+                    <p class="text-[11px] opacity-90">Hỏi về kho, nguyên liệu, báo cáo...</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button type="button" id="chatbot-clear" class="text-[11px] opacity-90 hover:opacity-100 border border-white/60 rounded-full px-2 py-[1px] leading-none">Xoá</button>
+                <button type="button" id="chatbot-close" class="opacity-90 hover:opacity-100 text-lg leading-none">×</button>
+            </div>
+        </div>
+        <div id="chatbot-messages" class="px-4 py-3 space-y-2 overflow-y-auto text-xs flex-1" style="min-height: 0; background-color: #F0F2F5;">
+            <div class="flex items-start gap-2 justify-start w-full">
+                <div class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs flex-shrink-0" style="background-color: #0084FF;">
+                    <i class="bi bi-robot"></i>
+                </div>
+                <div class="px-3 py-2 flex-1" style="background-color: #E4E6EB; color: #050505; border-radius: 18px 18px 18px 4px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);">
+                    Xin chào, tôi là trợ lý AI của BEMART. Bạn muốn hỏi gì về tồn kho, phiếu nhập/xuất hoặc nguyên liệu?
+                </div>
+            </div>
+        </div>
+        <div class="border-t bg-white relative" style="border-color: #E4E6EB; border-radius: 0 0 8px 8px;">
+            <!-- Emoji Picker Popup -->
+            <div id="chatbot-emoji-sticker-picker" class="hidden absolute bottom-full left-3 mb-2 bg-white rounded-lg shadow-2xl border" style="width: 500px; height: 400px; z-index: 1000; border-color: #E4E6EB;">
+                <!-- Header -->
+                <div class="p-3 border-b flex items-center justify-between" style="border-color: #E4E6EB;">
+                    <span class="text-xs font-semibold" style="color: #0084FF;">EMOJI</span>
+                    <button id="chatbot-picker-close" class="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
+                </div>
+                
+                <!-- Content Area -->
+                <div class="h-full overflow-y-auto p-2" style="height: calc(100% - 50px);">
+                    <div id="chatbot-emoji-grid" class="grid grid-cols-8 gap-1">
+                        <!-- Emoji sẽ được render bằng JavaScript -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="px-3 pt-2 pb-3">
+                <div class="flex items-end gap-2">
+                    <button id="chatbot-emoji-sticker-btn" type="button" class="p-1.5 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0" title="Emoji">
+                        <i class="bi bi-emoji-smile text-lg" style="color: #0084FF;"></i>
+                    </button>
+                    <textarea id="chatbot-input" rows="2" class="flex-1 text-xs border rounded-lg px-3 py-2 resize-none focus:outline-none" style="border-color: #E4E6EB; background-color: #F0F2F5;" placeholder="Nhập câu hỏi của bạn..."></textarea>
+                    <button id="chatbot-send" type="button" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-white text-xs font-semibold hover:opacity-90 flex-shrink-0" style="background-color: #0084FF;">
+                        <i class="bi bi-send"></i>
+                        Gửi
+                    </button>
+                </div>
+                <div class="px-1 pt-1">
+                    <span id="chatbot-status" class="text-[11px] text-slate-400"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button id="chatbot-toggle" type="button" class="w-12 h-12 rounded-full text-white flex items-center justify-center shadow-lg hover:opacity-90" style="background-color: #0084FF; box-shadow: 0 4px 12px rgba(0, 132, 255, 0.4);">
+        <i class="bi bi-chat-dots text-lg"></i>
+    </button>
+</div>
+
+@* Toast notification data from TempData *@
+@if (TempData["Msg"] != null)
+{
+    <div data-temp-msg="@TempData["Msg"]" data-temp-type="success"></div>
+}
+@if (TempData["Error"] != null)
+{
+    <div data-temp-error="@TempData["Error"]"></div>
+}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@latest/dist/browser/signalr.min.js"></script>
+<script src="~/js/toast.js" asp-append-version="true"></script>
+<script src="~/js/shortcuts.js" asp-append-version="true"></script>
+<script src="~/js/desktop-notifications.js" asp-append-version="true"></script>
+<script src="~/js/sound-notifications.js" asp-append-version="true"></script>
+<script src="~/js/notification-signalr.js" asp-append-version="true"></script>
+<script src="~/js/site.js" asp-append-version="true"></script>
+<script>
+    // Set current user ID for SignalR
+    @{
+        var currentUserId = User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    }
+    window.currentUserId = @(currentUserId ?? "null");
+    // Toggle admin section
+    function toggleAdminMenu() {
+        const menu = document.getElementById('admin-menu');
+        const arrow = document.getElementById('admin-arrow');
+        if (menu.classList.contains('max-h-0')) {
+            menu.classList.remove('max-h-0');
+            menu.classList.add('max-h-screen');
+            arrow.classList.add('rotate-180');
+        } else {
+            menu.classList.add('max-h-0');
+            menu.classList.remove('max-h-screen');
+            arrow.classList.remove('rotate-180');
+        }
+    }
+
+    // Dropdown toggle for user avatar menu
+    const userAvatarMenu = document.getElementById("user-avatar-menu");
+    if (userAvatarMenu) {
+        userAvatarMenu.addEventListener("click", function (e) {
+            e.stopPropagation();
+            const userDropdown = document.getElementById("user-dropdown-menu");
+            if (userDropdown) {
+                userDropdown.classList.toggle("hidden");
+            }
+        });
+    }
+    
+    // Close dropdown when clicking outside
+    document.addEventListener("click", function (e) {
+        if (!e.target.closest("#user-avatar-menu") && !e.target.closest("#user-dropdown-menu")) {
+            const userDropdown = document.getElementById("user-dropdown-menu");
+            if (userDropdown) {
+                userDropdown.classList.add("hidden");
+            }
+        }
+    });
+
+    // Sidebar toggle removed - hamburger menu no longer exists
+
+    // Mobile off-canvas sidebar
+    const backdrop = document.getElementById('sidebarBackdrop');
+    const mobileBtn = document.getElementById('mobileMenuBtn');
+    function openSidebar(){ sidebar.classList.remove('-translate-x-full'); backdrop.classList.remove('hidden'); }
+    function closeSidebar(){ sidebar.classList.add('-translate-x-full'); backdrop.classList.add('hidden'); }
+    mobileBtn?.addEventListener('click', openSidebar);
+    backdrop?.addEventListener('click', closeSidebar);
+
+    // Close on Esc
+    document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeSidebar(); });
+
+    // Alt+1 shortcut to go to Dashboard
+    document.addEventListener('keydown', function(e) {
+        if (e.altKey && e.key === '1') {
+            e.preventDefault();
+            window.location.href = '/Home/Dashboard';
+        }
+    });
+
+    // Highlight current nav + auto-expand admin when a child is active
+    (function highlightNav() {
+        const current = location.pathname.toLowerCase();
+        let best = null; let bestLen = -1;
+        document.querySelectorAll('aside a').forEach(a => {
+            const href = (a.getAttribute('href') || '').toLowerCase();
+            if (!href || href === '#') return;
+            if (current.startsWith(href) && href.length > bestLen) { best = a; bestLen = href.length; }
+        });
+        if (best) {
+            best.classList.add('active');
+            // If active is inside admin menu, ensure it's expanded
+            const adminMenu = document.getElementById('admin-menu');
+            if (adminMenu && adminMenu.contains(best)) {
+                adminMenu.classList.remove('max-h-0');
+                adminMenu.classList.add('max-h-screen');
+                const arrow = document.getElementById('admin-arrow');
+                if (arrow) arrow.classList.add('rotate-180');
             }
         }
     })();
+
+    // Wrap wide tables on small screens
+    (function wrapTables(){
+        document.querySelectorAll('main table').forEach(t => {
+            if (t.closest('.overflow-x-auto')) return;
+            const wrap = document.createElement('div');
+            wrap.className = 'overflow-x-auto w-100';
+            t.parentNode.insertBefore(wrap, t);
+            wrap.appendChild(t);
+        });
+    })();
+
+    // Always show full sidebar by default (no hover-to-reveal)
+    document.addEventListener('DOMContentLoaded', () => {
+        sidebar.classList.remove('w-20');
+        document.querySelectorAll('.nav-text').forEach(el => el.classList.remove('hidden'));
+    });
+
+    // ========== PWA Service Worker Registration ==========
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(function(registration) {
+                    console.log('ServiceWorker registered:', registration.scope);
+                })
+                .catch(function(err) {
+                    console.log('ServiceWorker registration failed:', err);
+                });
+        });
+    }
+
+    // PWA Install Prompt
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        
+        // Show install banner
+        const installBanner = document.createElement('div');
+        installBanner.id = 'pwa-install-banner';
+        installBanner.className = 'fixed bottom-20 right-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 rounded-xl shadow-2xl z-40 flex items-center gap-3 max-w-sm animate-slide-up';
+        installBanner.innerHTML = `
+            <i class="bi bi-download text-2xl"></i>
+            <div class="flex-1">
+                <div class="font-bold text-sm">Cài đặt ứng dụng</div>
+                <div class="text-xs opacity-90">Truy cập nhanh như app native</div>
+            </div>
+            <button id="pwa-install-btn" class="bg-white text-blue-600 px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-blue-50 transition">
+                Cài
+            </button>
+            <button id="pwa-dismiss-btn" class="text-white hover:text-blue-100 text-xl leading-none">×</button>
+        `;
+        
+        document.body.appendChild(installBanner);
+        
+        document.getElementById('pwa-install-btn').addEventListener('click', async () => {
+            installBanner.remove();
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`User response: ${outcome}`);
+            if (outcome === 'accepted') {
+                Toast.success('Đang cài đặt ứng dụng...');
+            }
+            deferredPrompt = null;
+        });
+        
+        document.getElementById('pwa-dismiss-btn').addEventListener('click', () => {
+            installBanner.remove();
+        });
+    });
+
+    // App installed
+    window.addEventListener('appinstalled', () => {
+        console.log('PWA installed successfully');
+        Toast.success('Ứng dụng đã được cài đặt thành công!');
+    });
+
+    // Online/Offline detection
+    window.addEventListener('online', () => {
+        Toast.success('Kết nối internet đã được khôi phục');
+    });
+
+    window.addEventListener('offline', () => {
+        Toast.warning('Bạn đang offline. Một số tính năng có thể không khả dụng.');
+    });
+
+    // Event delegation for notification buttons (must be defined before use)
+    function setupNotificationEventDelegation(container) {
+        if (!container) return;
+        
+        // Remove existing listeners by cloning (to avoid duplicates)
+        const newContainer = container.cloneNode(true);
+        container.parentNode.replaceChild(newContainer, container);
+        
+        // Mark as read
+        newContainer.addEventListener('click', async function(e) {
+            const markReadBtn = e.target.closest('.mark-read-btn');
+            if (markReadBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const id = parseInt(markReadBtn.getAttribute('data-id'));
+                if (id) {
+                    await markNotificationAsRead(id, markReadBtn);
+                }
+            }
+        });
+        
+        // Toggle important
+        newContainer.addEventListener('click', async function(e) {
+            const importantBtn = e.target.closest('.mark-important-btn');
+            if (importantBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const id = parseInt(importantBtn.getAttribute('data-id'));
+                if (id) {
+                    await toggleImportant(id, importantBtn);
+                }
+            }
+        });
+        
+        // Delete notification
+        newContainer.addEventListener('click', async function(e) {
+            const deleteBtn = e.target.closest('.delete-notification-btn');
+            if (deleteBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const id = parseInt(deleteBtn.getAttribute('data-id'));
+                if (id) {
+                    await deleteNotification(id, deleteBtn);
+                }
+            }
+        });
+        
+        // Quick actions
+        newContainer.addEventListener('click', async function(e) {
+            const quickActionBtn = e.target.closest('.quick-action-btn');
+            if (quickActionBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const action = quickActionBtn.getAttribute('data-action');
+                const documentId = parseInt(quickActionBtn.getAttribute('data-document-id'));
+                const notificationId = parseInt(quickActionBtn.getAttribute('data-notification-id')) || null;
+                if (action && documentId) {
+                    await quickAction(action, documentId, notificationId);
+                }
+            }
+        });
+        
+        return newContainer;
+    }
+
+    // Notification Dropdown Management
+    const notificationBell = document.getElementById('notification-bell');
+    const notificationDropdown = document.getElementById('notification-dropdown');
+    let notificationList = document.getElementById('notification-list');
+    let notificationRefreshInterval = null;
+    
+    // Setup event delegation once when page loads
+    if (notificationList) {
+        notificationList = setupNotificationEventDelegation(notificationList);
+    }
+
+    // Toggle dropdown
+    if (notificationBell && notificationDropdown) {
+        notificationBell.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const isHidden = notificationDropdown.classList.contains('hidden');
+            
+            if (isHidden) {
+                notificationDropdown.classList.remove('hidden');
+                loadNotifications();
+                startNotificationRefresh();
+            } else {
+                notificationDropdown.classList.add('hidden');
+                stopNotificationRefresh();
+            }
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!notificationBell.contains(e.target) && !notificationDropdown.contains(e.target)) {
+                notificationDropdown.classList.add('hidden');
+                stopNotificationRefresh();
+            }
+        });
+    }
+
+    // Load notifications
+    async function loadNotifications() {
+        try {
+            const response = await fetch('/Notifications/GetRecentNotifications?limit=10', {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            
+            // Kiểm tra response có thành công không
+            if (!response.ok) {
+                // Nếu response không OK (401, 403, 500, etc.)
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+                } else {
+                    // Nếu là HTML (redirect hoặc error page)
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            }
+            
+            const notifications = await response.json();
+            
+            // Kiểm tra nếu notifications không phải là array
+            if (!Array.isArray(notifications)) {
+                console.error('Invalid notifications response:', notifications);
+                notificationList.innerHTML = `
+                    <div class="flex items-center justify-center py-8 text-red-500">
+                        <div class="text-center">
+                            <i class="bi bi-exclamation-triangle text-2xl mb-2 block"></i>
+                            <p class="text-sm">Lỗi khi tải thông báo</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            if (!notifications || notifications.length === 0) {
+                notificationList.innerHTML = `
+                    <div class="flex items-center justify-center py-12 text-slate-500">
+                        <div class="text-center">
+                            <i class="bi bi-bell-slash text-4xl mb-3 block text-slate-300"></i>
+                            <p class="text-sm font-medium">Chưa có thông báo</p>
+                            <p class="text-xs text-slate-400 mt-1">Bạn sẽ nhận được thông báo khi có phiếu mới</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            notificationList.innerHTML = notifications.map(n => {
+                // Icon và màu sắc theo type và priority
+                const iconConfig = {
+                    'Receipt': { icon: 'bi-box-arrow-in-down', color: 'text-blue-600', bg: 'bg-blue-100' },
+                    'Issue': { icon: 'bi-box-arrow-up', color: 'text-green-600', bg: 'bg-green-100' },
+                    'Transfer': { icon: 'bi-arrow-left-right', color: 'text-purple-600', bg: 'bg-purple-100' },
+                    'PurchaseRequest': { icon: 'bi-cart-plus', color: 'text-orange-600', bg: 'bg-orange-100' },
+                    'ExpiryAlert': { icon: 'bi-exclamation-triangle', color: 'text-red-600', bg: 'bg-red-100' },
+                    'LowStockAlert': { icon: 'bi-exclamation-circle', color: 'text-yellow-600', bg: 'bg-yellow-100' },
+                    'UserRegistration': { icon: 'bi-person-plus', color: 'text-indigo-600', bg: 'bg-indigo-100' },
+                    'RoleCreated': { icon: 'bi-shield-check', color: 'text-teal-600', bg: 'bg-teal-100' },
+                    'WarehouseCreated': { icon: 'bi-building', color: 'text-cyan-600', bg: 'bg-cyan-100' },
+                    'UnconfirmedDocument': { icon: 'bi-clock-history', color: 'text-amber-600', bg: 'bg-amber-100' }
+                };
+                
+                const config = iconConfig[n.type] || { icon: 'bi-bell', color: 'text-slate-600', bg: 'bg-slate-100' };
+                
+                // Priority colors
+                const priorityColors = {
+                    'Urgent': 'border-l-4 border-red-500',
+                    'High': 'border-l-4 border-yellow-500',
+                    'Normal': '',
+                    'Low': 'border-l-4 border-slate-300'
+                };
+                const priorityClass = priorityColors[n.priority] || '';
+                
+                const bgClass = n.isRead ? 'bg-white' : 'bg-green-50';
+                const quickActions = n.quickActions || {};
+                
+                return `
+                    <div class="notification-item ${bgClass} ${priorityClass} border-b border-slate-100 hover:bg-slate-50 transition-all duration-200 animate-slide-in" data-id="${n.id}" data-read="${n.isRead}" data-important="${n.isImportant || false}">
+                        <div class="flex items-start gap-3 p-3">
+                            <div class="flex-shrink-0 w-10 h-10 rounded-full ${config.bg} flex items-center justify-center">
+                                <i class="bi ${config.icon} ${config.color} text-lg"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-start justify-between gap-2 mb-1">
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-2 flex-wrap">
+                                            <a href="${n.detailUrl}" class="text-sm font-semibold text-slate-900 line-clamp-1 hover:text-green-600 transition">${escapeHtml(n.title)}</a>
+                                            ${!n.isRead ? '<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-green-500 text-white animate-pulse">Mới</span>' : ''}
+                                            ${n.isImportant ? '<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-yellow-500 text-white"><i class="bi bi-star-fill text-[8px]"></i> Quan trọng</span>' : ''}
+                                        </div>
+                                        ${n.message ? `<p class="text-xs text-slate-600 mt-0.5 line-clamp-2">${escapeHtml(n.message)}</p>` : ''}
+                                    </div>
+                                    <div class="flex items-center gap-1 flex-shrink-0">
+                                        ${!n.isRead ? `
+                                            <button type="button" class="mark-read-btn w-6 h-6 rounded-full hover:bg-green-100 flex items-center justify-center transition" data-action="mark-read" data-id="${n.id}" title="Đánh dấu đã đọc">
+                                                <i class="bi bi-check text-xs text-green-600"></i>
+                                            </button>
+                                        ` : ''}
+                                        <button type="button" class="mark-important-btn w-6 h-6 rounded-full hover:bg-yellow-100 flex items-center justify-center transition" data-action="toggle-important" data-id="${n.id}" data-important="${n.isImportant || false}" title="${n.isImportant ? 'Bỏ đánh dấu quan trọng' : 'Đánh dấu quan trọng'}">
+                                            <i class="bi ${n.isImportant ? 'bi-star-fill' : 'bi-star'} text-xs ${n.isImportant ? 'text-yellow-600' : 'text-slate-400'}"></i>
+                                        </button>
+                                        <button type="button" class="delete-notification-btn w-6 h-6 rounded-full hover:bg-red-100 flex items-center justify-center transition" data-action="delete" data-id="${n.id}" title="Xóa">
+                                            <i class="bi bi-x text-xs text-red-600"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                ${quickActions.approve || quickActions.confirm ? `
+                                    <div class="flex items-center gap-2 mt-2">
+                                        ${quickActions.approve ? `
+                                            <button type="button" class="quick-action-btn text-xs px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded transition" data-action="approve_${n.type.toLowerCase()}" data-document-id="${n.documentId}" data-notification-id="${n.id}">
+                                                <i class="bi bi-check-circle me-1"></i> Duyệt
+                                            </button>
+                                        ` : ''}
+                                        ${quickActions.reject ? `
+                                            <button type="button" class="quick-action-btn text-xs px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded transition" data-action="reject_${n.type.toLowerCase()}" data-document-id="${n.documentId}" data-notification-id="${n.id}">
+                                                <i class="bi bi-x-circle me-1"></i> Từ chối
+                                            </button>
+                                        ` : ''}
+                                        ${quickActions.confirm ? `
+                                            <button type="button" class="quick-action-btn text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded transition" data-action="confirm_receipt" data-document-id="${n.documentId}" data-notification-id="${n.id}">
+                                                <i class="bi bi-check-circle me-1"></i> Xác nhận
+                                            </button>
+                                        ` : ''}
+                                        ${quickActions.cancel ? `
+                                            <button type="button" class="quick-action-btn text-xs px-2 py-1 bg-gray-600 hover:bg-gray-700 text-white rounded transition" data-action="cancel_receipt" data-document-id="${n.documentId}" data-notification-id="${n.id}">
+                                                <i class="bi bi-x-circle me-1"></i> Hủy
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                ` : ''}
+                                <p class="text-[10px] text-slate-400 mt-1">${n.timeAgo}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            // Re-setup event delegation after updating HTML
+            if (notificationList) {
+                notificationList = setupNotificationEventDelegation(notificationList);
+            }
+        } catch (error) {
+            console.error('Error loading notifications:', error);
+            const errorMessage = error.message || 'Không thể tải thông báo';
+            notificationList.innerHTML = `
+                <div class="flex items-center justify-center py-8 text-red-500">
+                    <div class="text-center">
+                        <i class="bi bi-exclamation-triangle text-2xl mb-2 block"></i>
+                        <p class="text-sm font-medium">Lỗi khi tải thông báo</p>
+                        <p class="text-xs text-red-400 mt-1">${escapeHtml(errorMessage)}</p>
+                        <button onclick="loadNotifications()" class="mt-3 text-xs text-blue-600 hover:text-blue-800 underline">
+                            Thử lại
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+
+    // Helper function to get CSRF token (defined once, used by all functions)
+    function getCSRFToken() {
+        // Try to get from hidden input first (most reliable)
+        const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+        if (tokenInput && tokenInput.value) {
+            return tokenInput.value;
+        }
+        
+        // Try to get from cookie
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }
+        
+        const cookieToken = getCookie('__RequestVerificationToken');
+        if (cookieToken) return cookieToken;
+        
+        // Try meta tag
+        const metaToken = document.querySelector('meta[name="__RequestVerificationToken"]');
+        if (metaToken && metaToken.content) {
+            return metaToken.content;
+        }
+        
+        return '';
+    }
+
+    // Mark notification as read (global function for onclick)
+    window.markNotificationAsRead = async function(id, button) {
+        try {
+            const csrfToken = getCSRFToken();
+            
+            if (!csrfToken) {
+                console.error('CSRF token not found');
+                if (typeof Toast !== 'undefined') {
+                    Toast.error('Không tìm thấy token bảo mật. Vui lòng tải lại trang.');
+                }
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('id', id);
+            formData.append('__RequestVerificationToken', csrfToken);
+            
+            const response = await fetch('/Notifications/MarkAsRead', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'RequestVerificationToken': csrfToken
+                },
+                body: formData
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Error response:', response.status, errorText);
+                if (typeof Toast !== 'undefined') {
+                    Toast.error('Lỗi khi đánh dấu đã đọc');
+                }
+                return;
+            }
+            
+            const data = await response.json();
+            if (data.success) {
+                // Update UI
+                const item = button.closest('.notification-item');
+                if (item) {
+                    item.classList.remove('bg-green-50');
+                    item.classList.add('bg-white');
+                    item.setAttribute('data-read', 'true');
+                    
+                    // Remove "Mới" badge
+                    const badge = item.querySelector('span.bg-green-500');
+                    if (badge) badge.remove();
+                    
+                    // Remove mark-read button
+                    button.remove();
+                    
+                    // Update badge count
+                    updateNotificationBadge();
+                    
+                    if (typeof Toast !== 'undefined') {
+                        Toast.success('Đã đánh dấu đã đọc');
+                    }
+                }
+            } else {
+                if (typeof Toast !== 'undefined') {
+                    Toast.error(data.message || 'Có lỗi xảy ra');
+                }
+            }
+        } catch (error) {
+            console.error('Error marking notification as read:', error);
+            if (typeof Toast !== 'undefined') {
+                Toast.error('Không thể đánh dấu đã đọc');
+            }
+        }
+    }
+
+    // Start auto-refresh notifications
+    function startNotificationRefresh() {
+        if (notificationRefreshInterval) return;
+        notificationRefreshInterval = setInterval(() => {
+            if (!notificationDropdown.classList.contains('hidden')) {
+                loadNotifications();
+                updateNotificationBadge();
+            }
+        }, 30000); // Every 30 seconds
+    }
+
+    // Stop auto-refresh
+    function stopNotificationRefresh() {
+        if (notificationRefreshInterval) {
+            clearInterval(notificationRefreshInterval);
+            notificationRefreshInterval = null;
+        }
+    }
+
+    // Auto-refresh notification badge
+    async function updateNotificationBadge() {
+        try {
+            const response = await fetch('/Notifications/GetUnreadCount', {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            
+            if (!response.ok) {
+                console.error('Error getting unread count:', response.status, response.statusText);
+                return;
+            }
+            
+            const data = await response.json();
+            const badgeContainer = document.querySelector('#notification-menu');
+            if (!badgeContainer) return;
+            
+            // Remove existing badge
+            const existingBadge = badgeContainer.querySelector('span.absolute');
+            if (existingBadge) existingBadge.remove();
+            
+            // Add new badge if count > 0
+            if (data.count > 0) {
+                const bellButton = badgeContainer.querySelector('#notification-bell');
+                if (bellButton) {
+                    const badge = document.createElement('span');
+                    badge.className = 'absolute -top-1 -right-2 flex h-5 min-w-[20px] items-center justify-center';
+                    if (data.count === 1) {
+                        badge.innerHTML = '<span class="relative inline-flex items-center justify-center rounded-full h-4 w-4 bg-red-500"></span>';
+                    } else {
+                        badge.innerHTML = `<span class="relative inline-flex items-center justify-center rounded-full h-5 min-w-[20px] px-1.5 bg-red-500 text-white text-[10px] font-bold">${data.count > 99 ? '99+' : data.count}</span>`;
+                    }
+                    bellButton.appendChild(badge);
+                }
+            }
+        } catch (error) {
+            console.error('Error updating notification badge:', error);
+        }
+    }
+
+    // Toggle important
+    window.toggleImportant = async function(id, button) {
+        try {
+            const isImportant = button.querySelector('.bi-star-fill') !== null;
+            const endpoint = isImportant ? '/Notifications/UnmarkAsImportant' : '/Notifications/MarkAsImportant';
+            
+            const csrfToken = getCSRFToken();
+            
+            if (!csrfToken) {
+                console.error('CSRF token not found');
+                if (typeof Toast !== 'undefined') {
+                    Toast.error('Không tìm thấy token bảo mật. Vui lòng tải lại trang.');
+                }
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('id', id);
+            formData.append('__RequestVerificationToken', csrfToken);
+            
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'RequestVerificationToken': csrfToken
+                },
+                body: formData
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Error response:', response.status, errorText);
+                if (typeof Toast !== 'undefined') {
+                    Toast.error('Lỗi khi thay đổi trạng thái quan trọng');
+                }
+                return;
+            }
+            
+            const data = await response.json();
+            if (data.success) {
+                const item = button.closest('.notification-item');
+                if (item) {
+                    const isNowImportant = !isImportant;
+                    item.setAttribute('data-important', isNowImportant);
+                    
+                    const icon = button.querySelector('i');
+                    if (icon) {
+                        if (isNowImportant) {
+                            icon.classList.remove('bi-star', 'text-slate-400');
+                            icon.classList.add('bi-star-fill', 'text-yellow-600');
+                            // Add important badge if not exists
+                            const title = item.querySelector('a');
+                            if (title && !item.querySelector('.bg-yellow-500')) {
+                                const badge = document.createElement('span');
+                                badge.className = 'inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-yellow-500 text-white';
+                                badge.innerHTML = '<i class="bi bi-star-fill text-[8px]"></i> Quan trọng';
+                                title.parentElement.appendChild(badge);
+                            }
+                        } else {
+                            icon.classList.remove('bi-star-fill', 'text-yellow-600');
+                            icon.classList.add('bi-star', 'text-slate-400');
+                            const badge = item.querySelector('.bg-yellow-500');
+                            if (badge) badge.remove();
+                        }
+                    }
+                    
+                    if (typeof Toast !== 'undefined') {
+                        Toast.success(isNowImportant ? 'Đã đánh dấu quan trọng' : 'Đã bỏ đánh dấu quan trọng');
+                    }
+                }
+            } else {
+                if (typeof Toast !== 'undefined') {
+                    Toast.error(data.message || 'Có lỗi xảy ra');
+                }
+            }
+        } catch (error) {
+            console.error('Error toggling important:', error);
+            if (typeof Toast !== 'undefined') {
+                Toast.error('Không thể thay đổi trạng thái quan trọng');
+            }
+        }
+    };
+
+    // Delete notification
+    window.deleteNotification = async function(id, button) {
+        if (!confirm('Bạn có chắc muốn xóa thông báo này?')) return;
+        
+        try {
+            const csrfToken = getCSRFToken();
+            
+            if (!csrfToken) {
+                console.error('CSRF token not found');
+                if (typeof Toast !== 'undefined') {
+                    Toast.error('Không tìm thấy token bảo mật. Vui lòng tải lại trang.');
+                }
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('id', id);
+            formData.append('__RequestVerificationToken', csrfToken);
+            
+            const response = await fetch('/Notifications/Delete', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'RequestVerificationToken': csrfToken
+                },
+                body: formData
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Error response:', response.status, errorText);
+                if (typeof Toast !== 'undefined') {
+                    Toast.error('Lỗi khi xóa thông báo');
+                }
+                return;
+            }
+            
+            const data = await response.json();
+            if (data.success) {
+                const item = button.closest('.notification-item');
+                if (item) {
+                    item.style.transition = 'opacity 0.3s';
+                    item.style.opacity = '0';
+                    setTimeout(() => {
+                        item.remove();
+                        updateNotificationBadge();
+                        
+                        // Check if no notifications left
+                        const notificationList = document.querySelector('#notification-list');
+                        if (notificationList && notificationList.children.length === 0) {
+                            notificationList.innerHTML = `
+                                <div class="flex items-center justify-center py-12 text-slate-500">
+                                    <div class="text-center">
+                                        <i class="bi bi-bell-slash text-4xl mb-3 block text-slate-300"></i>
+                                        <p class="text-sm font-medium">Chưa có thông báo</p>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    }, 300);
+                    
+                    if (typeof Toast !== 'undefined') {
+                        Toast.success('Đã xóa thông báo');
+                    }
+                }
+            } else {
+                if (typeof Toast !== 'undefined') {
+                    Toast.error(data.message || 'Có lỗi xảy ra');
+                }
+            }
+        } catch (error) {
+            console.error('Error deleting notification:', error);
+            if (typeof Toast !== 'undefined') {
+                Toast.error('Không thể xóa thông báo');
+            }
+        }
+    };
+
+    // Quick action
+    window.quickAction = async function(action, documentId, notificationId) {
+        try {
+            const csrfToken = getCSRFToken();
+            
+            if (!csrfToken) {
+                console.error('CSRF token not found');
+                if (typeof Toast !== 'undefined') {
+                    Toast.error('Không tìm thấy token bảo mật. Vui lòng tải lại trang.');
+                }
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('action', action);
+            formData.append('documentId', documentId);
+            if (notificationId) formData.append('notificationId', notificationId);
+            formData.append('__RequestVerificationToken', csrfToken);
+            
+            const response = await fetch('/Notifications/QuickAction', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'RequestVerificationToken': csrfToken
+                },
+                body: formData
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Error response:', response.status, errorText);
+                if (typeof Toast !== 'undefined') {
+                    Toast.error('Lỗi khi xử lý thao tác');
+                }
+                return;
+            }
+            
+            const data = await response.json();
+            if (data.success) {
+                if (typeof Toast !== 'undefined') {
+                    Toast.success('Đã xử lý thành công');
+                }
+                // Mark notification as read
+                if (notificationId) {
+                    const item = document.querySelector(`[data-id="${notificationId}"]`);
+                    if (item) {
+                        const markReadBtn = item.querySelector('.mark-read-btn');
+                        if (markReadBtn) {
+                            markNotificationAsRead(notificationId, markReadBtn);
+                        }
+                    }
+                }
+                updateNotificationBadge();
+            } else {
+                if (typeof Toast !== 'undefined') {
+                    Toast.error('Xử lý thất bại');
+                }
+            }
+        } catch (error) {
+            console.error('Error performing quick action:', error);
+            if (typeof Toast !== 'undefined') {
+                Toast.error('Có lỗi xảy ra');
+            }
+        }
+    };
+
+    // Helper function to get cookie
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return null;
+    }
+
+    // Helper function to escape HTML
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Listen for SignalR notifications
+    window.addEventListener('notificationReceived', function(event) {
+        const notification = event.detail;
+        // Reload notifications if dropdown is open
+        if (notificationDropdown && !notificationDropdown.classList.contains('hidden')) {
+            loadNotifications();
+        }
+        // Show animation
+        if (notificationBell) {
+            notificationBell.classList.add('animate-pulse');
+            setTimeout(() => notificationBell.classList.remove('animate-pulse'), 1000);
+        }
+    });
+
+    // Update badge every 30 seconds
+    setInterval(updateNotificationBadge, 30000);
+    
+    // Initial update after page load
+    setTimeout(updateNotificationBadge, 1000);
 </script>
+
+<style>
+    @@keyframes slide-in {
+        from {
+            opacity: 0;
+            transform: translateX(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+    .animate-slide-in {
+        animation: slide-in 0.3s ease-out;
+    }
+    
+    /* Chatbot responsive design */
+    @@media (max-width: 1024px) {
+        #chatbot-panel.chatbot-panel-responsive {
+            width: 700px !important;
+            height: 600px !important;
+        }
+    }
+    
+    @@media (max-width: 768px) {
+        #chatbot-panel.chatbot-panel-responsive {
+            width: calc(100vw - 2rem) !important;
+            height: 550px !important;
+            max-width: 100% !important;
+        }
+        #chatbot-root {
+            right: 1rem !important;
+            bottom: 1rem !important;
+        }
+    }
+    
+    @@media (max-width: 640px) {
+        #chatbot-panel.chatbot-panel-responsive {
+            width: calc(100vw - 1rem) !important;
+            height: 500px !important;
+        }
+        #chatbot-emoji-sticker-picker {
+            width: calc(100vw - 2rem) !important;
+            max-width: 400px !important;
+        }
+    }
+</style>
+
 @await RenderSectionAsync("Scripts", required: false)
 </body>
-</html> 
+</html>

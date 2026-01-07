@@ -1,59 +1,112 @@
 @model MNBEMART.Models.Material
 @using Microsoft.AspNetCore.Mvc.Rendering
+@using System.Linq
 @{
     var supplierItems = (SelectList)(ViewData["SupplierId"] ?? new SelectList(Enumerable.Empty<SelectListItem>()));
     var warehouseItems = (SelectList)(ViewData["WarehouseId"] ?? new SelectList(Enumerable.Empty<SelectListItem>()));
 }
 
 <div class="modal fade" id="materialCreateModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Thêm nguyên liệu</h5>
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content" style="max-height: 90vh; display: flex; flex-direction: column;">
+      <div class="modal-header" style="flex-shrink: 0;">
+        <h5 class="modal-title fw-bold">
+          <i class="bi bi-plus-circle me-2"></i>Thêm nguyên liệu
+        </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
       </div>
 
-      <form asp-controller="Materials" asp-action="Create" method="post" enctype="multipart/form-data" id="materialForm">
+      <form asp-controller="Materials" asp-action="Create" method="post" enctype="multipart/form-data" id="materialForm" data-controller="Materials" data-action="Create" data-no-loading style="display: flex; flex-direction: column; flex: 1; overflow: hidden;">
         @Html.AntiForgeryToken()
 
-        <div class="modal-body">
+        <div class="modal-body" style="overflow-y: auto; flex: 1;">
           <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
 
           <div class="row g-3">
             <div class="col-lg-8">
-              <div class="row g-3">
+              <div class="row g-3" style="max-height: 100%;">
                 <div class="col-md-6">
-                  <label class="form-label">Mã nguyên liệu</label>
-                  <input asp-for="Code" class="form-control" required />
+                  <label class="form-label">Mã nguyên liệu <span class="text-muted small">(Tự động tạo)</span></label>
+                  <input asp-for="Code" class="form-control" placeholder="Để trống để tự động tạo mã" />
                   <span asp-validation-for="Code" class="text-danger small"></span>
+                  <small class="form-text text-muted">Hệ thống sẽ tự động tạo mã nếu để trống</small>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label">Tên nguyên liệu</label>
-                  <input asp-for="Name" class="form-control" required />
+                  <div class="input-group">
+                    <input asp-for="Name" class="form-control" required id="materialName" />
+                    <button type="button" class="btn btn-outline-secondary" id="btnClassifyName" title="Phân loại tự động">
+                      <i class="bi bi-tags"></i>
+                    </button>
+                  </div>
                   <span asp-validation-for="Name" class="text-danger small"></span>
                 </div>
 
                 <div class="col-md-4">
                   <label class="form-label">Đơn vị</label>
-                  <input asp-for="Unit" class="form-control" required />
+                  <input asp-for="Unit" class="form-control" required id="Unit" />
                   <span asp-validation-for="Unit" class="text-danger small"></span>
                 </div>
                 <div class="col-md-8">
                   <label class="form-label">Quy cách</label>
-                  <input asp-for="Specification" class="form-control" />
+                  <div class="input-group">
+                    <select asp-for="Specification" class="form-select" id="specificationSelect">
+                      <option value="">-- Chọn quy cách --</option>
+                    </select>
+                    <button type="button" class="btn btn-outline-primary" id="btnQuickAddSpecification" title="Thêm quy cách mới">
+                      <i class="bi bi-plus-lg"></i>
+                    </button>
+                  </div>
                   <span asp-validation-for="Specification" class="text-danger small"></span>
+                  <!-- Form tạo nhanh quy cách (ẩn mặc định) -->
+                  <div id="quickSpecificationForm" class="mt-2 p-3 border rounded bg-light" style="display: none;">
+                    <div class="mb-2">
+                      <label class="form-label small fw-semibold">Tên quy cách <span class="text-danger">*</span></label>
+                      <input type="text" class="form-control form-control-sm" id="quickSpecificationName" placeholder="Nhập tên quy cách" />
+                      <div class="text-danger small" id="quickSpecificationError"></div>
+                    </div>
+                    <div class="d-flex gap-2">
+                      <button type="button" class="btn btn-sm btn-primary" id="btnSaveQuickSpecification">
+                        <i class="bi bi-check-lg me-1"></i>Lưu
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline-secondary" id="btnCancelQuickSpecification">
+                        <i class="bi bi-x-lg me-1"></i>Hủy
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 <div class="col-md-6">
                   <label class="form-label">Giá nhập</label>
-                  <input asp-for="PurchasePrice" type="number" step="0.01" min="0" class="form-control" required />
+                  <input asp-for="PurchasePrice" type="number" step="0.01" min="0" class="form-control" required id="PurchasePrice" />
                   <span asp-validation-for="PurchasePrice" class="text-danger small"></span>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label">Giá bán</label>
-                  <input asp-for="SellingPrice" type="number" step="0.01" min="0" class="form-control" required />
+                  <input asp-for="SellingPrice" type="number" step="0.01" min="0" class="form-control" required id="SellingPrice" />
                   <span asp-validation-for="SellingPrice" class="text-danger small"></span>
                 </div>
+
+                <div class="col-md-6">
+                  <label class="form-label">Phương pháp tính giá xuất kho</label>
+                  <select asp-for="CostingMethod" class="form-select">
+                    <option value="1" selected>Bình quân gia quyền</option>
+                    <option value="0">FIFO (First In First Out)</option>
+                  </select>
+                  <small class="form-text text-muted">Chọn phương pháp tính giá vốn khi xuất kho</small>
+                  <span asp-validation-for="CostingMethod" class="text-danger small"></span>
+                </div>
+
+                @* <div class="col-md-6">
+                  <label class="form-label">Ngày sản xuất</label>
+                  <input asp-for="ManufactureDate" type="date" class="form-control" />
+                  <span asp-validation-for="ManufactureDate" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Hạn sử dụng</label>
+                  <input asp-for="ExpiryDate" type="date" class="form-control" />
+                  <span asp-validation-for="ExpiryDate" class="text-danger small"></span>
+                </div> *@
 
                 <div class="col-12">
                   <label class="form-label">Mô tả</label>
@@ -62,11 +115,49 @@
                 </div>
 
                 <div class="col-md-6">
-                  <label class="form-label">Nhà cung cấp</label>
-                  <select asp-for="SupplierId" class="form-select" asp-items="supplierItems">
-                    <option value="">-- Chọn --</option>
-                  </select>
+                  <label class="form-label">Nhà cung cấp <span class="text-danger">*</span></label>
+                  <div class="input-group">
+                    <select asp-for="SupplierId" class="form-select" asp-items="supplierItems" id="supplierSelect" required>
+                      <option value="">-- Chọn --</option>
+                    </select>
+                    <button type="button" class="btn btn-outline-primary" id="btnQuickAddSupplier" title="Thêm nhanh nhà cung cấp">
+                      <i class="bi bi-plus-lg"></i>
+                    </button>
+                  </div>
                   <span asp-validation-for="SupplierId" class="text-danger small"></span>
+                  <!-- Form tạo nhanh nhà cung cấp (ẩn mặc định) -->
+                  <div id="quickSupplierForm" class="mt-2 p-3 border rounded bg-light" style="display: none;">
+                    <h6 class="mb-3 fw-semibold text-primary">
+                      <i class="bi bi-plus-circle me-1"></i>Thêm nhanh nhà cung cấp
+                    </h6>
+                    <div class="row g-2">
+                      <div class="col-12">
+                        <label class="form-label small fw-semibold">Tên nhà cung cấp <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-sm" id="quickSupplierName" placeholder="Nhập tên nhà cung cấp" />
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Số điện thoại</label>
+                        <input type="tel" class="form-control form-control-sm" id="quickSupplierPhone" placeholder="Nhập số điện thoại" />
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Email</label>
+                        <input type="email" class="form-control form-control-sm" id="quickSupplierEmail" placeholder="Nhập email" />
+                      </div>
+                      <div class="col-12">
+                        <label class="form-label small fw-semibold">Địa chỉ</label>
+                        <textarea class="form-control form-control-sm" id="quickSupplierAddress" rows="2" placeholder="Nhập địa chỉ"></textarea>
+                      </div>
+                    </div>
+                    <div class="text-danger small mt-2" id="quickSupplierError"></div>
+                    <div class="d-flex gap-2 mt-3">
+                      <button type="button" class="btn btn-sm btn-primary" id="btnSaveQuickSupplier">
+                        <i class="bi bi-check-lg me-1"></i>Lưu
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline-secondary" id="btnCancelQuickSupplier">
+                        <i class="bi bi-x-lg me-1"></i>Hủy
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label">Kho</label>
@@ -75,42 +166,1593 @@
                   </select>
                   <span asp-validation-for="WarehouseId" class="text-danger small"></span>
                 </div>
+
+                <div class="col-12">
+                  <hr class="my-2" />
+                  <h6 class="text-muted mb-2">
+                    <i class="bi bi-lightning-charge me-1"></i>
+                    Đặt hàng tự động
+                  </h6>
+                </div>
+
+                <div class="col-md-3">
+                  <label class="form-label">Tồn tối thiểu</label>
+                  <input asp-for="MinimumStock" type="number" step="0.01" min="0" class="form-control" 
+                         placeholder="0" title="Mức tồn kho tối thiểu để tạo đề xuất đặt hàng" />
+                  <span asp-validation-for="MinimumStock" class="text-danger small"></span>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label">Tồn tối đa</label>
+                  <input asp-for="MaximumStock" type="number" step="0.01" min="0" class="form-control" 
+                         placeholder="0" title="Mức tồn kho tối đa cho phép" />
+                  <span asp-validation-for="MaximumStock" class="text-danger small"></span>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label">Số lượng đặt lại</label>
+                  <input asp-for="ReorderQuantity" type="number" step="0.01" min="0" class="form-control" 
+                         placeholder="0" title="Số lượng tự động đề xuất khi tồn thấp" />
+                  <span asp-validation-for="ReorderQuantity" class="text-danger small"></span>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label">NCC ưu tiên</label>
+                  <select asp-for="PreferredSupplierId" class="form-select" asp-items="supplierItems">
+                    <option value="">-- Chọn --</option>
+                  </select>
+                  <span asp-validation-for="PreferredSupplierId" class="text-danger small"></span>
+                </div>
+
               </div>
             </div>
 
             <div class="col-lg-4">
-              <label class="form-label">Ảnh nguyên liệu</label>
-              <input type="file" name="ImageFile" accept="image/*" class="form-control" id="materialImageFile" />
-              <div class="mt-2 text-center">
-                <img id="materialImagePreview" src="#" alt="Preview" class="img-fluid rounded border d-none" />
+              <div class="sticky-top" style="top: 1rem;">
+                <label class="form-label fw-semibold">
+                  <i class="bi bi-image me-1"></i>Ảnh nguyên liệu
+                </label>
+                <input type="file" name="ImageFile" accept="image/*" class="form-control mb-2" id="materialImageFile" />
+                <button type="button" class="btn btn-outline-primary btn-sm w-100 mb-3" id="btnAnalyzeImage" style="display: none;">
+                  <i class="bi bi-robot me-1"></i>Phân tích ảnh bằng AI
+                </button>
+                <div id="imageAnalysisResult" class="alert alert-info d-none mb-3" style="font-size: 0.875rem;">
+                  <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                  <span>Đang phân tích...</span>
+                </div>
+                <div class="text-center">
+                  <img id="materialImagePreview" src="#" alt="Preview" class="img-fluid rounded border d-none shadow-sm" style="max-height: 300px; object-fit: contain;" />
+                  <div class="text-muted small mt-2" id="imagePlaceholder">
+                    <i class="bi bi-image"></i> Chưa có ảnh
+                  </div>
+                </div>
+                <!-- Cảnh báo trùng lặp -->
+                <div id="duplicateWarning" class="alert alert-warning d-none mt-3" style="font-size: 0.875rem;">
+                  <i class="bi bi-exclamation-triangle me-1"></i>
+                  <strong>Cảnh báo:</strong> Có thể trùng lặp với nguyên liệu khác.
+                  <div id="duplicateList" class="mt-2"></div>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Đóng</button>
-          <button type="submit" class="btn btn-primary">Lưu</button>
+        <div class="modal-footer" style="flex-shrink: 0; border-top: 1px solid #dee2e6; padding: 1rem;">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-lg me-1"></i>Đóng
+          </button>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-lg me-1"></i>Lưu
+          </button>
         </div>
       </form>
     </div>
   </div>
 </div>
 
-@section Scripts{
-  <partial name="_ValidationScriptsPartial" />
-  <script>
-    (function(){
-      const file = document.getElementById('materialImageFile');
-      const img  = document.getElementById('materialImagePreview');
-      if (!file) return;
-      file.addEventListener('change', () => {
-        const f = file.files?.[0];
-        if (!f) { img.classList.add('d-none'); img.src = '#'; return; }
-        const fr = new FileReader();
-        fr.onload = e => { img.src = e.target.result; img.classList.remove('d-none'); }
-        fr.readAsDataURL(f);
-      });
+<script>
+    // Script chạy ngay khi modal được render - dùng IIFE để tránh conflict
+    (function() {
+      'use strict';
+      console.log('Material form script loaded');
+      
+      let initialized = false;
+      
+      // Khởi tạo ngay
+      function init() {
+        if (initialized) {
+          console.log('Already initialized, skipping...');
+          return;
+        }
+        
+        console.log('Initializing material form...');
+        try {
+          initializeMaterialForm();
+          initialized = true;
+          // Bỏ auto-load specifications - chỉ load khi cần thiết
+          // setTimeout(function() { loadSpecifications(); }, 100);
+        } catch (error) {
+          console.error('Error initializing material form:', error);
+        }
+      }
+
+      // Chạy ngay nếu DOM đã ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+      } else {
+        // DOM đã ready, chạy ngay
+        setTimeout(init, 50);
+      }
+
+      // Cũng khởi tạo khi modal được hiển thị (backup)
+      function setupModalListener() {
+        const modal = document.getElementById('materialCreateModal');
+        if (modal) {
+          modal.addEventListener('shown.bs.modal', function() {
+            console.log('Modal shown, reloading specifications...');
+            
+            // Reset trạng thái duplicate check
+            const duplicateWarning = document.getElementById('duplicateWarning');
+            const duplicateList = document.getElementById('duplicateList');
+            const saveButton = document.querySelector('#materialForm button[type="submit"]');
+            
+            if (duplicateWarning) {
+              duplicateWarning.classList.add('d-none');
+            }
+            if (duplicateList) {
+              duplicateList.innerHTML = '';
+            }
+            
+            // Bỏ highlight các trường
+            const nameInput = document.getElementById('materialName');
+            const unitInput = document.getElementById('Unit');
+            const specSelect = document.getElementById('specificationSelect');
+            
+            [nameInput, unitInput, specSelect].forEach(field => {
+              if (field) {
+                field.classList.remove('is-invalid');
+                field.style.borderColor = '';
+              }
+            });
+            
+            // Enable nút Lưu
+            if (saveButton) {
+              saveButton.disabled = false;
+              saveButton.title = '';
+              saveButton.style.opacity = '1';
+            }
+            
+            // Reset duplicate check state
+            window.duplicateCheckState = { isDuplicate: false };
+            
+            if (!initialized) {
+              init();
+            }
+            // Bỏ auto-load specifications - chỉ load khi cần thiết
+            // else {
+            //   loadSpecifications();
+            // }
+          });
+          
+          // Reset khi modal được ẩn
+          modal.addEventListener('hidden.bs.modal', function() {
+            // Reset form state khi đóng modal
+            const form = document.getElementById('materialForm');
+            if (form) {
+              form.reset();
+            }
+            
+            // Reset duplicate warning
+            const duplicateWarning = document.getElementById('duplicateWarning');
+            if (duplicateWarning) {
+              duplicateWarning.classList.add('d-none');
+            }
+          });
+          
+          return true;
+        }
+        return false;
+      }
+
+      // Thử setup listener ngay
+      if (!setupModalListener()) {
+        // Nếu modal chưa có, thử lại sau
+        let retries = 0;
+        const maxRetries = 10;
+        const checkInterval = setInterval(function() {
+          retries++;
+          if (setupModalListener() || retries >= maxRetries) {
+            clearInterval(checkInterval);
+            if (retries >= maxRetries) {
+              console.warn('Modal not found after', maxRetries, 'retries');
+            }
+          }
+        }, 200);
+      }
     })();
+
+    // Helper function để làm sạch mô tả - loại bỏ JSON metadata
+    function cleanDescriptionText(text) {
+      if (!text) return '';
+      
+      let cleanDescription = text;
+      
+      // BƯỚC 1: Sử dụng regex để loại bỏ trực tiếp - ƯU TIÊN CAO NHẤT
+      // Loại bỏ từ pattern JSON đến cuối chuỗi ngay lập tức
+      
+      // Danh sách các field metadata cần loại bỏ
+      const metadataFields = [
+        'category', 'tags', 'confidence', 'unit', 'specification',
+        'suggestedPurchasePrice', 'suggestedSellingPrice'
+      ];
+      
+      // Loại bỏ từng field với nhiều pattern khác nhau
+      metadataFields.forEach(field => {
+        // Pattern 1: ." , "field": ... hoặc .", "field": ...
+        cleanDescription = cleanDescription.replace(
+          new RegExp(`\\.\\s*"\\s*,\\s*"${field}"\\s*:.*$`, 'gi'), '');
+        cleanDescription = cleanDescription.replace(
+          new RegExp(`\\.\\s*",\\s*"${field}"\\s*:.*$`, 'gi'), '');
+        
+        // Pattern 2: ", "field": ... hoặc , "field": ...
+        cleanDescription = cleanDescription.replace(
+          new RegExp(`"\\s*,\\s*"${field}"\\s*:.*$`, 'gi'), '');
+        cleanDescription = cleanDescription.replace(
+          new RegExp(`,\\s*"${field}"\\s*:.*$`, 'gi'), '');
+        
+        // Pattern 3: Không có dấu ngoặc kép (trường hợp đặc biệt)
+        cleanDescription = cleanDescription.replace(
+          new RegExp(`\\.\\s*,\\s*${field}\\s*:.*$`, 'gi'), '');
+        cleanDescription = cleanDescription.replace(
+          new RegExp(`,\\s*${field}\\s*:.*$`, 'gi'), '');
+      });
+      
+      // Loại bỏ JSON object patterns ở cuối
+      cleanDescription = cleanDescription.replace(/\.\s*"\s*,\s*\{.*\}$/gi, '');
+      cleanDescription = cleanDescription.replace(/\.\s*",\s*\{.*\}$/gi, '');
+      cleanDescription = cleanDescription.replace(/"\s*,\s*\{.*\}$/gi, '');
+      cleanDescription = cleanDescription.replace(/,\s*\{.*\}$/gi, '');
+      
+      // BƯỚC 2: Tìm dấu chấm và kiểm tra JSON (nếu regex không bắt được)
+      // Pattern để kiểm tra JSON sau dấu chấm
+      const jsonAfterPeriodPatterns = [];
+      metadataFields.forEach(field => {
+        jsonAfterPeriodPatterns.push(
+          new RegExp(`\\.\\s*"\\s*,\\s*"${field}"`, 'i'),
+          new RegExp(`\\.\\s*",\\s*"${field}"`, 'i'),
+          new RegExp(`\\.\\s*,\\s*${field}`, 'i')
+        );
+      });
+      jsonAfterPeriodPatterns.push(
+        /\.\s*"\s*,\s*\{/i,
+        /\.\s*",\s*\{/i,
+        /\.\s*,\s*\{/i
+      );
+      
+      // Tìm tất cả các dấu chấm trong mô tả, duyệt từ cuối lên đầu
+      let cutIndex = -1;
+      for (let i = cleanDescription.length - 1; i >= 0; i--) {
+        if (cleanDescription[i] === '.') {
+          // Kiểm tra xem sau dấu chấm này có JSON pattern không
+          const textAfterPeriod = cleanDescription.substring(i);
+          for (const pattern of jsonAfterPeriodPatterns) {
+            if (pattern.test(textAfterPeriod)) {
+              // Tìm thấy JSON pattern sau dấu chấm, cắt từ dấu chấm này (loại bỏ dấu chấm)
+              cutIndex = i;
+              break;
+            }
+          }
+          if (cutIndex >= 0) break;
+        }
+      }
+      
+      // Nếu tìm thấy dấu chấm có JSON sau đó, cắt từ đó
+      if (cutIndex >= 0) {
+        cleanDescription = cleanDescription.substring(0, cutIndex).trim();
+      }
+      
+      // BƯỚC 3: Làm sạch cuối cùng - Loại bỏ các ký tự JSON còn sót lại ở cuối
+      cleanDescription = cleanDescription.replace(/\s*[,\s]*\}\s*$/g, '');
+      cleanDescription = cleanDescription.replace(/\s*[,\s]*\]\s*$/g, '');
+      cleanDescription = cleanDescription.replace(/\s*[,\s]*```\s*$/g, '');
+      
+      // Loại bỏ bất kỳ dấu phẩy, dấu ngoặc kép, hoặc dấu hai chấm còn sót ở cuối
+      cleanDescription = cleanDescription.replace(/[,":\s]+$/g, '');
+      
+      // Loại bỏ các chuỗi JSON còn sót (ví dụ: ", category": "Đường")
+      cleanDescription = cleanDescription.replace(/["\s]*,\s*["\s]*[a-zA-Z]+\s*:\s*["\s]*[^"]*["\s]*/gi, '');
+      
+      cleanDescription = cleanDescription.trim();
+      
+      return cleanDescription;
+    }
+
+    function initializeMaterialForm() {
+      // Image preview
+      (function(){
+        const file = document.getElementById('materialImageFile');
+        const img  = document.getElementById('materialImagePreview');
+        const btnAnalyze = document.getElementById('btnAnalyzeImage');
+        if (!file) return;
+        file.addEventListener('change', function() {
+          const f = file.files && file.files.length > 0 ? file.files[0] : null;
+          const placeholder = document.getElementById('imagePlaceholder');
+          if (!f) { 
+            img.classList.add('d-none'); 
+            img.src = '#'; 
+            if (placeholder) placeholder.classList.remove('d-none');
+            if (btnAnalyze) btnAnalyze.style.display = 'none';
+            return; 
+          }
+          const fr = new FileReader();
+          fr.onload = function(e) { 
+            img.src = e.target.result; 
+            img.classList.remove('d-none'); 
+            if (placeholder) placeholder.classList.add('d-none');
+            if (btnAnalyze) btnAnalyze.style.display = 'block';
+          }
+          fr.readAsDataURL(f);
+        });
+      })();
+
+      // Analyze image with AI
+      (function(){
+        const btnAnalyze = document.getElementById('btnAnalyzeImage');
+        const fileInput = document.getElementById('materialImageFile');
+        
+        if (!btnAnalyze || !fileInput) return;
+
+        // Function to clear form fields related to image analysis
+        function clearImageAnalysisFields() {
+          console.log('Clearing image analysis fields...');
+          
+          // Clear tên nguyên liệu
+          const nameInput = document.getElementById('materialName');
+          if (nameInput) {
+            nameInput.value = '';
+            nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+          
+          // Clear mô tả
+          const descInput = document.getElementById('Description');
+          if (descInput) {
+            descInput.value = '';
+            descInput.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+          
+          // Clear đơn vị
+          const unitInput = document.getElementById('Unit') || 
+                           document.querySelector('input[name="Unit"]');
+          if (unitInput) {
+            unitInput.value = '';
+            unitInput.dispatchEvent(new Event('input', { bubbles: true }));
+            unitInput.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+          
+          // Clear quy cách (reset về placeholder)
+          const specSelect = document.getElementById('specificationSelect');
+          if (specSelect) {
+            // Tìm option placeholder
+            const placeholderOption = Array.from(specSelect.options).find(opt => 
+              opt.textContent.includes('Chọn quy cách') || opt.value === ''
+            );
+            if (placeholderOption) {
+              specSelect.value = placeholderOption.value || '';
+            } else {
+              specSelect.value = '';
+            }
+            specSelect.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+          
+          // Clear giá nhập
+          const purchasePriceInput = document.getElementById('PurchasePrice') ||
+                                    document.querySelector('input[name="PurchasePrice"]');
+          if (purchasePriceInput) {
+            purchasePriceInput.value = '';
+            purchasePriceInput.dispatchEvent(new Event('input', { bubbles: true }));
+            purchasePriceInput.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+          
+          // Clear giá bán
+          const sellingPriceInput = document.getElementById('SellingPrice') ||
+                                   document.querySelector('input[name="SellingPrice"]');
+          if (sellingPriceInput) {
+            sellingPriceInput.value = '';
+            sellingPriceInput.dispatchEvent(new Event('input', { bubbles: true }));
+            sellingPriceInput.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+          
+          console.log('✓ Image analysis fields cleared');
+        }
+
+        async function analyzeImage() {
+          const file = fileInput.files?.[0];
+          if (!file) {
+            alert('Vui lòng chọn ảnh trước');
+            return;
+          }
+
+          if (file.size > 10 * 1024 * 1024) {
+            alert('File ảnh quá lớn (tối đa 10MB)');
+            return;
+          }
+
+          const resultDiv = document.getElementById('imageAnalysisResult');
+          const nameInput = document.getElementById('materialName');
+          const descInput = document.getElementById('Description');
+          
+          // Tìm các input fields - ưu tiên tìm bằng id
+          const unitInput = document.getElementById('Unit') || 
+                           document.querySelector('input[name="Unit"]');
+          const specSelect = document.getElementById('specificationSelect');
+          const purchasePriceInput = document.getElementById('PurchasePrice') ||
+                                    document.querySelector('input[name="PurchasePrice"]');
+          const sellingPriceInput = document.getElementById('SellingPrice') ||
+                                   document.querySelector('input[name="SellingPrice"]');
+
+          btnAnalyze.disabled = true;
+          btnAnalyze.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Đang phân tích...';
+          resultDiv.classList.remove('d-none');
+          resultDiv.innerHTML = '<div class="spinner-border spinner-border-sm me-2" role="status"></div><span>Đang phân tích ảnh bằng AI...</span>';
+
+          const formData = new FormData();
+          formData.append('imageFile', file);
+
+          try {
+            const response = await fetch('/Materials/AnalyzeImage', {
+              method: 'POST',
+              body: formData,
+              headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+              }
+            });
+
+            if (!response.ok) {
+              throw new Error('Lỗi khi phân tích ảnh');
+            }
+
+            const result = await response.json();
+            
+            console.log('AI Analysis Result:', result);
+            
+            // Clear các trường form trước khi fill dữ liệu mới
+            clearImageAnalysisFields();
+            
+            // Tìm lại các input fields sau khi có response (đảm bảo DOM đã sẵn sàng)
+            const unitInputFinal = document.getElementById('Unit') || 
+                                  document.querySelector('input[name="Unit"]') ||
+                                  document.querySelector('input[name*="Unit"]');
+            const specSelectFinal = document.getElementById('specificationSelect');
+            const purchasePriceInputFinal = document.getElementById('PurchasePrice') ||
+                                           document.querySelector('input[name="PurchasePrice"]') ||
+                                           document.querySelector('input[name*="PurchasePrice"]');
+            const sellingPriceInputFinal = document.getElementById('SellingPrice') ||
+                                          document.querySelector('input[name="SellingPrice"]') ||
+                                          document.querySelector('input[name*="SellingPrice"]');
+            
+            console.log('Tìm các input fields...');
+            console.log('Input fields found:', {
+              unitInput: unitInputFinal,
+              specSelect: specSelectFinal,
+              purchasePriceInput: purchasePriceInputFinal,
+              sellingPriceInput: sellingPriceInputFinal
+            });
+            
+            // Điền thông tin vào form - luôn điền nếu có giá trị từ AI (đã clear trước đó)
+            if (result.suggestedName && nameInput) {
+              nameInput.value = result.suggestedName;
+              nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            if (result.suggestedDescription && descInput) {
+              // Làm sạch mô tả - loại bỏ phần JSON metadata hoàn toàn
+              const cleanDescription = cleanDescriptionText(result.suggestedDescription);
+              descInput.value = cleanDescription;
+              descInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            
+            // Tự động điền đơn vị - chỉ điền nếu là đơn vị đo lường (kg, g, l...), không phải quy cách đóng gói
+            if (result.unit && unitInputFinal) {
+              const unitValue = result.unit.trim().toLowerCase();
+              // Kiểm tra xem có phải là đơn vị đo lường không (không phải quy cách đóng gói)
+              const packagingKeywords = ['gói', 'thùng', 'chai', 'hộp', 'bịch', 'túi', 'lọ', 'vỉ', 'khay', 'set', 'pallet', 'thanh', 'bao', 'bình', 'bó', 'bộ', 'can', 'lon', 'cái', 'chiếc'];
+              const isPackaging = packagingKeywords.some(keyword => unitValue.includes(keyword));
+              
+              if (!isPackaging) {
+                // Là đơn vị đo lường, điền vào
+                unitInputFinal.value = result.unit;
+                unitInputFinal.dispatchEvent(new Event('input', { bubbles: true }));
+                unitInputFinal.dispatchEvent(new Event('change', { bubbles: true }));
+                console.log('✓ Đã điền đơn vị:', result.unit, 'vào input:', unitInputFinal);
+              } else {
+                // Nếu unit là quy cách đóng gói, đưa vào specification dropdown thay vì unit
+                console.warn('⚠ Unit "' + result.unit + '" là quy cách đóng gói, sẽ đưa vào quy cách thay vì đơn vị.');
+                // Sẽ xử lý trong phần quy cách
+                if (!result.specification) {
+                  result.specification = result.unit; // Dùng unit làm specification
+                }
+              }
+            } else {
+              console.error('✗ Không thể điền đơn vị. unitInput:', unitInputFinal, 'result.unit:', result.unit);
+            }
+            
+            // Tự động điền quy cách - đối chiếu với dropdown có sẵn, thêm mới nếu chưa có
+            // Quy cách là cách đóng gói: gói, thùng, chai, hộp, bịch, túi, lọ, vỉ...
+            if (result.specification && specSelectFinal) {
+              const specValue = result.specification.trim();
+              if (specValue) {
+                console.log('Tìm quy cách từ AI:', specValue, 'trong dropdown có', specSelectFinal.options.length, 'options');
+                
+                const specLower = specValue.toLowerCase();
+                let found = false;
+                
+                // Tìm trong dropdown có sẵn (exact match)
+                for (let i = 0; i < specSelectFinal.options.length; i++) {
+                  const option = specSelectFinal.options[i];
+                  const optionValue = option.value.trim();
+                  const optionText = option.textContent.trim().toLowerCase();
+                  
+                  // Bỏ qua option placeholder
+                  if (!optionValue || optionText.includes('chọn quy cách')) {
+                    continue;
+                  }
+                  
+                  // So sánh exact match (case-insensitive)
+                  if (optionValue.toLowerCase() === specLower || optionText === specLower) {
+                    specSelectFinal.value = optionValue;
+                    specSelectFinal.dispatchEvent(new Event('change', { bubbles: true }));
+                    found = true;
+                    console.log('✓ Đã chọn quy cách có sẵn:', specValue, '->', optionValue);
+                    break;
+                  }
+                }
+                
+                // Nếu không tìm thấy trong dropdown, thêm mới vào dropdown và chọn
+                if (!found) {
+                  console.log('Quy cách "' + specValue + '" chưa có trong dropdown, sẽ thêm mới...');
+                  
+                  // Thêm option mới vào dropdown
+                  const newOption = document.createElement('option');
+                  newOption.value = specValue;
+                  newOption.textContent = specValue;
+                  newOption.selected = true;
+                  specSelectFinal.appendChild(newOption);
+                  specSelectFinal.value = specValue;
+                  specSelectFinal.dispatchEvent(new Event('change', { bubbles: true }));
+                  
+                  console.log('✓ Đã thêm quy cách mới vào dropdown:', specValue);
+                  
+                  // Tùy chọn: Lưu quy cách mới vào database (có thể gọi API sau)
+                  // fetch('/Materials/AddSpecification', { method: 'POST', ... })
+                }
+              }
+            } else {
+              console.error('✗ Không thể điền quy cách. specSelect:', specSelectFinal, 'result.specification:', result.specification);
+            }
+            
+            // Hàm helper để điền giá vào input - điền trực tiếp, không chỉ gợi ý
+            function fillPriceInput(inputId, inputName, priceValue, fieldName) {
+              if (!priceValue || isNaN(priceValue) || priceValue <= 0) {
+                console.warn(`⚠ ${fieldName} không hợp lệ:`, priceValue);
+                return false;
+              }
+              
+              // Tìm input trong modal context
+              const modal = document.getElementById('materialCreateModal');
+              let priceInput = null;
+              
+              // Thử nhiều cách tìm input
+              if (modal) {
+                priceInput = modal.querySelector(`#${inputId}`) || modal.querySelector(`input[name="${inputName}"]`);
+              }
+              
+              if (!priceInput) {
+                priceInput = document.getElementById(inputId);
+              }
+              
+              if (!priceInput) {
+                priceInput = document.querySelector(`input[name="${inputName}"]`);
+              }
+              
+              if (!priceInput) {
+                const form = document.getElementById('materialForm');
+                if (form) {
+                  priceInput = form.querySelector(`input[name="${inputName}"]`);
+                }
+              }
+              
+              if (priceInput) {
+                // Điền giá trị trực tiếp
+                priceInput.value = priceValue;
+                priceInput.dispatchEvent(new Event('input', { bubbles: true }));
+                priceInput.dispatchEvent(new Event('change', { bubbles: true }));
+                priceInput.setAttribute('value', priceValue);
+                
+                // Force update bằng cách focus và blur
+                const wasFocused = document.activeElement === priceInput;
+                if (!wasFocused) {
+                  priceInput.focus();
+                }
+                priceInput.value = priceValue;
+                if (!wasFocused) {
+                  priceInput.blur();
+                }
+                
+                console.log(`✓ Đã điền ${fieldName}:`, priceValue, 'vào input:', priceInput.id || priceInput.name, 'value sau khi set:', priceInput.value);
+                return true;
+              }
+              
+              // Nếu không tìm thấy, retry sau 300ms
+              console.warn(`⚠ Không tìm thấy ${fieldName} input ngay, sẽ retry sau 300ms...`);
+              setTimeout(() => {
+                let retryInput = modal ? modal.querySelector(`#${inputId}`) : null;
+                if (!retryInput) {
+                  retryInput = document.getElementById(inputId);
+                }
+                if (!retryInput) {
+                  retryInput = document.querySelector(`input[name="${inputName}"]`);
+                }
+                if (retryInput) {
+                  retryInput.value = priceValue;
+                  retryInput.dispatchEvent(new Event('input', { bubbles: true }));
+                  retryInput.dispatchEvent(new Event('change', { bubbles: true }));
+                  retryInput.setAttribute('value', priceValue);
+                  console.log(`✓ Đã điền ${fieldName} (retry):`, priceValue, 'value:', retryInput.value);
+                } else {
+                  console.error(`✗ Không tìm thấy ${fieldName} input sau retry. id="${inputId}", name="${inputName}"`);
+                  // Log tất cả input number để debug
+                  const allNumberInputs = document.querySelectorAll('input[type="number"]');
+                  console.error('Tất cả input number trong page:');
+                  allNumberInputs.forEach((input, idx) => {
+                    console.error(`  ${idx}: id="${input.id}", name="${input.name}", value="${input.value}"`);
+                  });
+                }
+              }, 300);
+              
+              return false;
+            }
+            
+            // Tự động điền giá nhập - điền trực tiếp vào ô
+            let purchasePrice = null;
+            if (result.suggestedPurchasePrice !== null && result.suggestedPurchasePrice !== undefined) {
+              purchasePrice = typeof result.suggestedPurchasePrice === 'string' 
+                ? parseFloat(result.suggestedPurchasePrice.toString().replace(/[^\d.]/g, '')) 
+                : Number(result.suggestedPurchasePrice);
+            }
+            
+            // Nếu không có giá từ JSON, thử extract từ result object hoặc text
+            if ((!purchasePrice || isNaN(purchasePrice) || purchasePrice <= 0) && result) {
+              // Thử tìm trong các property khác
+              const priceKeys = ['purchasePrice', 'purchase_price', 'giaNhap', 'giá nhập'];
+              for (const key of priceKeys) {
+                if (result[key] !== null && result[key] !== undefined) {
+                  purchasePrice = typeof result[key] === 'string' 
+                    ? parseFloat(result[key].toString().replace(/[^\d.]/g, '')) 
+                    : Number(result[key]);
+                  if (purchasePrice && !isNaN(purchasePrice) && purchasePrice > 0) {
+                    console.log('Tìm thấy giá nhập từ property:', key, '=', purchasePrice);
+                    break;
+                  }
+                }
+              }
+            }
+            
+            if (purchasePrice && !isNaN(purchasePrice) && purchasePrice > 0) {
+              console.log('Giá nhập từ AI:', result.suggestedPurchasePrice, '-> parsed:', purchasePrice);
+              fillPriceInput('PurchasePrice', 'PurchasePrice', purchasePrice, 'Giá nhập');
+              
+              // Sau khi điền giá nhập, kiểm tra và tính giá bán
+              setTimeout(() => {
+                const purchaseInput = document.getElementById('PurchasePrice');
+                const sellingInput = document.getElementById('SellingPrice');
+                
+                if (purchaseInput && sellingInput) {
+                  const currentPurchasePrice = parseFloat(purchaseInput.value) || 0;
+                  const currentSellingPrice = parseFloat(sellingInput.value) || 0;
+                  
+                  // Nếu giá bán <= giá nhập hoặc chưa có giá bán, tự động tính
+                  if (currentSellingPrice <= currentPurchasePrice || currentSellingPrice === 0) {
+                    // Tính giá bán = giá nhập * 1.33 (tăng 33% như ví dụ: 9000 -> 12000)
+                    const calculatedSellingPrice = Math.round(currentPurchasePrice * 1.33);
+                    sellingInput.value = calculatedSellingPrice;
+                    sellingInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    sellingInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    sellingInput.setAttribute('value', calculatedSellingPrice);
+                    console.log('✓ Đã tự động tính giá bán:', currentPurchasePrice, '->', calculatedSellingPrice, '(tăng 33%)');
+                  }
+                }
+              }, 150);
+            } else {
+              console.warn('⚠ Không thể lấy giá nhập. result.suggestedPurchasePrice:', result.suggestedPurchasePrice, 'parsed:', purchasePrice);
+              console.warn('   Full result object:', result);
+            }
+            
+            // Tự động điền giá bán - điền trực tiếp vào ô
+            let sellingPrice = null;
+            if (result.suggestedSellingPrice !== null && result.suggestedSellingPrice !== undefined) {
+              sellingPrice = typeof result.suggestedSellingPrice === 'string' 
+                ? parseFloat(result.suggestedSellingPrice.toString().replace(/[^\d.]/g, '')) 
+                : Number(result.suggestedSellingPrice);
+            }
+            
+            // Nếu không có giá từ JSON, thử extract từ result object
+            if ((!sellingPrice || isNaN(sellingPrice) || sellingPrice <= 0) && result) {
+              // Thử tìm trong các property khác
+              const priceKeys = ['sellingPrice', 'selling_price', 'giaBan', 'giá bán'];
+              for (const key of priceKeys) {
+                if (result[key] !== null && result[key] !== undefined) {
+                  sellingPrice = typeof result[key] === 'string' 
+                    ? parseFloat(result[key].toString().replace(/[^\d.]/g, '')) 
+                    : Number(result[key]);
+                  if (sellingPrice && !isNaN(sellingPrice) && sellingPrice > 0) {
+                    console.log('Tìm thấy giá bán từ property:', key, '=', sellingPrice);
+                    break;
+                  }
+                }
+              }
+            }
+            
+            if (sellingPrice && !isNaN(sellingPrice) && sellingPrice > 0) {
+              console.log('Giá bán từ AI:', result.suggestedSellingPrice, '-> parsed:', sellingPrice);
+              
+              // Kiểm tra giá bán có lớn hơn giá nhập không
+              setTimeout(() => {
+                const purchaseInput = document.getElementById('PurchasePrice');
+                if (purchaseInput) {
+                  const currentPurchasePrice = parseFloat(purchaseInput.value) || 0;
+                  
+                  // Nếu giá bán <= giá nhập, tự động tính lại
+                  if (sellingPrice <= currentPurchasePrice && currentPurchasePrice > 0) {
+                    const calculatedSellingPrice = Math.round(currentPurchasePrice * 1.33);
+                    fillPriceInput('SellingPrice', 'SellingPrice', calculatedSellingPrice, 'Giá bán');
+                    console.log('⚠ Giá bán từ AI (' + sellingPrice + ') <= giá nhập (' + currentPurchasePrice + '), đã tự động tính lại:', calculatedSellingPrice);
+                  } else {
+                    fillPriceInput('SellingPrice', 'SellingPrice', sellingPrice, 'Giá bán');
+                  }
+                } else {
+                  fillPriceInput('SellingPrice', 'SellingPrice', sellingPrice, 'Giá bán');
+                }
+              }, 200);
+            } else {
+              console.warn('⚠ Không thể lấy giá bán. result.suggestedSellingPrice:', result.suggestedSellingPrice, 'parsed:', sellingPrice);
+            }
+
+            // Hiển thị kết quả
+            let resultHtml = '<strong><i class="bi bi-check-circle me-1"></i>Phân tích thành công!</strong><br>';
+            if (result.suggestedName) {
+              resultHtml += `<div class="mt-2"><strong>Tên gợi ý:</strong> ${result.suggestedName}</div>`;
+            }
+            if (result.suggestedDescription) {
+              // Làm sạch mô tả - chỉ hiển thị phần mô tả thuần túy, không hiển thị JSON metadata
+              const cleanDescription = cleanDescriptionText(result.suggestedDescription);
+              resultHtml += `<div class="mt-1"><strong>Mô tả:</strong> ${cleanDescription}</div>`;
+            }
+            if (result.category) {
+              resultHtml += `<div class="mt-1"><strong>Danh mục:</strong> ${result.category}</div>`;
+            }
+            if (result.tags && result.tags.length > 0) {
+              resultHtml += `<div class="mt-1"><strong>Tags:</strong> ${result.tags.join(', ')}</div>`;
+            }
+            if (result.unit) {
+              resultHtml += `<div class="mt-1"><strong>Đơn vị:</strong> ${result.unit}</div>`;
+            }
+            if (result.specification) {
+              resultHtml += `<div class="mt-1"><strong>Quy cách:</strong> ${result.specification}</div>`;
+            }
+            if (result.suggestedPurchasePrice) {
+              resultHtml += `<div class="mt-1"><strong>Giá nhập đề xuất:</strong> ${Number(result.suggestedPurchasePrice).toLocaleString('vi-VN')} đ</div>`;
+            }
+            if (result.suggestedSellingPrice) {
+              resultHtml += `<div class="mt-1"><strong>Giá bán đề xuất:</strong> ${Number(result.suggestedSellingPrice).toLocaleString('vi-VN')} đ</div>`;
+            }
+            resultDiv.className = 'alert alert-success mb-3';
+            resultDiv.innerHTML = resultHtml;
+
+            // Kiểm tra trùng lặp theo 3 tiêu chí: Name + Unit + Specification
+            // Chờ một chút để đảm bảo tất cả fields đã được điền
+            setTimeout(() => {
+              const finalName = nameInput ? nameInput.value.trim() : '';
+              const finalUnit = unitInputFinal ? unitInputFinal.value.trim() : '';
+              const finalSpec = specSelectFinal ? (specSelectFinal.value || '').trim() : '';
+              const aiSuggestedName = result.suggestedName ? result.suggestedName.trim() : '';
+              
+              // Kiểm tra duplicate với tên hiện tại trong form
+              if (finalName && finalUnit) {
+                checkDuplicateByDetails(finalName, finalUnit, finalSpec, nameInput, unitInputFinal, specSelectFinal);
+              }
+              
+              // Nếu tên AI gợi ý khác với tên người dùng nhập, kiểm tra duplicate với tên AI gợi ý
+              if (aiSuggestedName && aiSuggestedName !== finalName && finalUnit) {
+                setTimeout(() => {
+                  checkDuplicateByDetails(aiSuggestedName, finalUnit, finalSpec, nameInput, unitInputFinal, specSelectFinal, true);
+                }, 100);
+              }
+            }, 500);
+          } catch (error) {
+            resultDiv.className = 'alert alert-danger mb-3';
+            resultDiv.innerHTML = `<i class="bi bi-exclamation-triangle me-1"></i>Lỗi: ${error.message}`;
+          } finally {
+            btnAnalyze.disabled = false;
+            btnAnalyze.innerHTML = '<i class="bi bi-robot me-1"></i>Phân tích ảnh bằng AI';
+          }
+        }
+
+        btnAnalyze.addEventListener('click', analyzeImage);
+      })();
+
+      // Classify material name
+      (function(){
+        const btnClassify = document.getElementById('btnClassifyName');
+        const nameInput = document.getElementById('materialName');
+        const descInput = document.getElementById('Description');
+        
+        if (!btnClassify || !nameInput) return;
+
+        btnClassify.addEventListener('click', async function() {
+          const name = nameInput.value.trim();
+          if (!name) {
+            alert('Vui lòng nhập tên nguyên liệu trước');
+            return;
+          }
+
+          btnClassify.disabled = true;
+          btnClassify.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+          try {
+            const response = await fetch('/Materials/ClassifyFromText', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+              },
+              body: JSON.stringify({
+                name: name,
+                description: descInput?.value || null
+              })
+            });
+
+            if (!response.ok) throw new Error('Lỗi khi phân loại');
+
+            const result = await response.json();
+            
+            // Hiển thị thông báo
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-info alert-dismissible fade show mt-2';
+            alertDiv.innerHTML = `
+              <strong>Phân loại:</strong> ${result.category || 'Khác'}<br>
+              ${result.tags && result.tags.length > 0 ? `<strong>Tags:</strong> ${result.tags.join(', ')}` : ''}
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            nameInput.parentElement.parentElement.insertAdjacentElement('afterend', alertDiv);
+            setTimeout(() => alertDiv.remove(), 5000);
+
+            // Kiểm tra trùng lặp
+            checkDuplicates(name);
+          } catch (error) {
+            alert('Lỗi khi phân loại: ' + error.message);
+          } finally {
+            btnClassify.disabled = false;
+            btnClassify.innerHTML = '<i class="bi bi-tags"></i>';
+          }
+        });
+      })();
+
+      // Check for duplicates
+      async function checkDuplicates(materialName) {
+        const warningDiv = document.getElementById('duplicateWarning');
+        const duplicateList = document.getElementById('duplicateList');
+        if (!warningDiv || !duplicateList) return;
+
+        // Tạm thời chỉ hiển thị cảnh báo, không gọi API (vì chưa có materialId)
+        // Có thể gọi API sau khi lưu material
+        warningDiv.classList.add('d-none');
+        duplicateList.innerHTML = '';
+      }
+
+      // Check duplicate by name (for AI analysis)
+      async function checkDuplicateByName(materialName, nameInput) {
+        if (!materialName || !materialName.trim()) return;
+
+        try {
+          const response = await fetch('/Materials/CheckDuplicateByName', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ name: materialName.trim() })
+          });
+
+          if (!response.ok) {
+            console.warn('Không thể kiểm tra trùng lặp:', response.status);
+            return;
+          }
+
+          const result = await response.json();
+          
+          if (result.isDuplicate && result.message) {
+            // Hiển thị toast warning
+            if (typeof Toast !== 'undefined') {
+              Toast.warning(result.message);
+            } else {
+              alert(result.message);
+            }
+
+            // Highlight name input field
+            if (nameInput) {
+              nameInput.classList.add('is-invalid');
+              nameInput.style.borderColor = '#f59e0b';
+              
+              // Remove highlight after 3 seconds
+              setTimeout(() => {
+                nameInput.classList.remove('is-invalid');
+                nameInput.style.borderColor = '';
+              }, 3000);
+            }
+          }
+        } catch (error) {
+          console.error('Lỗi khi kiểm tra trùng lặp:', error);
+        }
+      }
+
+      // Check duplicate by Name + Unit + Specification
+      async function checkDuplicateByDetails(name, unit, specification, nameInput, unitInput, specSelect, isAISuggestion = false) {
+        if (!name || !name.trim() || !unit || !unit.trim()) {
+          return;
+        }
+
+        try {
+          const response = await fetch('/Materials/CheckDuplicateByDetails', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+              name: name.trim(),
+              unit: unit.trim(),
+              specification: (specification || '').trim()
+            })
+          });
+
+          if (!response.ok) {
+            console.warn('Không thể kiểm tra trùng lặp theo chi tiết:', response.status);
+            return;
+          }
+
+          const result = await response.json();
+          
+          const duplicateWarning = document.getElementById('duplicateWarning');
+          const duplicateList = document.getElementById('duplicateList');
+          const saveButton = document.querySelector('#materialForm button[type="submit"]');
+          const currentFormName = nameInput ? nameInput.value.trim() : '';
+          
+          if (result.isDuplicate && result.duplicateMaterial) {
+            const dup = result.duplicateMaterial;
+            
+            // Nếu kiểm tra với tên AI gợi ý và tên này khác với tên trong form, cảnh báo đặc biệt
+            const isNameMismatch = isAISuggestion && name.trim() !== currentFormName;
+            
+            // Hiển thị cảnh báo chi tiết
+            if (duplicateWarning && duplicateList) {
+              let warningMessage = '';
+              if (isNameMismatch) {
+                warningMessage = `
+                  <div class="alert alert-warning mb-2" style="font-size: 0.875rem;">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    <strong>Cảnh báo:</strong> Ảnh bạn chọn có vẻ là sản phẩm "<strong>${name}</strong>" đã tồn tại trong hệ thống. 
+                    Bạn đang nhập tên "<strong>${currentFormName}</strong>". Nếu đây là cùng một sản phẩm, vui lòng dùng tên đã có trong hệ thống.
+                  </div>
+                `;
+              }
+              
+              duplicateList.innerHTML = `
+                ${warningMessage}
+                <div class="border rounded p-2 bg-light">
+                  <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                      <strong>Mã:</strong> ${dup.code || 'N/A'}<br>
+                      <strong>Tên:</strong> ${dup.name || 'N/A'}<br>
+                      <strong>Đơn vị:</strong> ${dup.unit || 'N/A'}<br>
+                      <strong>Quy cách:</strong> ${dup.specification || 'Chưa có'}<br>
+                      ${dup.purchasePrice ? `<strong>Giá nhập:</strong> ${Number(dup.purchasePrice).toLocaleString('vi-VN')} đ<br>` : ''}
+                      ${dup.sellingPrice ? `<strong>Giá bán:</strong> ${Number(dup.sellingPrice).toLocaleString('vi-VN')} đ<br>` : ''}
+                      ${dup.stockQuantity !== null && dup.stockQuantity !== undefined ? `<strong>Tồn kho:</strong> ${dup.stockQuantity}<br>` : ''}
+                      ${dup.warehouseName ? `<strong>Kho:</strong> ${dup.warehouseName}<br>` : ''}
+                      ${dup.supplierName ? `<strong>Nhà cung cấp:</strong> ${dup.supplierName}` : ''}
+                    </div>
+                  </div>
+                  <small class="text-muted">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Nguyên liệu được coi là trùng nếu có cùng <strong>Tên + Đơn vị + Quy cách</strong>. 
+                    Nếu muốn thêm nguyên liệu mới, hãy thay đổi một trong ba thông tin này.
+                  </small>
+                </div>
+              `;
+              duplicateWarning.classList.remove('d-none');
+            }
+
+            // Highlight các trường liên quan
+            if (nameInput) {
+              nameInput.classList.add('is-invalid');
+              nameInput.style.borderColor = '#dc3545';
+            }
+            if (unitInput) {
+              unitInput.classList.add('is-invalid');
+              unitInput.style.borderColor = '#dc3545';
+            }
+            if (specSelect && specification) {
+              specSelect.classList.add('is-invalid');
+              specSelect.style.borderColor = '#dc3545';
+            }
+
+            // Disable nút Lưu
+            if (saveButton) {
+              saveButton.disabled = true;
+              saveButton.title = 'Không thể lưu: Nguyên liệu này đã tồn tại trong hệ thống';
+              saveButton.style.opacity = '0.6';
+            }
+
+            // Hiển thị toast warning
+            let toastMessage = result.message || 'Nguyên liệu này đã tồn tại trong hệ thống. Vui lòng kiểm tra lại thông tin.';
+            if (isNameMismatch) {
+              toastMessage = `Cảnh báo: Ảnh bạn chọn có vẻ là sản phẩm "${name}" đã tồn tại (Mã: ${dup.code}). Nếu đây là cùng một sản phẩm, vui lòng dùng tên đã có trong hệ thống.`;
+            }
+            
+            if (typeof Toast !== 'undefined') {
+              Toast.error(toastMessage);
+            } else {
+              alert(toastMessage);
+            }
+
+            // Lưu trạng thái để có thể reset sau
+            window.duplicateCheckState = {
+              isDuplicate: true,
+              highlightedFields: [nameInput, unitInput, specSelect].filter(f => f !== null)
+            };
+
+          } else {
+            // Không trùng với tên này, nhưng không enable nút nếu đã có duplicate được phát hiện từ lần kiểm tra khác
+            // Chỉ enable nếu đây là kiểm tra với tên chính (không phải AI suggestion) và không có duplicate nào cả
+            if (!isAISuggestion) {
+              // Chỉ bỏ highlight và enable nút nếu chắc chắn không có duplicate nào
+              const currentState = window.duplicateCheckState || { isDuplicate: false };
+              
+              if (!currentState.isDuplicate) {
+                // Không trùng, ẩn cảnh báo và bỏ highlight
+                if (duplicateWarning) {
+                  duplicateWarning.classList.add('d-none');
+                }
+                if (duplicateList) {
+                  duplicateList.innerHTML = '';
+                }
+
+                // Bỏ highlight
+                [nameInput, unitInput, specSelect].forEach(field => {
+                  if (field) {
+                    field.classList.remove('is-invalid');
+                    field.style.borderColor = '';
+                  }
+                });
+
+                // Enable nút Lưu
+                if (saveButton) {
+                  saveButton.disabled = false;
+                  saveButton.title = '';
+                  saveButton.style.opacity = '1';
+                }
+
+                window.duplicateCheckState = { isDuplicate: false };
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Lỗi khi kiểm tra trùng lặp theo chi tiết:', error);
+        }
+      }
+
+      // ===== Quick Add Supplier - Dùng event delegation =====
+      setupQuickAddSupplier();
+
+      // ===== Quick Add Specification - Dùng event delegation =====
+      setupQuickAddSpecification();
+
+      // ===== Tự động kiểm tra trùng lặp khi thay đổi Name, Unit, Specification =====
+      (function() {
+        const nameInput = document.getElementById('materialName');
+        const unitInput = document.getElementById('Unit');
+        const specSelect = document.getElementById('specificationSelect');
+        
+        let checkTimeout = null;
+        
+        function triggerDuplicateCheck() {
+          // Debounce: Chờ 500ms sau khi người dùng ngừng nhập
+          if (checkTimeout) {
+            clearTimeout(checkTimeout);
+          }
+          
+          checkTimeout = setTimeout(() => {
+            const name = nameInput ? nameInput.value.trim() : '';
+            const unit = unitInput ? unitInput.value.trim() : '';
+            const spec = specSelect ? (specSelect.value || '').trim() : '';
+            
+            if (name && unit) {
+              checkDuplicateByDetails(name, unit, spec, nameInput, unitInput, specSelect);
+            } else {
+              // Nếu chưa đủ thông tin, ẩn cảnh báo và bỏ highlight
+              const duplicateWarning = document.getElementById('duplicateWarning');
+              if (duplicateWarning) {
+                duplicateWarning.classList.add('d-none');
+              }
+              
+              [nameInput, unitInput, specSelect].forEach(field => {
+                if (field) {
+                  field.classList.remove('is-invalid');
+                  field.style.borderColor = '';
+                }
+              });
+              
+              const saveButton = document.querySelector('#materialForm button[type="submit"]');
+              if (saveButton) {
+                saveButton.disabled = false;
+                saveButton.title = '';
+                saveButton.style.opacity = '1';
+              }
+            }
+          }, 500);
+        }
+        
+        if (nameInput) {
+          nameInput.addEventListener('input', triggerDuplicateCheck);
+          nameInput.addEventListener('blur', triggerDuplicateCheck);
+        }
+        
+        if (unitInput) {
+          unitInput.addEventListener('input', triggerDuplicateCheck);
+          unitInput.addEventListener('blur', triggerDuplicateCheck);
+        }
+        
+        if (specSelect) {
+          specSelect.addEventListener('change', triggerDuplicateCheck);
+        }
+      })();
+    }
+
+    // Load danh sách quy cách
+    function loadSpecifications() {
+      console.log('Loading specifications...');
+      const select = document.getElementById('specificationSelect');
+      if (!select) {
+        console.warn('specificationSelect not found, retrying...');
+        setTimeout(loadSpecifications, 200);
+        return;
+      }
+
+      fetch('/Materials/GetSpecifications', {
+        method: 'GET',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'same-origin'
+      })
+      .then(function(response) {
+        console.log('Response status:', response.status);
+        if (response.ok) {
+          return response.json().then(function(specs) {
+            console.log('Specifications loaded:', specs);
+            
+            // Xóa các option cũ (trừ option đầu tiên)
+            while (select.options.length > 1) {
+              select.remove(1);
+            }
+            
+            // Thêm các option mới
+            if (specs && specs.length > 0) {
+              specs.forEach(function(spec) {
+                const option = document.createElement('option');
+                option.value = spec.name;
+                option.textContent = spec.name;
+                select.appendChild(option);
+              });
+              console.log('Specifications added to dropdown:', specs.length);
+            } else {
+              console.warn('Không tìm thấy quy cách trong database. Vui lòng chạy migration để tạo bảng MaterialSpecifications.');
+              // Hiển thị thông báo cho user
+              const option = document.createElement('option');
+              option.value = '';
+              option.textContent = '-- Chưa có dữ liệu (cần chạy migration) --';
+              option.disabled = true;
+              select.appendChild(option);
+            }
+          });
+        } else {
+          console.error('Không thể tải danh sách quy cách:', response.status, response.statusText);
+          return response.text().then(function(errorText) {
+            console.error('Phản hồi lỗi:', errorText);
+            
+            // Hiển thị thông báo lỗi
+            if (select) {
+              const option = document.createElement('option');
+              option.value = '';
+              option.textContent = '-- Lỗi tải dữ liệu (kiểm tra database) --';
+              option.disabled = true;
+              select.appendChild(option);
+            }
+          });
+        }
+      })
+      .catch(function(error) {
+        console.error('Lỗi khi tải danh sách quy cách:', error);
+        const select = document.getElementById('specificationSelect');
+        if (select) {
+          const option = document.createElement('option');
+          option.value = '';
+          option.textContent = '-- Lỗi kết nối --';
+          option.disabled = true;
+          select.appendChild(option);
+        }
+      });
+    }
+
+    function setupQuickAddSupplier() {
+      console.log('Setting up quick add supplier...');
+      
+      // Sử dụng event delegation đơn giản hơn
+      document.addEventListener('click', function(e) {
+        // Kiểm tra nếu click vào button hoặc icon bên trong button
+        const clickedEl = e.target;
+        const parentBtn = clickedEl.closest('button');
+        
+        if (!parentBtn || parentBtn.id !== 'btnQuickAddSupplier') {
+          return;
+        }
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        console.log('Quick add supplier button clicked');
+        
+        const quickForm = document.getElementById('quickSupplierForm');
+        const quickNameInput = document.getElementById('quickSupplierName');
+        
+        if (!quickForm) {
+          console.error('quickSupplierForm not found');
+          return;
+        }
+        
+        const isVisible = quickForm.style.display !== 'none' && quickForm.style.display !== '';
+        quickForm.style.display = isVisible ? 'none' : 'block';
+        console.log('Supplier form toggled, visible:', !isVisible);
+        
+        if (!isVisible && quickNameInput) {
+          setTimeout(() => {
+            quickNameInput.focus();
+            console.log('Focused on supplier name input');
+          }, 100);
+        } else {
+          resetQuickSupplierForm();
+        }
+      });
+
+      // Setup save và cancel buttons
+      const btnSave = document.getElementById('btnSaveQuickSupplier');
+      const btnCancel = document.getElementById('btnCancelQuickSupplier');
+      const quickForm = document.getElementById('quickSupplierForm');
+      const supplierSelect = document.getElementById('supplierSelect');
+      const quickNameInput = document.getElementById('quickSupplierName');
+      const quickPhoneInput = document.getElementById('quickSupplierPhone');
+      const quickEmailInput = document.getElementById('quickSupplierEmail');
+      const quickAddressInput = document.getElementById('quickSupplierAddress');
+      const errorDiv = document.getElementById('quickSupplierError');
+
+      // Reset form function
+      function resetQuickSupplierForm() {
+        if (quickNameInput) quickNameInput.value = '';
+        if (quickPhoneInput) quickPhoneInput.value = '';
+        if (quickEmailInput) quickEmailInput.value = '';
+        if (quickAddressInput) quickAddressInput.value = '';
+        if (errorDiv) {
+          errorDiv.textContent = '';
+          errorDiv.style.display = 'none';
+        }
+      }
+
+      // Hủy form
+      if (btnCancel) {
+        btnCancel.addEventListener('click', function(e) {
+          e.preventDefault();
+          if (quickForm) quickForm.style.display = 'none';
+          resetQuickSupplierForm();
+        });
+      }
+
+      // Validate email format
+      function isValidEmail(email) {
+        if (!email || email.trim() === '') return true; // Optional field
+        const emailRegex = /^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/;
+        return emailRegex.test(email.trim());
+      }
+
+      // Validate phone number format (basic)
+      function isValidPhone(phone) {
+        if (!phone || phone.trim() === '') return true; // Optional field
+        // Cho phép số, dấu +, dấu cách, dấu gạch ngang
+        const phoneRegex = /^[\d\s\+\-\(\)]+$/;
+        return phoneRegex.test(phone.trim()) && phone.trim().length >= 8;
+      }
+
+      // Lưu nhà cung cấp nhanh
+      if (btnSave) {
+        btnSave.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          const name = quickNameInput ? quickNameInput.value.trim() : '';
+          const phone = quickPhoneInput ? quickPhoneInput.value.trim() : '';
+          const email = quickEmailInput ? quickEmailInput.value.trim() : '';
+          const address = quickAddressInput ? quickAddressInput.value.trim() : '';
+          
+          if (errorDiv) {
+            errorDiv.textContent = '';
+            errorDiv.style.display = 'none';
+          }
+
+          // Validation
+          if (!name) {
+            if (errorDiv) {
+              errorDiv.textContent = 'Vui lòng nhập tên nhà cung cấp.';
+              errorDiv.style.display = 'block';
+            }
+            return;
+          }
+
+          if (email && !isValidEmail(email)) {
+            if (errorDiv) {
+              errorDiv.textContent = 'Email không đúng định dạng.';
+              errorDiv.style.display = 'block';
+            }
+            return;
+          }
+
+          if (phone && !isValidPhone(phone)) {
+            if (errorDiv) {
+              errorDiv.textContent = 'Số điện thoại không đúng định dạng.';
+              errorDiv.style.display = 'block';
+            }
+            return;
+          }
+
+          // Disable button trong khi xử lý
+          btnSave.disabled = true;
+          btnSave.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Đang lưu...';
+
+          fetch('/Suppliers/CreateQuick', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({ 
+              name: name,
+              phoneNumber: phone || null,
+              email: email || null,
+              address: address || null
+            })
+          })
+          .then(function(response) {
+            return response.json();
+          })
+          .then(function(result) {
+            if (result.success) {
+              // Thêm option mới vào dropdown
+              if (supplierSelect) {
+                const option = document.createElement('option');
+                option.value = result.id;
+                option.textContent = result.name;
+                option.selected = true;
+                supplierSelect.appendChild(option);
+              }
+
+              // Ẩn form và reset
+              if (quickForm) quickForm.style.display = 'none';
+              resetQuickSupplierForm();
+
+              // Hiển thị thông báo thành công
+              const successMsg = document.createElement('div');
+              successMsg.className = 'alert alert-success alert-dismissible fade show mt-2';
+              successMsg.innerHTML = 
+                '<i class="bi bi-check-circle me-1"></i>Đã thêm nhà cung cấp "' + result.name + '" thành công. ' +
+                '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+              quickForm.parentElement.insertBefore(successMsg, quickForm);
+              setTimeout(function() { successMsg.remove(); }, 3000);
+            } else {
+              if (errorDiv) {
+                errorDiv.textContent = result.error || 'Có lỗi xảy ra khi tạo nhà cung cấp.';
+                errorDiv.style.display = 'block';
+              }
+            }
+            btnSave.disabled = false;
+            btnSave.innerHTML = '<i class="bi bi-check-lg me-1"></i>Lưu';
+          })
+          .catch(function(error) {
+            if (errorDiv) {
+              errorDiv.textContent = 'Lỗi kết nối: ' + error.message;
+              errorDiv.style.display = 'block';
+            }
+            btnSave.disabled = false;
+            btnSave.innerHTML = '<i class="bi bi-check-lg me-1"></i>Lưu';
+          });
+        });
+      }
+
+      // Cho phép Enter để submit (chỉ từ trường tên)
+      if (quickNameInput) {
+        quickNameInput.addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            if (btnSave) btnSave.click();
+          }
+        });
+      }
+      
+      // Cho phép Enter từ các trường khác cũng submit
+      [quickPhoneInput, quickEmailInput, quickAddressInput].forEach(function(input) {
+        if (input) {
+          input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              if (btnSave) btnSave.click();
+            }
+          });
+        }
+      });
+    }
+
+    function setupQuickAddSpecification() {
+      console.log('Setting up quick add specification...');
+      // Sử dụng event delegation
+      document.addEventListener('click', function(e) {
+        // Kiểm tra cả button và icon bên trong
+        const clickedEl = e.target;
+        const parentBtn = clickedEl.closest('button');
+        
+        if (!parentBtn || parentBtn.id !== 'btnQuickAddSpecification') {
+          return;
+        }
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        console.log('Quick add specification button clicked');
+        
+        const quickForm = document.getElementById('quickSpecificationForm');
+        const quickNameInput = document.getElementById('quickSpecificationName');
+        
+        if (!quickForm) {
+          console.error('quickSpecificationForm not found');
+          return;
+        }
+        
+        const isVisible = quickForm.style.display !== 'none' && quickForm.style.display !== '';
+        quickForm.style.display = isVisible ? 'none' : 'block';
+        console.log('Form visibility toggled:', !isVisible);
+        
+        if (!isVisible && quickNameInput) {
+          setTimeout(() => quickNameInput.focus(), 100);
+        } else {
+          resetQuickSpecForm();
+        }
+      });
+
+      // Setup save và cancel buttons
+      const btnSave = document.getElementById('btnSaveQuickSpecification');
+      const btnCancel = document.getElementById('btnCancelQuickSpecification');
+      const quickForm = document.getElementById('quickSpecificationForm');
+      const specificationSelect = document.getElementById('specificationSelect');
+      const quickNameInput = document.getElementById('quickSpecificationName');
+      const errorDiv = document.getElementById('quickSpecificationError');
+
+      // Reset form function
+      function resetQuickSpecForm() {
+        if (quickNameInput) quickNameInput.value = '';
+        if (errorDiv) {
+          errorDiv.textContent = '';
+          errorDiv.style.display = 'none';
+        }
+      }
+
+      // Hủy form
+      if (btnCancel) {
+        btnCancel.addEventListener('click', function(e) {
+          e.preventDefault();
+          if (quickForm) quickForm.style.display = 'none';
+          resetQuickSpecForm();
+        });
+      }
+
+      // Lưu quy cách nhanh
+      if (btnSave) {
+        btnSave.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const name = quickNameInput.value.trim();
+          if (errorDiv) {
+            errorDiv.textContent = '';
+            errorDiv.style.display = 'none';
+          }
+
+          if (!name) {
+            if (errorDiv) {
+              errorDiv.textContent = 'Vui lòng nhập tên quy cách.';
+              errorDiv.style.display = 'block';
+            }
+            return;
+          }
+
+          // Disable button trong khi xử lý
+          btnSave.disabled = true;
+          btnSave.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Đang lưu...';
+
+          fetch('/Materials/AddSpecification', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({ name: name })
+          })
+          .then(function(response) {
+            return response.json();
+          })
+          .then(function(result) {
+            if (result.success) {
+              // Thêm option mới vào dropdown
+              if (specificationSelect) {
+                const option = document.createElement('option');
+                option.value = result.name;
+                option.textContent = result.name;
+                option.selected = true;
+                specificationSelect.appendChild(option);
+              }
+
+              // Ẩn form và reset
+              if (quickForm) quickForm.style.display = 'none';
+              resetQuickSpecForm();
+
+              // Hiển thị thông báo thành công
+              const successMsg = document.createElement('div');
+              successMsg.className = 'alert alert-success alert-dismissible fade show mt-2';
+              successMsg.innerHTML = 
+                '<i class="bi bi-check-circle me-1"></i>Đã thêm quy cách "' + result.name + '" thành công. ' +
+                '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+              quickForm.parentElement.insertBefore(successMsg, quickForm);
+              setTimeout(function() { successMsg.remove(); }, 3000);
+            } else {
+              if (errorDiv) {
+                errorDiv.textContent = result.error || 'Có lỗi xảy ra khi tạo quy cách.';
+                errorDiv.style.display = 'block';
+              }
+            }
+            btnSave.disabled = false;
+            btnSave.innerHTML = '<i class="bi bi-check-lg me-1"></i>Lưu';
+          })
+          .catch(function(error) {
+            if (errorDiv) {
+              errorDiv.textContent = 'Lỗi kết nối: ' + error.message;
+              errorDiv.style.display = 'block';
+            }
+            btnSave.disabled = false;
+            btnSave.innerHTML = '<i class="bi bi-check-lg me-1"></i>Lưu';
+          });
+        });
+      }
+
+      // Cho phép Enter để submit
+      if (quickNameInput) {
+        quickNameInput.addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            if (btnSave) btnSave.click();
+          }
+        });
+      }
+    }
   </script>
-}

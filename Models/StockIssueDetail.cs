@@ -18,7 +18,10 @@ namespace MNBEMART.Models
         public double Quantity { get; set; }
 
         [Precision(18, 2)]
-        public decimal UnitPrice { get; set; }
+        public decimal UnitPrice { get; set; }  // Giá bán
+
+        [Precision(18, 2)]
+        public decimal? CostPrice { get; set; }  // Giá vốn (COGS) - tự động tính khi xuất kho
 
         public string Unit { get; set; }
 

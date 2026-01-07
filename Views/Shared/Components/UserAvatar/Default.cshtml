@@ -1,0 +1,55 @@
+@model string
+
+<div class="relative" id="user-avatar-menu">
+    <button type="button" class="flex items-center gap-2 cursor-pointer hover:opacity-80 transition">
+        <img src="@Model" class="w-9 h-9 rounded-full object-cover ring-2 ring-green-400" alt="Avatar" />
+    </button>
+    <div id="user-dropdown-menu" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-xl border border-slate-200 shadow-2xl z-[9999] overflow-hidden">
+        <div class="py-1">
+            <a href="/Profile/Index" class="block px-4 py-2 text-sm text-slate-700 hover:bg-green-50 hover:text-green-700 transition flex items-center gap-2">
+                <i class="bi bi-person-circle text-green-600"></i> Hồ sơ cá nhân
+            </a>
+            <a href="/Settings" class="block px-4 py-2 text-sm text-slate-700 hover:bg-green-50 hover:text-green-700 transition flex items-center gap-2">
+                <i class="bi bi-gear text-green-600"></i> Cài đặt
+            </a>
+            <hr class="my-1 border-slate-200">
+            <a href="/Account/Login" class="block px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition flex items-center gap-2">
+                <i class="bi bi-box-arrow-right"></i> Đăng xuất
+            </a>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

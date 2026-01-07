@@ -5,15 +5,22 @@
 @{
     ViewData["Title"] = "Doanh thu xuất kho";
     dynamic f = ViewBag.Filter;
-    DateTime displayFrom = (f?.From as DateTime?)?.Date ?? DateTime.Now.Date.AddDays(-7);
-    DateTime displayTo   = (f?.To as DateTime?)?.Date   ?? DateTime.Now.Date;
+    var now = DateTime.Now;
+    DateTime displayFrom = (f?.From as DateTime?)?.Date ?? new DateTime(now.Year, now.Month, 1);
+    DateTime displayTo   = (f?.To as DateTime?)?.Date   ?? new DateTime(now.Year, now.Month, 1).AddMonths(1).AddDays(-1);
     string groupBy = f?.GroupBy as string ?? "day";
     int? warehouseId = f?.WarehouseId as int?;
-    decimal total = ViewBag.Total is decimal d ? d : Model.Sum(x => x.TotalRevenue);
+    decimal total = ViewBag.Total is decimal d ? d : (Model != null && Model.Any() ? Model.Sum(x => x.TotalRevenue) : 0m);
+    decimal totalQty = ViewBag.TotalQty is decimal q ? q : (Model != null && Model.Any() ? Model.Sum(x => x.QtyOut) : 0m);
+    decimal avg = (Model != null && Model.Any()) ? Model.Average(x => x.TotalRevenue) : 0m;
 
     string TrimDec(decimal v, int maxDecimals = 2) {
         var fmt = "0." + new string('#', maxDecimals);
         return v.ToString(fmt, CultureInfo.InvariantCulture);
+    }
+
+    string FormatMoney(decimal v) {
+        return v.ToString("N0", CultureInfo.InvariantCulture) + " đ";
     }
 
     var groupByItems = new List<SelectListItem> {
@@ -21,6 +28,9 @@
         new("month","Tháng"){Selected=groupBy=="month"},
         new("year","Năm"){Selected=groupBy=="year"}
     };
+
+    var calendarDaily = ViewBag.CalendarDaily as List<MNBEMART.ViewModels.RevenueRowVM> 
+                        ?? new List<MNBEMART.ViewModels.RevenueRowVM>();
 }
 
 <!-- Tailwind + Chart.js -->
@@ -28,124 +38,407 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
-<div class="min-h-screen bg-slate-50 p-6 md:p-8 space-y-6 text-slate-700">
+<div class="max-w-[1600px] mx-auto px-6 lg:px-8 py-8">
+    <!-- Large Header -->
+    @* <div class="mb-6">
+        <div class="bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl shadow-lg p-8 text-white">
+            <div class="flex items-center gap-3">
+                <div class="bg-white/20 backdrop-blur-sm rounded-xl p-3">
+                    <i class="bi bi-graph-up text-3xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-4xl font-black tracking-tight mb-2">
+                        Báo cáo doanh thu
+                    </h1>
+                    <p class="text-green-100 text-lg">Thống kê doanh thu theo ngày, tháng, hoặc năm</p>
+                </div>
+            </div>
+        </div>
+    </div> *@
 
-    <!-- Tiêu đề -->
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                <i class="bi bi-graph-up text-blue-600"></i> Doanh thu xuất kho
-            </h1>
-            <p class="text-sm text-slate-500">Thống kê doanh thu theo ngày, tháng, hoặc năm</p>
+    <!-- Filter Section -->
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 mb-6 p-6">
+        <form id="filterForm" method="get" asp-controller="Reports" asp-action="Revenue">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                        <i class="bi bi-calendar-event text-green-600"></i>Từ ngày
+                    </label>
+                    <input type="date" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all shadow-sm hover:border-green-400"
+                           name="From" value="@displayFrom.ToString("yyyy-MM-dd")" />
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                        <i class="bi bi-calendar-check text-green-600"></i>Đến ngày
+                    </label>
+                    <input type="date" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all shadow-sm hover:border-green-400"
+                           name="To" value="@displayTo.ToString("yyyy-MM-dd")" />
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                        <i class="bi bi-building text-green-600"></i>Kho
+                    </label>
+                    @Html.DropDownList("WarehouseId",
+                        (IEnumerable<SelectListItem>)ViewBag.Warehouses,
+                        htmlAttributes: new { @class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all shadow-sm hover:border-green-400" })
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                        <i class="bi bi-list-ul text-green-600"></i>Nhóm theo
+                    </label>
+                    @Html.DropDownList("GroupBy",
+                        groupByItems,
+                        htmlAttributes: new { @class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all shadow-sm hover:border-green-400" })
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-2 mt-4">
+                <button class="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold px-5 py-3 rounded-xl text-sm transition-all shadow-md hover:shadow-lg flex items-center gap-2">
+                    <i class="bi bi-funnel-fill"></i> Xem
+                </button>
+                <button type="submit" formaction="/Reports/RevenueExcel"
+                        class="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-semibold px-4 py-3 rounded-xl text-sm transition-all shadow-md hover:shadow-lg flex items-center gap-2">
+                    <i class="bi bi-file-earmark-excel"></i> Excel
+                </button>
+                <button type="submit" formaction="/Reports/ExportPdfRevenue"
+                        class="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold px-4 py-3 rounded-xl text-sm transition-all shadow-md hover:shadow-lg flex items-center gap-2">
+                    <i class="bi bi-file-earmark-pdf"></i> PDF
+                </button>
+                <button type="submit" formaction="/Reports/RevenueExport"
+                        class="bg-white border-2 border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold px-4 py-3 rounded-xl text-sm transition-all shadow-sm hover:shadow-md flex items-center gap-2">
+                    <i class="bi bi-download"></i> CSV
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Info Message -->
+    @if (ViewBag.Message != null)
+    {
+        <div class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-6 mb-6">
+            <div class="flex items-start gap-3">
+                <div class="bg-amber-100 rounded-xl p-2">
+                    <i class="bi bi-info-circle text-amber-600 text-xl"></i>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-amber-900 font-semibold mb-1">Thông báo</h3>
+                    <p class="text-amber-800 text-sm">@ViewBag.Message</p>
+                    <div class="mt-3 text-xs text-amber-700">
+                        <p class="font-medium mb-1">Gợi ý:</p>
+                        <ul class="list-disc list-inside space-y-1">
+                            <li>Kiểm tra xem đã có phiếu xuất kho được tạo và xác nhận chưa</li>
+                            <li>Đảm bảo phiếu xuất kho đã được xử lý (trạng thái "Đã xuất hàng")</li>
+                            <li>Thử chọn khoảng thời gian khác hoặc bỏ lọc kho</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div class="bg-gradient-to-br from-green-500 to-emerald-600 border-0 rounded-2xl p-4 shadow-xl text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-green-100 uppercase tracking-wide mb-1">Tổng doanh thu</p>
+                    <h4 class="text-2xl font-black">@FormatMoney(total)</h4>
+                </div>
+                <div class="bg-white/20 backdrop-blur-sm rounded-xl p-3">
+                    <i class="bi bi-cash-stack text-white text-2xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-gradient-to-br from-emerald-500 to-green-600 border-0 rounded-2xl p-4 shadow-xl text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-emerald-100 uppercase tracking-wide mb-1">Tổng SL xuất</p>
+                    <h4 class="text-2xl font-black">@TrimDec(totalQty)</h4>
+                </div>
+                <div class="bg-white/20 backdrop-blur-sm rounded-xl p-3">
+                    <i class="bi bi-box-arrow-up text-white text-2xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-gradient-to-br from-green-600 to-emerald-700 border-0 rounded-2xl p-4 shadow-xl text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-green-100 uppercase tracking-wide mb-1">TB/kỳ</p>
+                    <h4 class="text-2xl font-black">@FormatMoney(avg)</h4>
+                </div>
+                <div class="bg-white/20 backdrop-blur-sm rounded-xl p-3">
+                    <i class="bi bi-graph-up-arrow text-white text-2xl"></i>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Form lọc -->
-    <form method="get" asp-controller="Reports" asp-action="Revenue"
-          class="bg-white border border-slate-200 shadow-sm rounded-xl p-5 grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-
-        <div>
-            <label class="block text-sm font-medium text-slate-600 mb-1">Từ ngày</label>
-            <input type="date" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
-                   name="From" value="@displayFrom:yyyy-MM-dd" />
-        </div>
-
-        <div>
-            <label class="block text-sm font-medium text-slate-600 mb-1">Đến ngày</label>
-            <input type="date" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
-                   name="To" value="@displayTo:yyyy-MM-dd" />
-        </div>
-
-        <div>
-            <label class="block text-sm font-medium text-slate-600 mb-1">Kho</label>
-            @Html.DropDownList("WarehouseId",
-                (IEnumerable<SelectListItem>)ViewBag.Warehouses,
-                htmlAttributes: new { @class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500" })
-        </div>
-
-        <div>
-            <label class="block text-sm font-medium text-slate-600 mb-1">Nhóm theo</label>
-            @Html.DropDownList("GroupBy",
-                groupByItems,
-                htmlAttributes: new { @class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500" })
-        </div>
-
-        <div class="flex items-end">
-            <button class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition">
-                <i class="bi bi-funnel me-1"></i> Xem
-            </button>
-        </div>
-    </form>
-
-    <!-- Biểu đồ -->
-    <div class="bg-white border border-slate-200 shadow-sm rounded-xl p-6">
-        <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-semibold text-slate-800 flex items-center gap-2">
-                <i class="bi bi-bar-chart-line text-blue-600"></i> Biểu đồ doanh thu
+    <!-- Calendar and Chart Side by Side -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+    <!-- Calendar Section -->
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-2">
+        <div class="flex items-center justify-between mb-2">
+            <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <i class="bi bi-calendar3 text-green-600"></i> Lịch doanh thu
             </h2>
-            <span class="text-sm text-slate-500">Tổng: <b class="text-blue-600">@TrimDec(total)</b></span>
+            <div class="flex items-center gap-3">
+                <button id="calPrev" type="button" class="px-2 py-1 rounded-xl border-2 border-slate-300 hover:bg-slate-50 transition">
+                    <i class="bi bi-chevron-left"></i>
+                </button>
+                <div id="calTitle" class="text-xs font-semibold text-slate-700"></div>
+                <button id="calNext" type="button" class="px-2 py-1 rounded-xl border-2 border-slate-300 hover:bg-slate-50 transition">
+                    <i class="bi bi-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+        <p class="text-sm text-slate-500 mb-2">Nhấp vào ngày để xem doanh thu</p>
+
+        <div class="grid grid-cols-7 text-center text-xs font-semibold text-slate-600 mb-1">
+            <div>T2</div><div>T3</div><div>T4</div><div>T5</div><div>T6</div><div>T7</div><div>CN</div>
+        </div>
+        <div id="calendarGrid" class="grid grid-cols-7 gap-1"></div>
+        <div id="dayDetail" class="mt-2 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-2">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-sm text-slate-600 font-medium">Chi tiết ngày</div>
+                    <div id="dayDetailContent" class="mt-1 text-sm font-bold text-slate-900">Chưa chọn ngày</div>
+                </div>
+                <button id="resetFilter" type="button" class="px-3 py-1.5 rounded-xl border-2 border-slate-300 hover:bg-white text-sm font-medium transition">
+                    Hiển thị tất cả
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart Section -->
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-3">
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                <i class="bi bi-bar-chart-line text-green-600"></i> Biểu đồ doanh thu
+            </h2>
+            <span class="text-sm text-slate-600 font-medium">Tổng: <b class="text-green-600 text-base">@FormatMoney(total)</b></span>
         </div>
         <canvas id="revChart" height="100"></canvas>
     </div>
+    </div>
 
-    <!-- Bảng -->
-    <div class="bg-white border border-slate-200 shadow-sm rounded-xl p-6">
-        <div class="overflow-x-auto">
-            <table class="min-w-full text-sm text-slate-700">
-                <thead class="bg-slate-100 text-slate-600 text-xs uppercase">
+    <!-- Table Section -->
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto max-h-[500px] relative">
+            <table class="min-w-full divide-y divide-slate-200">
+                <thead class="bg-slate-50 sticky top-0 z-10">
                     <tr>
-                        <th class="px-3 py-2 text-left">Kỳ</th>
-                        <th class="px-3 py-2 text-right">Doanh thu</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition">
+                            Kỳ <i class="bi bi-arrow-down-up text-green-600 ml-1"></i>
+                        </th>
+                        <th class="px-6 py-4 text-right text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition">
+                            SL xuất <i class="bi bi-arrow-down-up text-green-600 ml-1"></i>
+                        </th>
+                        <th class="px-6 py-4 text-right text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition">
+                            Doanh thu <i class="bi bi-arrow-down-up text-green-600 ml-1"></i>
+                        </th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100">
-                    @foreach (var r in Model)
+                <tbody class="bg-white divide-y divide-slate-200">
+                    @if (Model != null && Model.Any())
                     {
-                        <tr class="hover:bg-slate-50 transition">
-                            <td class="px-3 py-2">@r.Period</td>
-                            <td class="px-3 py-2 text-right font-medium">@TrimDec(r.TotalRevenue)</td>
+                        @foreach (var r in Model)
+                        {
+                            <tr class="hover:bg-slate-50 transition-colors duration-150" data-day="@((groupBy=="day") ? r.Period : null)">
+                                <td class="px-6 py-4 font-medium text-slate-900">@r.Period</td>
+                                <td class="px-6 py-4 text-right font-semibold text-slate-700">@TrimDec(r.QtyOut)</td>
+                                <td class="px-6 py-4 text-right font-bold text-green-600">@FormatMoney(r.TotalRevenue)</td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="3" class="px-6 py-12 text-center">
+                                <div class="flex flex-col items-center justify-center">
+                                    <i class="bi bi-inbox text-4xl text-slate-300 mb-3"></i>
+                                    <p class="text-slate-500 font-medium">Không có dữ liệu doanh thu</p>
+                                    <p class="text-sm text-slate-400 mt-1">Thử thay đổi bộ lọc hoặc kiểm tra xem đã có phiếu xuất kho được xử lý chưa</p>
+                                </div>
+                            </td>
                         </tr>
                     }
                 </tbody>
-                <tfoot>
-                    <tr class="bg-slate-100 font-semibold">
-                        <td class="px-3 py-2 text-right">Tổng</td>
-                        <td class="px-3 py-2 text-right">@TrimDec(total)</td>
-                    </tr>
-                </tfoot>
+                @if (Model != null && Model.Any())
+                {
+                    <tfoot class="bg-gradient-to-r from-slate-50 to-slate-100 border-t-2 border-slate-200">
+                        <tr>
+                            <td class="px-6 py-4 text-right font-bold text-slate-900">Tổng</td>
+                            <td class="px-6 py-4 text-right font-bold text-slate-900">@TrimDec(totalQty)</td>
+                            <td class="px-6 py-4 text-right font-bold text-green-600 text-lg">@FormatMoney(total)</td>
+                        </tr>
+                    </tfoot>
+                }
             </table>
         </div>
     </div>
 </div>
 
+<script>
+// ===== Calendar for daily revenue (tách khỏi GroupBy) =====
+const dailyData = @Html.Raw(calendarDaily != null && calendarDaily.Any()
+    ? System.Text.Json.JsonSerializer.Serialize(calendarDaily.Select(x => new { period = x.Period, total = x.TotalRevenue, qty = x.QtyOut }))
+    : "[]");
+// Build map yyyy-MM-dd -> {total, qty}
+const revMap = {};
+if (dailyData && Array.isArray(dailyData)) {
+    dailyData.forEach(r => { revMap[r.period] = { total: r.total, qty: r.qty }; });
+}
+
+// Determine initial month to display
+let initialFrom = new Date('@displayFrom.ToString("yyyy-MM-01")');
+if (isNaN(initialFrom.getTime())) { const now = new Date(); initialFrom = new Date(now.getFullYear(), now.getMonth(), 1); }
+let viewYear = initialFrom.getFullYear();
+let viewMonth = initialFrom.getMonth(); // 0-11
+
+const calTitle = document.getElementById('calTitle');
+const calGrid  = document.getElementById('calendarGrid');
+const prevBtn  = document.getElementById('calPrev');
+const nextBtn  = document.getElementById('calNext');
+const dayDetailEl = document.getElementById('dayDetailContent');
+const resetBtn = document.getElementById('resetFilter');
+const filterForm = document.getElementById('filterForm');
+
+function ymd(d) {
+  const m = (d.getMonth()+1).toString().padStart(2,'0');
+  const day = d.getDate().toString().padStart(2,'0');
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+function daysInMonth(y, m) { return new Date(y, m+1, 0).getDate(); }
+function firstMondayOffset(y, m) {
+  // monday-first; get day of week 0=Sun..6=Sat
+  const dow = new Date(y, m, 1).getDay();
+  // convert to Monday-first index 0..6 where Monday=0
+  const mondayIndex = (dow + 6) % 7;
+  return mondayIndex;
+}
+function renderCalendar() {
+  if (!calGrid) return;
+  calGrid.innerHTML = '';
+  calTitle.textContent = `Tháng ${viewMonth+1}/${viewYear}`;
+  const lead = firstMondayOffset(viewYear, viewMonth);
+  const dim = daysInMonth(viewYear, viewMonth);
+
+  for (let i=0;i<lead;i++) {
+    const cell = document.createElement('div');
+    cell.className = 'h-10 rounded-xl';
+    calGrid.appendChild(cell);
+  }
+
+  for (let d=1; d<=dim; d++) {
+    const dateObj = new Date(viewYear, viewMonth, d);
+    const key = ymd(dateObj);
+    const has = !!revMap[key] && (revMap[key].total ?? 0) > 0;
+
+    const cell = document.createElement('button');
+    cell.type = 'button';
+    cell.className = 'h-10 rounded-xl border border-slate-200 bg-white hover:bg-green-50 hover:border-green-300 flex flex-col items-center justify-center transition-all shadow-sm hover:shadow-md';
+    cell.innerHTML = `<span class="text-xs font-semibold text-slate-900">${d}</span>` + (has ? `<span class="w-2 h-2 bg-green-500 rounded-full mt-1"></span>` : '<span class="w-2 h-2 mt-1"></span>');
+    cell.addEventListener('click', () => showDayDetail(key));
+    calGrid.appendChild(cell);
+  }
+}
+function formatNumber(n) { return (n ?? 0).toLocaleString('en-US', { maximumFractionDigits: 2 }); }
+function showDayDetail(key) {
+  const data = revMap[key] || { total: 0, qty: 0 };
+  dayDetailEl.textContent = `Ngày ${key.split('-').reverse().join('/')} — Doanh thu: ${formatNumber(data.total)} đ — SL xuất: ${formatNumber(data.qty)}`;
+  // Filter table rows (client-side)
+  document.querySelectorAll('table tbody tr').forEach(tr => {
+    const day = tr.getAttribute('data-day');
+    if (!day) return;
+    tr.style.display = (day === key) ? '' : 'none';
+  });
+}
+function submitMonth() {
+  if (!filterForm) return;
+  const from = new Date(viewYear, viewMonth, 1);
+  const to   = new Date(viewYear, viewMonth+1, 0);
+  const fmt = d => `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')}`;
+  const fromInput = document.querySelector('input[name="From"]');
+  const toInput   = document.querySelector('input[name="To"]');
+  if (fromInput) fromInput.value = fmt(from);
+  if (toInput)   toInput.value   = fmt(to);
+  // Không thay đổi GroupBy; lịch dùng dữ liệu daily riêng
+  filterForm.submit();
+}
+if (prevBtn && nextBtn) {
+  prevBtn.addEventListener('click', () => { if (--viewMonth < 0) { viewMonth = 11; viewYear--; } submitMonth(); });
+  nextBtn.addEventListener('click', () => { if (++viewMonth > 11) { viewMonth = 0; viewYear++; } submitMonth(); });
+}
+if (resetBtn) {
+  resetBtn.addEventListener('click', () => {
+    dayDetailEl.textContent = 'Chưa chọn ngày';
+    document.querySelectorAll('table tbody tr').forEach(tr => {
+      const day = tr.getAttribute('data-day');
+      if (day !== null) tr.style.display = '';
+    });
+  });
+}
+renderCalendar();
+</script>
+
 <!-- Chart script -->
 <script>
-const labels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.Period)));
-const values = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.TotalRevenue)));
-new Chart(document.getElementById('revChart'), {
+const chartCanvas = document.getElementById('revChart');
+if (chartCanvas) {
+    const labels = @Html.Raw(Model != null && Model.Any()
+        ? System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.Period))
+        : "[]");
+    const values = @Html.Raw(Model != null && Model.Any()
+        ? System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.TotalRevenue))
+        : "[]");
+    const valuesQty = @Html.Raw(Model != null && Model.Any()
+        ? System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.QtyOut))
+        : "[]");
+    
+    if (labels && Array.isArray(labels) && labels.length > 0) {
+        new Chart(chartCanvas, {
   type: 'line',
   data: {
     labels,
-    datasets: [{
-      label: 'Doanh thu xuất kho',
-      data: values,
-      fill: true,
-      borderColor: '#3b82f6',
-      backgroundColor: 'rgba(59,130,246,0.15)',
-      tension: 0.3,
-      borderWidth: 2,
-      pointRadius: 3,
-      pointBackgroundColor: '#2563eb'
-    }]
+    datasets: [
+      {
+        label: 'Doanh thu',
+        data: values,
+        fill: true,
+        borderColor: '#10b981',
+        backgroundColor: 'rgba(16,185,129,0.15)',
+        tension: 0.3,
+        borderWidth: 2,
+        pointRadius: 3,
+        pointBackgroundColor: '#059669',
+        yAxisID: 'y'
+      },
+      {
+        label: 'SL xuất',
+        data: valuesQty,
+        fill: false,
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59,130,246,0.15)',
+        tension: 0.3,
+        borderWidth: 2,
+        pointRadius: 3,
+        pointBackgroundColor: '#2563eb',
+        yAxisID: 'y1'
+      }
+    ]
   },
   options: {
     responsive: true,
     scales: {
       y: { beginAtZero: true, ticks: { color: '#64748b' } },
+      y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#64748b' } },
       x: { ticks: { color: '#64748b' } }
     },
     plugins: {
-      legend: { display: false },
+      legend: { display: true },
       tooltip: {
         backgroundColor: '#1e293b',
         titleColor: '#fff',
@@ -155,5 +448,14 @@ new Chart(document.getElementById('revChart'), {
       }
     }
   }
-});
+        });
+    } else {
+        // Show empty state message
+        const ctx = chartCanvas.getContext('2d');
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Không có dữ liệu để hiển thị', chartCanvas.width / 2, chartCanvas.height / 2);
+    }
+}
 </script>

@@ -1,0 +1,225 @@
+@using MNBEMART.ViewModels
+@{
+    ViewData["Title"] = "Import vật tư";
+    var result = ViewBag.ImportResult as ImportResultVM;
+}
+
+<div class="max-w-5xl mx-auto px-6 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-black text-slate-900 tracking-tight mb-2">
+            <i class="bi bi-file-earmark-arrow-up-fill text-blue-600 me-2"></i>
+            Import vật tư từ Excel
+        </h1>
+        <p class="text-slate-600">Nhập hàng loạt vật tư từ file Excel</p>
+    </div>
+
+    <!-- Instructions Card -->
+    <div class="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-6">
+        <h3 class="text-lg font-bold text-blue-900 mb-3">
+            <i class="bi bi-info-circle me-2"></i>
+            Hướng dẫn import
+        </h3>
+        <ol class="space-y-2 text-blue-800">
+            <li><strong>Bước 1:</strong> Tải file mẫu bên dưới</li>
+            <li><strong>Bước 2:</strong> Điền thông tin vật tư vào file Excel (các cột có dấu * là bắt buộc)</li>
+            <li><strong>Bước 3:</strong> Lưu file và upload lên form bên dưới</li>
+            <li><strong>Bước 4:</strong> Kiểm tra kết quả import</li>
+        </ol>
+        <div class="mt-4">
+            <a asp-action="DownloadTemplate" class="inline-flex items-center px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition">
+                <i class="bi bi-download me-2"></i>
+                Tải file mẫu Excel
+            </a>
+        </div>
+    </div>
+
+    <!-- Upload Form -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8 mb-6">
+        <form method="post" enctype="multipart/form-data" asp-action="Import">
+            <div class="mb-6">
+                <label class="block text-sm font-semibold text-slate-700 mb-3">
+                    Chọn file Excel
+                </label>
+                <div class="flex items-center gap-4">
+                    <input type="file" 
+                           name="file" 
+                           accept=".xlsx,.xls" 
+                           required
+                           class="flex-1 px-4 py-3 border-2 border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                    <button type="submit" 
+                            class="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg transition flex items-center gap-2">
+                        <i class="bi bi-upload"></i>
+                        Import
+                    </button>
+                </div>
+                <p class="text-sm text-slate-500 mt-2">
+                    <i class="bi bi-exclamation-circle me-1"></i>
+                    Chỉ chấp nhận file .xlsx và .xls
+                </p>
+            </div>
+        </form>
+    </div>
+
+    <!-- Import Results -->
+    @if (result != null)
+    {
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+            <h3 class="text-xl font-bold text-slate-900 mb-4">
+                <i class="bi bi-clipboard-check me-2"></i>
+                Kết quả import
+            </h3>
+
+            <!-- Summary -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="bg-green-50 border-2 border-green-200 rounded-lg p-4">
+                    <div class="flex items-center gap-3">
+                        <div class="flex-shrink-0 w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
+                            <i class="bi bi-check-circle-fill text-white text-2xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-green-700">Thành công</p>
+                            <p class="text-3xl font-black text-green-900">@result.SuccessCount</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-red-50 border-2 border-red-200 rounded-lg p-4">
+                    <div class="flex items-center gap-3">
+                        <div class="flex-shrink-0 w-12 h-12 bg-red-500 rounded-lg flex items-center justify-center">
+                            <i class="bi bi-x-circle-fill text-white text-2xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-red-700">Lỗi</p>
+                            <p class="text-3xl font-black text-red-900">@result.ErrorCount</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-amber-50 border-2 border-amber-200 rounded-lg p-4">
+                    <div class="flex items-center gap-3">
+                        <div class="flex-shrink-0 w-12 h-12 bg-amber-500 rounded-lg flex items-center justify-center">
+                            <i class="bi bi-exclamation-triangle-fill text-white text-2xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-amber-700">Cảnh báo</p>
+                            <p class="text-3xl font-black text-amber-900">@result.Warnings.Count</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Errors -->
+            @if (result.Errors.Any())
+            {
+                <div class="mb-6">
+                    <h4 class="text-lg font-bold text-red-900 mb-3">
+                        <i class="bi bi-x-circle me-2"></i>
+                        Danh sách lỗi
+                    </h4>
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-4 max-h-64 overflow-y-auto">
+                        <ul class="space-y-1 text-sm text-red-800">
+                            @foreach (var error in result.Errors)
+                            {
+                                <li><i class="bi bi-dot"></i> @error</li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            }
+
+            <!-- Warnings -->
+            @if (result.Warnings.Any())
+            {
+                <div class="mb-6">
+                    <h4 class="text-lg font-bold text-amber-900 mb-3">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Cảnh báo
+                    </h4>
+                    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 max-h-64 overflow-y-auto">
+                        <ul class="space-y-1 text-sm text-amber-800">
+                            @foreach (var warning in result.Warnings)
+                            {
+                                <li><i class="bi bi-dot"></i> @warning</li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            }
+
+            <!-- Actions -->
+            <div class="flex gap-3">
+                <a asp-action="Index" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition">
+                    <i class="bi bi-list me-2"></i>
+                    Xem danh sách
+                </a>
+                <a asp-action="Import" class="px-6 py-3 bg-slate-600 hover:bg-slate-700 text-white font-semibold rounded-lg transition">
+                    <i class="bi bi-arrow-clockwise me-2"></i>
+                    Import tiếp
+                </a>
+            </div>
+        </div>
+    }
+
+    <!-- Back Button -->
+    <div class="mt-6">
+        <a asp-action="Index" class="inline-flex items-center text-slate-600 hover:text-slate-900 font-medium">
+            <i class="bi bi-arrow-left me-2"></i>
+            Quay lại danh sách
+        </a>
+    </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

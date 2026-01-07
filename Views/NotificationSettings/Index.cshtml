@@ -1,0 +1,279 @@
+@model MNBEMART.Models.NotificationSettings
+@{
+    ViewData["Title"] = "Cài đặt thông báo";
+}
+
+<!-- Tailwind + Bootstrap Icons -->
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+
+<div class="max-w-[1000px] mx-auto px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center gap-3 mb-4">
+            <a href="/Notifications/Index" class="text-slate-600 hover:text-slate-900">
+                <i class="bi bi-arrow-left text-xl"></i>
+            </a>
+            <div>
+                <h1 class="text-3xl font-black text-slate-900 tracking-tight mb-2">
+                    <i class="bi bi-gear text-blue-600 me-2"></i>
+                    Cài đặt thông báo
+                </h1>
+                <p class="text-slate-600">Tùy chỉnh cách bạn nhận thông báo</p>
+            </div>
+        </div>
+    </div>
+
+    @if (TempData["Msg"] != null)
+    {
+        <div class="bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-3 mb-6 flex items-center gap-2">
+            <i class="bi bi-check-circle-fill"></i>
+            <span>@TempData["Msg"]</span>
+        </div>
+    }
+
+    <form asp-action="Update" method="post" id="settingsForm">
+        @Html.AntiForgeryToken()
+        
+        <div class="space-y-6">
+            <!-- Sound Settings -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h2 class="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <i class="bi bi-volume-up text-blue-600"></i>
+                    Âm thanh
+                </h2>
+                
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <label class="text-sm font-medium text-slate-900">Bật âm thanh thông báo</label>
+                            <p class="text-xs text-slate-500 mt-1">Phát âm thanh khi có thông báo mới</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" asp-for="EnableSound" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <label class="text-sm font-medium text-slate-900">Loại âm thanh</label>
+                            <p class="text-xs text-slate-500 mt-1">Chọn âm thanh cho thông báo</p>
+                        </div>
+                        <select asp-for="SoundType" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="default">Mặc định</option>
+                            <option value="urgent">Khẩn cấp</option>
+                            <option value="info">Thông tin</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Desktop Notifications -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h2 class="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <i class="bi bi-bell text-blue-600"></i>
+                    Thông báo Desktop
+                </h2>
+                
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <label class="text-sm font-medium text-slate-900">Bật thông báo desktop</label>
+                            <p class="text-xs text-slate-500 mt-1">Hiển thị thông báo trên desktop khi tab không active</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" asp-for="EnableDesktopNotifications" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
+                    
+                    <div id="desktop-notification-permission" class="hidden">
+                        <button type="button" id="requestPermissionBtn" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                            <i class="bi bi-shield-check me-1"></i> Yêu cầu quyền thông báo
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Email Notifications -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h2 class="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <i class="bi bi-envelope text-blue-600"></i>
+                    Email
+                </h2>
+                
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <label class="text-sm font-medium text-slate-900">Bật thông báo email</label>
+                            <p class="text-xs text-slate-500 mt-1">Gửi email cho thông báo quan trọng</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" asp-for="EnableEmailNotifications" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <label class="text-sm font-medium text-slate-900">Tóm tắt email</label>
+                            <p class="text-xs text-slate-500 mt-1">Nhận email tóm tắt thông báo</p>
+                        </div>
+                        <select asp-for="EmailDigestFrequency" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="0">Không gửi</option>
+                            <option value="1">Hàng ngày</option>
+                            <option value="2">Hàng tuần</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Update Frequency -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h2 class="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <i class="bi bi-clock text-blue-600"></i>
+                    Tần suất cập nhật
+                </h2>
+                
+                <div class="flex items-center justify-between">
+                    <div>
+                        <label class="text-sm font-medium text-slate-900">Tự động làm mới (giây)</label>
+                        <p class="text-xs text-slate-500 mt-1">Thời gian giữa các lần cập nhật thông báo</p>
+                    </div>
+                    <select asp-for="UpdateFrequency" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="10">10 giây</option>
+                        <option value="30">30 giây</option>
+                        <option value="60">1 phút</option>
+                        <option value="300">5 phút</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Notification Types -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h2 class="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <i class="bi bi-list-check text-blue-600"></i>
+                    Loại thông báo
+                </h2>
+                
+                <p class="text-sm text-slate-600 mb-4">Chọn các loại thông báo bạn muốn nhận:</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    @{
+                        var notificationTypes = new[]
+                        {
+                            ("Receipt", "Phiếu nhập", "bi-box-arrow-in-down"),
+                            ("Issue", "Phiếu xuất", "bi-box-arrow-up"),
+                            ("Transfer", "Phiếu chuyển kho", "bi-arrow-left-right"),
+                            ("PurchaseRequest", "Đề xuất mua hàng", "bi-cart-plus"),
+                            ("ExpiryAlert", "Cảnh báo hết hạn", "bi-exclamation-triangle"),
+                            ("LowStockAlert", "Cảnh báo tồn kho", "bi-exclamation-circle"),
+                            ("UserRegistration", "Đăng ký tài khoản", "bi-person-plus"),
+                            ("System", "Hệ thống", "bi-gear")
+                        };
+                        
+                        List<string> enabledTypes = new List<string>();
+                        if (!string.IsNullOrEmpty(Model.EnabledTypes))
+                        {
+                            try
+                            {
+                                // Try deserialize as List<string> first
+                                var jsonDoc = System.Text.Json.JsonDocument.Parse(Model.EnabledTypes);
+                                if (jsonDoc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Array)
+                                {
+                                    foreach (var element in jsonDoc.RootElement.EnumerateArray())
+                                    {
+                                        if (element.ValueKind == System.Text.Json.JsonValueKind.String)
+                                        {
+                                            enabledTypes.Add(element.GetString() ?? "");
+                                        }
+                                        else if (element.ValueKind == System.Text.Json.JsonValueKind.Number)
+                                        {
+                                            // Convert number to string (enum value)
+                                            var numValue = element.GetInt32();
+                                            var enumType = (MNBEMART.Models.NotificationType)numValue;
+                                            enabledTypes.Add(enumType.ToString());
+                                        }
+                                    }
+                                }
+                            }
+                            catch
+                            {
+                                // If deserialization fails, enable all by default
+                                enabledTypes = notificationTypes.Select(t => t.Item1).ToList();
+                            }
+                        }
+                        else
+                        {
+                            // If null, enable all by default
+                            enabledTypes = notificationTypes.Select(t => t.Item1).ToList();
+                        }
+                    }
+                    
+                    @foreach (var (type, name, icon) in notificationTypes)
+                    {
+                        var isEnabled = enabledTypes.Contains(type) || string.IsNullOrEmpty(Model.EnabledTypes);
+                        <label class="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" name="enabledTypes" value="@type" @(isEnabled ? "checked" : "") class="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500">
+                            <i class="bi @icon text-blue-600"></i>
+                            <span class="text-sm font-medium text-slate-900">@name</span>
+                        </label>
+                    }
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center justify-end gap-4 pt-4">
+                <a href="/Notifications/Index" class="px-6 py-2.5 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 font-medium transition">
+                    Hủy
+                </a>
+                <button type="submit" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition flex items-center gap-2">
+                    <i class="bi bi-check-circle"></i>
+                    Lưu cài đặt
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        // Handle enabled types
+        document.getElementById('settingsForm').addEventListener('submit', function(e) {
+            const checkboxes = document.querySelectorAll('input[name="enabledTypes"]:checked');
+            const enabledTypes = Array.from(checkboxes).map(cb => cb.value);
+            
+            // Create hidden input for EnabledTypes
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'EnabledTypes';
+            hiddenInput.value = JSON.stringify(enabledTypes);
+            this.appendChild(hiddenInput);
+        });
+
+        // Request desktop notification permission
+        const requestPermissionBtn = document.getElementById('requestPermissionBtn');
+        if (requestPermissionBtn) {
+            requestPermissionBtn.addEventListener('click', async function() {
+                if ('Notification' in window) {
+                    const permission = await Notification.requestPermission();
+                    if (permission === 'granted') {
+                        alert('Đã cấp quyền thông báo desktop!');
+                        document.getElementById('desktop-notification-permission').classList.add('hidden');
+                    } else {
+                        alert('Quyền thông báo bị từ chối.');
+                    }
+                } else {
+                    alert('Trình duyệt không hỗ trợ thông báo desktop.');
+                }
+            });
+
+            // Show button if permission not granted
+            if ('Notification' in window && Notification.permission === 'default') {
+                document.getElementById('desktop-notification-permission').classList.remove('hidden');
+            }
+        }
+    </script>
+}
+

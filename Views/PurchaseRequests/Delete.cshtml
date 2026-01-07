@@ -1,0 +1,110 @@
+@model MNBEMART.Models.PurchaseRequest
+@{
+    ViewData["Title"] = "Xóa đề xuất";
+}
+
+<div class="max-w-3xl mx-auto px-6 py-8">
+    <div class="bg-white rounded-xl shadow-sm border-2 border-red-200 p-8">
+        <div class="text-center mb-6">
+            <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-red-100 mb-4">
+                <i class="bi bi-exclamation-triangle-fill text-red-600 text-4xl"></i>
+            </div>
+            <h1 class="text-2xl font-black text-slate-900 mb-2">Xác nhận xóa đề xuất</h1>
+            <p class="text-slate-600">Bạn có chắc chắn muốn xóa đề xuất này?</p>
+        </div>
+
+        <div class="bg-slate-50 rounded-lg p-4 mb-6">
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <span class="font-semibold text-slate-600">Số đề xuất:</span>
+                    <span class="text-slate-900">@Model.RequestNumber</span>
+                </div>
+                <div>
+                    <span class="font-semibold text-slate-600">Ngày tạo:</span>
+                    <span class="text-slate-900">@Model.RequestDate.ToString("dd/MM/yyyy")</span>
+                </div>
+                <div>
+                    <span class="font-semibold text-slate-600">Người tạo:</span>
+                    <span class="text-slate-900">@(Model.RequestedBy?.Username ?? "N/A")</span>
+                </div>
+                <div>
+                    <span class="font-semibold text-slate-600">Số vật tư:</span>
+                    <span class="text-slate-900">@Model.Details.Count</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <p class="text-sm text-red-800">
+                <i class="bi bi-exclamation-circle me-1"></i>
+                <strong>Cảnh báo:</strong> Hành động này không thể hoàn tác. Tất cả dữ liệu liên quan sẽ bị xóa vĩnh viễn.
+            </p>
+        </div>
+
+        <form method="post">
+            <div class="flex gap-3">
+                <button type="submit" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-3 rounded-lg transition">
+                    <i class="bi bi-trash me-1"></i> Xác nhận xóa
+                </button>
+                <a asp-action="Details" asp-route-id="@Model.Id" 
+                   class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold px-6 py-3 rounded-lg transition text-center">
+                    Hủy
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

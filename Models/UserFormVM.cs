@@ -8,6 +8,5 @@ public class UserFormVM
     public string? Password { get; set; }       // Create/Reset mới dùng
     public string Role { get; set; } = "User";  // "Admin" | "User"
     public bool IsActive { get; set; } = true;
-
-    public List<int> SelectedWarehouseIds { get; set; } = new();
+    public string? Email { get; set; }
 }

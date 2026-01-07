@@ -5,36 +5,34 @@
 }
 
 <div class="modal fade" id="siCreateModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-fullscreen-md-down modal-xl modal-dialog-scrollable">
+  <div class="modal-dialog modal-fullscreen-md-down modal-xl">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Tạo phiếu xuất</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
       </div>
 
-      <form asp-controller="StockIssues" asp-action="CreateIssue" method="post" id="issueForm">
+      <form asp-controller="StockIssues" asp-action="CreateIssue" method="post" id="issueForm" enctype="multipart/form-data">
         @Html.AntiForgeryToken()
         <div class="modal-body">
           <div class="row g-3">
             <div class="col-lg-3">
               <div class="border rounded p-3 bg-light">
                 <div class="mb-3">
-                  <label class="form-label">Kho xuất</label>
-                  <select asp-for="WarehouseId" class="form-select" asp-items="ViewBag.WarehouseOptions">
+                  <label class="form-label">Kho xuất <span class="text-danger">*</span></label>
+                  <select asp-for="WarehouseId" class="form-select" asp-items="ViewBag.WarehouseOptions" required>
                     <option value="">-- Chọn kho --</option>
                   </select>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label">Người Nhận</label>
-                  <input asp-for="ReceivedByName" class="form-control"/>
+                  <label class="form-label">Người Nhận <span class="text-danger">*</span></label>
+                  <input asp-for="ReceivedByName" class="form-control" required/>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label">Số chứng từ gốc</label>
-                  <input asp-for="ReferenceDocumentNumber" class="form-control"/>
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Ngày chứng từ</label>
-                  <input asp-for="ReferenceDate" type="date" class="form-control"/>
+                  <label class="form-label">Hình ảnh minh chứng <span class="text-danger">*</span></label>
+                  <input type="file" name="EvidenceImage" id="EvidenceImage" class="form-control" accept="image/*" required>
+                  <div class="form-text">Chỉ chấp nhận file ảnh (JPG, PNG, GIF, WEBP). Tối đa 10MB</div>
+                  <div id="evidenceImageError" class="text-danger small mt-1"></div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Ghi chú</label>
@@ -77,24 +75,117 @@
                 </div>
               </div>
 
-              <div class="text-muted small mt-1">* Enter trong ô tìm kiếm để thêm dòng nhanh</div>
+              <div class="text-muted small mt-1">* Nhấn Enter trong ô tìm kiếm để thêm dòng nhanh</div>
               <div class="text-muted small">* Tự chặn chọn trùng vật tư</div>
 
-               <div class="modal-footer">
+              <!-- Footer dính LUÔN THẤY -->
+              <div class="sticky-actions">
                 <div class="me-auto text-danger" id="formErrorOut"></div>
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Đóng</button>
                 <button type="submit" class="btn btn-primary" id="btnSubmitOut">Tạo</button>
               </div>
-
+              
             </div>
           </div>
-        </div>
+        </div> <!-- /modal-body -->
       </form>
     </div>
   </div>
 </div>
 
 <style>
+  /* Điều chỉnh kích thước modal hợp lý */
+  #siCreateModal .modal-dialog {
+    max-width: 95vw;
+    max-height: 95vh;
+    margin: 1rem auto;
+  }
+  
+  #siCreateModal .modal-content {
+    max-height: 95vh;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  #siCreateModal .modal-body {
+    overflow-y: auto;
+    padding: 1.25rem;
+    flex: 1 1 auto;
+  }
+  
+  /* Cải thiện spacing trong form */
+  #siCreateModal .border.rounded {
+    padding: 1rem !important;
+  }
+  
+  #siCreateModal .form-label {
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+  }
+  
+  #siCreateModal .mb-3 {
+    margin-bottom: 1rem !important;
+  }
+  
+  /* Điều chỉnh table spacing và scroll khi có nhiều dòng */
+  #siCreateModal .table-responsive {
+    margin-bottom: 1rem;
+    max-height: 450px;
+    overflow-y: auto;
+    overflow-x: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    position: relative;
+  }
+  
+  /* Sticky header khi scroll */
+  #siCreateModal .table-responsive .table thead {
+    position: sticky;
+    top: 0;
+    background-color: #f8f9fa;
+    z-index: 10;
+    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Hover effect cho table rows */
+  #siCreateModal .table tbody tr {
+    transition: background-color 0.15s ease-in-out;
+  }
+  
+  #siCreateModal .table tbody tr:hover {
+    background-color: #f8f9fa;
+  }
+  
+  #siCreateModal .table {
+    margin-bottom: 0.5rem;
+  }
+  
+  /* Custom scrollbar styling */
+  #siCreateModal .table-responsive::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  #siCreateModal .table-responsive::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+  
+  #siCreateModal .table-responsive::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+  }
+  
+  #siCreateModal .table-responsive::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+  }
+  
+  /* Firefox scrollbar */
+  #siCreateModal .table-responsive {
+    scrollbar-width: thin;
+    scrollbar-color: #c1c1c1 #f1f1f1;
+  }
+  
   /* Action bar dính cuối cột phải, không bị CSS global ẩn */
   #siCreateModal .sticky-actions{
     position: sticky;
@@ -105,7 +196,26 @@
     display: flex;
     gap: .5rem;
     justify-content: flex-end;
-    z-index: 2;
+    z-index: 10;
+    margin-top: 0.5rem;
+  }
+  
+  /* Cho phép cuộn trang phía sau modal phiếu xuất (giống modal phiếu nhập) */
+  body.modal-open.allow-scroll {
+    overflow: auto !important;
+    padding-right: 0 !important;
+  }
+  
+  /* Responsive cho màn hình nhỏ */
+  @@media (max-width: 992px) {
+    #siCreateModal .modal-dialog {
+      max-width: 98vw;
+      margin: 0.5rem auto;
+    }
+    
+    #siCreateModal .modal-body {
+      padding: 1rem;
+    }
   }
 </style>
 
@@ -242,23 +352,59 @@
 </script> *@
 <script>
 (function(){
-  const modal = document.getElementById('siCreateModal');
-  if(!modal) return;
+  try {
+    console.log('[StockIssues Modal] Initializing...');
+    const modal = document.getElementById('siCreateModal');
+    if(!modal) {
+      console.warn('[StockIssues Modal] Modal element not found');
+      return;
+    }
 
-  const baseOnHandUrl = '@Url.Action("OnHand","StockIssues")'; // ✅ server render sẵn
-  const mats = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
-    materials.Select(m => new { m.Id, m.Code, m.Name, m.Unit, m.Specification, m.SellingPrice })
-  ));
+    const baseOnHandUrl = '@Url.Action("OnHand","StockIssues")'; // ✅ server render sẵn
+    const mats = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+      materials.Select(m => new { m.Id, m.Code, m.Name, m.Unit, m.Specification, m.SellingPrice })
+    ));
 
-  const tbody      = () => modal.querySelector('#issueDetailBody');
-  const search     = () => modal.querySelector('#matSearchOut');
-  const sumItemsEl = () => modal.querySelector('#sumItemsOut');
-  const sumAmtEl   = () => modal.querySelector('#sumAmountOut');
-  const whSel      = () => modal.querySelector('#WarehouseId');
-  const submitBtn  = () => modal.querySelector('#btnSubmitOut');
-  const errorBox   = () => modal.querySelector('#formErrorOut');
+    // Đảm bảo các hàm getter trả về giá trị an toàn, không throw lỗi
+    const tbody      = () => {
+      try { return modal?.querySelector('#issueDetailBody') || null; } 
+      catch(e) { console.error('[StockIssues Modal] Error getting tbody:', e); return null; }
+    };
+    const search     = () => {
+      try { return modal?.querySelector('#matSearchOut') || null; } 
+      catch(e) { console.error('[StockIssues Modal] Error getting search:', e); return null; }
+    };
+    const sumItemsEl = () => {
+      try { return modal?.querySelector('#sumItemsOut') || null; } 
+      catch(e) { console.error('[StockIssues Modal] Error getting sumItemsEl:', e); return null; }
+    };
+    const sumAmtEl   = () => {
+      try { return modal?.querySelector('#sumAmountOut') || null; } 
+      catch(e) { console.error('[StockIssues Modal] Error getting sumAmtEl:', e); return null; }
+    };
+    const whSel      = () => {
+      try { return modal?.querySelector('#WarehouseId') || null; } 
+      catch(e) { console.error('[StockIssues Modal] Error getting whSel:', e); return null; }
+    };
+    const submitBtn  = () => {
+      try { return modal?.querySelector('#btnSubmitOut') || null; } 
+      catch(e) { console.error('[StockIssues Modal] Error getting submitBtn:', e); return null; }
+    };
+    const errorBox   = () => {
+      try { return modal?.querySelector('#formErrorOut') || null; } 
+      catch(e) { console.error('[StockIssues Modal] Error getting errorBox:', e); return null; }
+    };
+    const evidenceFile = () => {
+      try { return modal?.querySelector('#EvidenceImage') || null; } 
+      catch(e) { console.error('[StockIssues Modal] Error getting evidenceFile:', e); return null; }
+    };
+    const evidenceError = () => {
+      try { return modal?.querySelector('#evidenceImageError') || null; } 
+      catch(e) { console.error('[StockIssues Modal] Error getting evidenceError:', e); return null; }
+    };
 
-  let onhandCache = {}; // key: `${wid}:${matId}` -> number
+    let onhandCache = {}; // key: `${wid}:${matId}` -> number
+    let isModalInitialized = false; // Flag để tránh validation quá sớm
 
   function uid(){ return (crypto?.randomUUID ? crypto.randomUUID() : 'k'+Date.now()+Math.random().toString(16).slice(2)); }
 
@@ -275,25 +421,32 @@
   }
 
   function renderRow(prefill){
-    const key = uid();
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>
-        <input type="hidden" name="Details.index" value="${key}" />
-        <select name="Details[${key}].MaterialId" class="form-select form-select-sm mat-select">
-          <option value="">-- Chọn --</option>
-          ${mats.map(m => `<option value="${m.Id}">${(m.Code ?? '').trim()} ${m.Name}</option>`).join('')}
-        </select>
-      </td>
-      <td><input name="Details[${key}].Specification" class="form-control form-control-sm" placeholder="Ghi chú dòng"/></td>
-      <td><input name="Details[${key}].Quantity" type="number" min="1" step="1" class="form-control form-control-sm text-end qty" value="${prefill?.q ?? 1}"/></td>
-      <td class="text-end"><span class="onhand" data-onhand="0">—</span></td>
-      <td><input name="Details[${key}].UnitPrice" type="number" min="0" step="0.01" class="form-control form-control-sm text-end price" value="${prefill?.p ?? 0}"/></td>
-      <td><input name="Details[${key}].Unit" class="form-control form-control-sm unit"/></td>
-      <td class="text-center">
-        <button type="button" class="btn btn-outline-danger btn-sm del">✕</button>
-      </td>`;
-    tbody().appendChild(tr);
+    try {
+      const tbodyEl = tbody();
+      if (!tbodyEl) {
+        console.warn('[StockIssues Modal] tbody not found');
+        return;
+      }
+
+      const key = uid();
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>
+          <input type="hidden" name="Details.index" value="${key}" />
+          <select name="Details[${key}].MaterialId" class="form-select form-select-sm mat-select" required>
+            <option value="">-- Chọn --</option>
+            ${mats.map(m => `<option value="${m.Id}">${(m.Code ?? '').trim()} ${m.Name}</option>`).join('')}
+          </select>
+        </td>
+        <td><input name="Details[${key}].Specification" class="form-control form-control-sm" placeholder="Ghi chú dòng"/></td>
+        <td><input name="Details[${key}].Quantity" type="number" min="1" step="1" class="form-control form-control-sm text-end qty" value="${prefill?.q ?? 1}" required/></td>
+        <td class="text-end"><span class="onhand" data-onhand="0">—</span></td>
+        <td><input name="Details[${key}].UnitPrice" type="number" min="0" step="0.01" class="form-control form-control-sm text-end price" value="${prefill?.p ?? 0}" readonly style="background-color: #e9ecef;" required/></td>
+        <td><input name="Details[${key}].Unit" class="form-control form-control-sm unit" required/></td>
+        <td class="text-center">
+          <button type="button" class="btn btn-outline-danger btn-sm del">✕</button>
+        </td>`;
+      tbodyEl.appendChild(tr);
 
     const sel  = tr.querySelector('.mat-select');
     const qtyI = tr.querySelector('.qty');
@@ -302,11 +455,11 @@
 
     sel.addEventListener('change', async (e)=>{
       const val = e.target.value;
-      if(!val){ refreshOptionStates(); updateRowOnHand(tr); calc(); return; }
+      if(!val){ refreshOptionStates(); updateRowOnHand(tr); calc(); validateForm(); return; }
 
       // chặn trùng
       const dup = [...modal.querySelectorAll('.mat-select')].some(s => s !== sel && s.value === val);
-      if(dup){ alert('Sản phẩm đã chọn ở dòng khác.'); sel.value=''; refreshOptionStates(); updateRowOnHand(tr); calc(); return; }
+      if(dup){ alert('Sản phẩm đã chọn ở dòng khác.'); sel.value=''; refreshOptionStates(); updateRowOnHand(tr); calc(); validateForm(); return; }
 
       // fill nhanh
       const m = mats.find(x => String(x.Id) === String(val));
@@ -322,16 +475,26 @@
       updateRowOnHand(tr);
       validateRow(tr);
       calc();
+      validateForm();
     });
 
-    qtyI.addEventListener('input', ()=>{ validateRow(tr); calc(); });
-    priceI.addEventListener('input', calc);
+    qtyI.addEventListener('input', ()=>{ validateRow(tr); calc(); validateForm(); });
+    // Giá xuất là readonly, không cần event listener cho input
+    // priceI.addEventListener('input', ()=>{ calc(); validateForm(); });
+    tr.querySelector('.unit')?.addEventListener('input', validateForm);
 
-    tr.querySelector('.del').addEventListener('click', ()=>{ tr.remove(); refreshOptionStates(); calc(); });
+    tr.querySelector('.del').addEventListener('click', ()=>{ tr.remove(); refreshOptionStates(); calc(); validateForm(); });
 
-    updateRowOnHand(tr);
-    validateRow(tr);
-    calc();
+      updateRowOnHand(tr);
+      validateRow(tr);
+      calc();
+      // Chỉ validate nếu modal đã được khởi tạo
+      if (isModalInitialized) {
+        validateForm();
+      }
+    } catch (error) {
+      console.error('[StockIssues Modal] Error in renderRow:', error);
+    }
   }
 
   function getWarehouseId(){
@@ -386,24 +549,111 @@
 
   function fmtQty(v){ return (v % 1 === 0) ? String(v|0) : v.toFixed(2).replace(/\.?0+$/,''); }
 
-  function calc(){
-    let items = 0, amount = 0, anyInvalid = false;
-    tbody().querySelectorAll('tr').forEach(tr=>{
-      const q = Number(tr.querySelector('.qty')?.value || 0);
-      const p = Number(tr.querySelector('.price')?.value || 0);
+  function validateForm(){
+    try {
+      // Không validate nếu modal chưa được khởi tạo đầy đủ
+      if (!isModalInitialized) {
+        return true;
+      }
+
+      const form = modal.querySelector('#issueForm');
+      const errorBox = modal.querySelector('#formErrorOut');
+      const submitBtn = modal.querySelector('#btnSubmitOut');
+      if(!form || !errorBox) return true;
+
+    // Kiểm tra các trường bắt buộc ở form chính
+    const warehouseId = getWarehouseId();
+    const receivedByName = form.querySelector('#ReceivedByName')?.value?.trim();
+    const evidenceFileEl = modal.querySelector('#EvidenceImage');
+    const evidenceFileValue = evidenceFileEl?.files?.[0];
+
+    // Validate evidence image
+    let imageError = '';
+    if (!evidenceFileValue) {
+      imageError = 'Vui lòng chọn hình ảnh minh chứng.';
+    } else {
+      if (!evidenceFileValue.type.startsWith('image/')) {
+        imageError = 'File phải là hình ảnh (JPG, PNG, GIF, WEBP).';
+      } else if (evidenceFileValue.size > 10 * 1024 * 1024) {
+        imageError = 'Kích thước file không được vượt quá 10MB.';
+      }
+    }
+    if(evidenceError()) evidenceError().textContent = imageError;
+
+    // Kiểm tra các dòng sản phẩm
+    const rows = tbody().querySelectorAll('tr');
+    let hasValidRow = false;
+    let anyInvalid = false;
+    let rowErrors = [];
+
+    rows.forEach((tr, index) => {
+      const materialId = tr.querySelector('.mat-select')?.value;
+      const qty = tr.querySelector('.qty')?.value;
+      const price = tr.querySelector('.price')?.value;
+      const unit = tr.querySelector('.unit')?.value?.trim();
+      
+      // Kiểm tra vượt tồn
       if(tr.querySelector('.qty')?.classList.contains('is-invalid')) anyInvalid = true;
-      if(q>0){ items += q; amount += q*p; }
+
+      if(materialId && qty && price && unit && Number(qty) > 0 && Number(price) >= 0){
+        hasValidRow = true;
+      } else if(materialId || qty || price || unit){
+        // Có một phần dữ liệu nhưng chưa đủ
+        const missingFields = [];
+        if(!materialId) missingFields.push('Sản phẩm');
+        if(!qty || Number(qty) <= 0) missingFields.push('SL');
+        if(!price || Number(price) < 0) missingFields.push('Giá xuất');
+        if(!unit) missingFields.push('ĐVT');
+        rowErrors.push(`Dòng ${index + 1}: Vui lòng điền đầy đủ thông tin (${missingFields.join(', ')}).`);
+      }
     });
 
-    if(sumItemsEl()) sumItemsEl().textContent = items.toLocaleString('vi-VN');
-    if(sumAmtEl())   sumAmtEl().textContent   = amount.toLocaleString('vi-VN') + ' đ';
+    let errors = [];
+    if(warehouseId <= 0) errors.push('Vui lòng chọn kho xuất.');
+    if(!receivedByName) errors.push('Vui lòng nhập người nhận.');
+    if(imageError) errors.push(imageError);
+    if(anyInvalid) errors.push('Có dòng vượt tồn kho. Vui lòng giảm số lượng.');
+    if(!hasValidRow) errors.push('Vui lòng nhập ít nhất 1 dòng sản phẩm với đầy đủ thông tin (Sản phẩm, SL, Giá xuất, ĐVT).');
+    if(rowErrors.length > 0) errors.push(...rowErrors);
 
-    if(submitBtn()){
-      submitBtn().disabled = anyInvalid || getWarehouseId() <= 0;
+    if(errors.length > 0){
+      errorBox.textContent = errors[0];
+      errorBox.style.display = 'block';
+      if(submitBtn) submitBtn.disabled = true;
+      return false;
+    } else {
+      errorBox.textContent = '';
+      errorBox.style.display = 'none';
+      if(submitBtn) submitBtn.disabled = false;
+      return true;
     }
-    if(errorBox()){
-      errorBox().textContent = (getWarehouseId() <= 0) ? 'Vui lòng chọn kho trước khi tạo phiếu.'
-                                : anyInvalid ? 'Có dòng vượt tồn kho. Vui lòng giảm số lượng.' : '';
+    } catch (error) {
+      console.error('[StockIssues Modal] Error in validateForm:', error);
+      return true; // Trả về true để không block form submission nếu có lỗi
+    }
+  }
+
+  function calc(){
+    try {
+      let items = 0, amount = 0;
+      const tbodyEl = tbody();
+      if (!tbodyEl) return;
+      
+      tbodyEl.querySelectorAll('tr').forEach(tr=>{
+        const q = Number(tr.querySelector('.qty')?.value || 0);
+        const p = Number(tr.querySelector('.price')?.value || 0);
+        if(q>0){ items += q; amount += q*p; }
+      });
+
+      if(sumItemsEl()) sumItemsEl().textContent = items.toLocaleString('vi-VN');
+      if(sumAmtEl())   sumAmtEl().textContent   = amount.toLocaleString('vi-VN') + ' đ';
+      
+      // Chỉ validate nếu modal đã được khởi tạo
+      if (isModalInitialized) {
+        validateForm();
+      }
+    } catch (error) {
+      console.error('[StockIssues Modal] Error in calc:', error);
     }
   }
 
@@ -414,12 +664,33 @@
       await ensureOnHand(ids);
       tbody().querySelectorAll('tr').forEach(tr => { updateRowOnHand(tr); validateRow(tr); });
       calc();
+      validateForm();
+    }
+    // Validate evidence image on change
+    if(e.target && e.target.id === 'EvidenceImage'){
+      validateForm();
     }
   });
 
-  // Nút thêm dòng (đồng bộ ID)
+  // Validate khi ReceivedByName thay đổi
+  modal.addEventListener('input', (e)=>{
+    if(e.target && e.target.id === 'ReceivedByName'){
+      validateForm();
+    }
+  });
+
+  // Validate trước khi submit
+  const form = modal.querySelector('#issueForm');
+  form?.addEventListener('submit', (e)=>{
+    if(!validateForm()){
+      e.preventDefault();
+      return false;
+    }
+  });
+
+  // Nút thêm dòng (hỗ trợ cả 2 id cũ/mới)
   modal.addEventListener('click', (e)=>{
-    const btn = e.target.closest('#btnAddEmptyOut'); // ✅ trùng với id trong HTML
+    const btn = e.target.closest('#btnAddEmpty, #btnAddEmptyOut');
     if(!btn) return;
     e.preventDefault();
     renderRow();
@@ -433,12 +704,152 @@
     }
   });
 
-  // Khi mở modal -> reset
-  modal.addEventListener('shown.bs.modal', ()=>{
-    if(tbody()){ tbody().innerHTML = ''; renderRow(); }
-    if(search()){ search().value=''; setTimeout(()=>search().focus(), 120); }
-    onhandCache = {};
-    calc();
+  // Ngăn modal tự đóng khi có lỗi hoặc trong 500ms đầu
+  let preventAutoClose = false;
+  let modalOpenTime = 0;
+  
+  modal.addEventListener('hide.bs.modal', function(e) {
+    const timeSinceOpen = Date.now() - modalOpenTime;
+    
+    // Ngăn đóng trong 500ms đầu hoặc khi có flag preventAutoClose
+    if (preventAutoClose || timeSinceOpen < 500) {
+      console.warn('[StockIssues Modal] Preventing auto-close - timeSinceOpen:', timeSinceOpen, 'ms, preventAutoClose:', preventAutoClose);
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      if (preventAutoClose) {
+        preventAutoClose = false; // Reset sau khi prevent
+      }
+      return false;
+    }
   });
+
+  // Khi mở modal -> reset
+  modal.addEventListener('show.bs.modal', (e)=>{
+    console.log('[StockIssues Modal] show.bs.modal event fired');
+    preventAutoClose = false; // Reset flag
+    modalOpenTime = Date.now(); // Ghi lại thời gian mở modal
+    
+    // Đảm bảo config ngăn đóng
+    try {
+      const bsModal = bootstrap.Modal.getInstance(modal);
+      if (bsModal) {
+        bsModal._config.backdrop = 'static';
+        bsModal._config.keyboard = false;
+      }
+    } catch (err) {
+      console.warn('[StockIssues Modal] Error setting modal config:', err);
+    }
+  });
+
+  modal.addEventListener('shown.bs.modal', ()=>{
+    console.log('[StockIssues Modal] shown.bs.modal event fired');
+    try {
+      isModalInitialized = false; // Reset flag
+      preventAutoClose = true; // Bật flag để ngăn auto-close
+      
+      // Delay để đảm bảo DOM đã hoàn toàn sẵn sàng trước khi thao tác
+      setTimeout(() => {
+        try {
+          const tbodyEl = tbody();
+          if (tbodyEl) {
+            tbodyEl.innerHTML = '';
+            // Delay thêm một chút trước khi render row để đảm bảo DOM đã ổn định
+            setTimeout(() => {
+              try {
+                renderRow();
+              } catch (error) {
+                console.error('[StockIssues Modal] Error in renderRow:', error);
+                preventAutoClose = false; // Cho phép đóng nếu có lỗi nghiêm trọng
+              }
+            }, 100);
+          }
+          
+          const searchEl = search();
+          if (searchEl) {
+            searchEl.value = '';
+            setTimeout(() => {
+              try {
+                searchEl.focus();
+              } catch (e) {
+                console.warn('[StockIssues Modal] Could not focus search:', e);
+              }
+            }, 200);
+          }
+          
+          const evidenceFileEl = evidenceFile();
+          if (evidenceFileEl) {
+            evidenceFileEl.value = '';
+          }
+          
+          const evidenceErrorEl = evidenceError();
+          if (evidenceErrorEl) {
+            evidenceErrorEl.textContent = '';
+          }
+          
+          onhandCache = {};
+          
+          // Delay để đảm bảo DOM đã render xong trước khi tính toán và validate
+          setTimeout(() => {
+            try {
+              calc();
+              isModalInitialized = true; // Đánh dấu modal đã sẵn sàng
+              preventAutoClose = false; // Tắt flag sau khi mọi thứ đã ổn định
+              
+              // Gọi validateForm với delay nhỏ hơn nữa để đảm bảo mọi thứ đã sẵn sàng
+              setTimeout(() => {
+                try {
+                  validateForm();
+                } catch (error) {
+                  console.error('[StockIssues Modal] Error in validateForm:', error);
+                }
+              }, 50);
+            } catch (error) {
+              console.error('[StockIssues Modal] Error in shown.bs.modal setTimeout:', error);
+              preventAutoClose = false; // Cho phép đóng nếu có lỗi
+            }
+          }, 200);
+          
+          // Cho phép cuộn trang phía sau modal
+          try {
+            document.body.classList.add('allow-scroll');
+            document.body.style.overflow = 'auto';
+            document.body.style.paddingRight = '0';
+          } catch (e) {
+            console.warn('[StockIssues Modal] Error setting body styles:', e);
+          }
+        } catch (error) {
+          console.error('[StockIssues Modal] Error in shown.bs.modal setTimeout:', error);
+          preventAutoClose = false; // Cho phép đóng nếu có lỗi nghiêm trọng
+        }
+      }, 100); // Delay ban đầu để đảm bảo modal đã hoàn toàn hiển thị
+      
+    } catch (error) {
+      console.error('[StockIssues Modal] Error in shown.bs.modal:', error);
+      preventAutoClose = false; // Cho phép đóng nếu có lỗi nghiêm trọng
+    }
+  });
+
+  // Khi đóng modal -> khôi phục
+  modal.addEventListener('hidden.bs.modal', ()=>{
+    console.log('[StockIssues Modal] hidden.bs.modal event fired');
+    try {
+      isModalInitialized = false; // Reset flag
+      document.body.classList.remove('allow-scroll');
+      // Khôi phục lại style mặc định nếu không còn modal nào khác mở
+      const otherModals = document.querySelectorAll('.modal.show');
+      if (otherModals.length === 0) {
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+      }
+    } catch (error) {
+      console.error('[StockIssues Modal] Error in hidden.bs.modal:', error);
+    }
+  });
+
+  console.log('[StockIssues Modal] Initialization complete');
+  } catch (error) {
+    console.error('[StockIssues Modal] Fatal error during initialization:', error);
+  }
 })();
 </script>

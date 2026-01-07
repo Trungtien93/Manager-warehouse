@@ -1,0 +1,30 @@
+@{
+    var displayName = ViewBag.DisplayName as string ?? (Context.User?.Identity?.IsAuthenticated == true
+        ? (Context.User.Identity!.Name ?? "Người dùng")
+        : "Khách");
+}
+
+<div class="flex items-center gap-2 text-slate-700">
+    <span class="text-sm">Xin chào,</span>
+    <span class="font-semibold text-slate-900">@displayName</span>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

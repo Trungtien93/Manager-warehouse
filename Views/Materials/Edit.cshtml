@@ -1,5 +1,6 @@
 @model MNBEMART.Models.Material
 @using Microsoft.AspNetCore.Mvc.Rendering
+@using System.Linq
 @{
     ViewData["Title"] = "Cập nhật nguyên liệu";
 
@@ -10,8 +11,14 @@
         asModal = sv.Count > 0 && string.Equals(sv[0], "1", StringComparison.OrdinalIgnoreCase);
     }
 
-    var supplierList = ViewBag.SupplierId as SelectList;
-    var warehouseList = ViewBag.WarehouseId as SelectList; // có thể null nếu bạn chưa dùng WarehouseId
+    // Khi ở modal mode, không dùng layout
+    if (asModal)
+    {
+        Layout = null;
+    }
+
+    var supplierList = ViewBag.SupplierId as SelectList ?? new SelectList(Enumerable.Empty<SelectListItem>());
+    var warehouseList = ViewBag.WarehouseId as SelectList ?? new SelectList(Enumerable.Empty<SelectListItem>());
 }
 
 <style>
@@ -67,61 +74,203 @@
               <div class="col-6 col-md-3">
                 <label class="form-label">Mã</label>
                 <input asp-for="Code" class="form-control form-control-sm" />
-                <span asp-validation-for="Code" class="text-danger"></span>
+                <span asp-validation-for="Code" class="text-danger small"></span>
               </div>
               <div class="col-6 col-md-5">
                 <label class="form-label">Tên</label>
                 <input asp-for="Name" class="form-control form-control-sm" />
-                <span asp-validation-for="Name" class="text-danger"></span>
+                <span asp-validation-for="Name" class="text-danger small"></span>
               </div>
               <div class="col-6 col-md-2">
                 <label class="form-label">ĐVT</label>
                 <input asp-for="Unit" class="form-control form-control-sm" />
-                <span asp-validation-for="Unit" class="text-danger"></span>
+                <span asp-validation-for="Unit" class="text-danger small"></span>
               </div>
-              @* <div class="col-6 col-md-2">
+              <div class="col-6 col-md-2">
                 <label class="form-label">Kho</label>
                 <select asp-for="WarehouseId" asp-items="warehouseList" class="form-select form-select-sm">
-                  <option value="hiden">-- Chọn --</option>
+                  <option value="">-- Chưa phân kho --</option>
                 </select>
-              </div> *@
+                <span asp-validation-for="WarehouseId" class="text-danger small"></span>
+              </div>
 
               <div class="col-12 col-md-6">
                 <label class="form-label">Nhà cung cấp</label>
-                <select asp-for="SupplierId" asp-items="supplierList" class="form-select form-select-sm">
+                <div class="input-group">
+                  <select asp-for="SupplierId" asp-items="supplierList" class="form-select form-select-sm" id="editSupplierSelect">
                   <option value="">-- Chọn --</option>
                 </select>
+                  <button type="button" class="btn btn-outline-primary btn-sm" id="btnEditQuickAddSupplier" title="Thêm nhanh nhà cung cấp">
+                    <i class="bi bi-plus-lg"></i>
+                  </button>
+                </div>
+                <span asp-validation-for="SupplierId" class="text-danger small"></span>
+                <!-- Form tạo nhanh nhà cung cấp (ẩn mặc định) -->
+                <div id="editQuickSupplierForm" class="mt-2 p-3 border rounded bg-light" style="display: none;">
+                  <h6 class="mb-3 fw-semibold text-primary">
+                    <i class="bi bi-plus-circle me-1"></i>Thêm nhanh nhà cung cấp
+                  </h6>
+                  <div class="row g-2">
+                    <div class="col-12">
+                      <label class="form-label small fw-semibold">Tên nhà cung cấp <span class="text-danger">*</span></label>
+                      <input type="text" class="form-control form-control-sm" id="editQuickSupplierName" placeholder="Nhập tên nhà cung cấp" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small fw-semibold">Số điện thoại</label>
+                      <input type="tel" class="form-control form-control-sm" id="editQuickSupplierPhone" placeholder="Nhập số điện thoại" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small fw-semibold">Email</label>
+                      <input type="email" class="form-control form-control-sm" id="editQuickSupplierEmail" placeholder="Nhập email" />
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label small fw-semibold">Địa chỉ</label>
+                      <textarea class="form-control form-control-sm" id="editQuickSupplierAddress" rows="2" placeholder="Nhập địa chỉ"></textarea>
+                    </div>
+                  </div>
+                  <div class="text-danger small mt-2" id="editQuickSupplierError"></div>
+                  <div class="d-flex gap-2 mt-3">
+                    <button type="button" class="btn btn-sm btn-primary" id="btnEditSaveQuickSupplier">
+                      <i class="bi bi-check-lg me-1"></i>Lưu
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btnEditCancelQuickSupplier">
+                      <i class="bi bi-x-lg me-1"></i>Hủy
+                    </button>
+                  </div>
+                </div>
               </div>
               <div class="col-12 col-md-6">
                 <label class="form-label">Quy cách</label>
-                <input asp-for="Specification" class="form-control form-control-sm" />
+                <div class="input-group">
+                  <select asp-for="Specification" class="form-select form-select-sm" id="editSpecificationSelect">
+                    <option value="">-- Chọn quy cách --</option>
+                    @if (!string.IsNullOrEmpty(Model.Specification))
+                    {
+                      <option value="@Model.Specification" selected>@Model.Specification</option>
+                    }
+                  </select>
+                  <button type="button" class="btn btn-outline-primary btn-sm" id="btnEditQuickAddSpecification" title="Thêm quy cách mới">
+                    <i class="bi bi-plus-lg"></i>
+                  </button>
+                </div>
+                <span asp-validation-for="Specification" class="text-danger small"></span>
+                <!-- Form tạo nhanh quy cách (ẩn mặc định) -->
+                <div id="editQuickSpecificationForm" class="mt-2 p-3 border rounded bg-light" style="display: none;">
+                  <div class="mb-2">
+                    <label class="form-label small fw-semibold">Tên quy cách <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm" id="editQuickSpecificationName" placeholder="Nhập tên quy cách" />
+                    <div class="text-danger small" id="editQuickSpecificationError"></div>
+                  </div>
+                  <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-primary" id="btnEditSaveQuickSpecification">
+                      <i class="bi bi-check-lg me-1"></i>Lưu
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btnEditCancelQuickSpecification">
+                      <i class="bi bi-x-lg me-1"></i>Hủy
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div class="col-6 col-md-3">
                 <label class="form-label">Giá nhập</label>
-                <input asp-for="PurchasePrice" type="number" step="0.01" class="form-control form-control-sm text-end" />
+                <input asp-for="PurchasePrice" type="number" step="0.01" class="form-control form-control-sm text-end" 
+                       value="@Model.PurchasePrice?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)" />
+                <span asp-validation-for="PurchasePrice" class="text-danger small"></span>
               </div>
               <div class="col-6 col-md-3">
                 <label class="form-label">Giá bán</label>
-                <input asp-for="SellingPrice" type="number" step="0.01" class="form-control form-control-sm text-end" />
+                <input asp-for="SellingPrice" type="number" step="0.01" class="form-control form-control-sm text-end" 
+                       value="@Model.SellingPrice?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)" />
+                <span asp-validation-for="SellingPrice" class="text-danger small"></span>
               </div>
+              <div class="col-6 col-md-3">
+                <label class="form-label">Phương pháp tính giá</label>
+                <select asp-for="CostingMethod" class="form-select form-select-sm">
+                  <option value="1">Bình quân gia quyền</option>
+                  <option value="0">FIFO</option>
+                </select>
+                <span asp-validation-for="CostingMethod" class="text-danger small"></span>
+              </div>
+
+              @* <div class="col-6 col-md-3">
+                <label class="form-label">Ngày sản xuất</label>
+                <input asp-for="ManufactureDate" type="date" class="form-control form-control-sm" />
+                <span asp-validation-for="ManufactureDate" class="text-danger small"></span>
+              </div>
+              <div class="col-6 col-md-3">
+                <label class="form-label">Hạn sử dụng</label>
+                <input asp-for="ExpiryDate" type="date" class="form-control form-control-sm" />
+                <span asp-validation-for="ExpiryDate" class="text-danger small"></span>
+              </div> *@
 
               <div class="col-12">
                 <label class="form-label">Mô tả</label>
                 <textarea asp-for="Description" rows="2" class="form-control form-control-sm"></textarea>
+                <span asp-validation-for="Description" class="text-danger small"></span>
+              </div>
+
+              <div class="col-12">
+                <hr class="my-2" />
+                <h6 class="text-muted mb-2">
+                  <i class="bi bi-lightning-charge me-1"></i>
+                  Đặt hàng tự động
+                </h6>
+              </div>
+
+              <div class="col-6 col-md-3">
+                <label class="form-label">Tồn tối thiểu</label>
+                <input asp-for="MinimumStock" type="number" step="0.01" min="0" class="form-control form-control-sm" 
+                       value="@Model.MinimumStock?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)"
+                       placeholder="0" title="Mức tồn kho tối thiểu để tạo đề xuất đặt hàng" />
+                <span asp-validation-for="MinimumStock" class="text-danger small"></span>
+              </div>
+              <div class="col-6 col-md-3">
+                <label class="form-label">Tồn tối đa</label>
+                <input asp-for="MaximumStock" type="number" step="0.01" min="0" class="form-control form-control-sm" 
+                       value="@Model.MaximumStock?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)"
+                       placeholder="0" title="Mức tồn kho tối đa cho phép" />
+                <span asp-validation-for="MaximumStock" class="text-danger small"></span>
+              </div>
+              <div class="col-6 col-md-3">
+                <label class="form-label">Số lượng đặt lại</label>
+                <input asp-for="ReorderQuantity" type="number" step="0.01" min="0" class="form-control form-control-sm" 
+                       value="@Model.ReorderQuantity?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)"
+                       placeholder="0" title="Số lượng tự động đề xuất khi tồn thấp" />
+                <span asp-validation-for="ReorderQuantity" class="text-danger small"></span>
+              </div>
+              <div class="col-12 col-md-3">
+                <label class="form-label">NCC ưu tiên</label>
+                <select asp-for="PreferredSupplierId" asp-items="supplierList" class="form-select form-select-sm">
+                  <option value="">-- Chọn --</option>
+                </select>
+                <span asp-validation-for="PreferredSupplierId" class="text-danger small"></span>
               </div>
 
               <div class="col-12 col-md-6">
-                <label class="form-label">Ảnh mới</label>
-                <input type="file" name="ImageFile" id="ImageFile" class="form-control form-control-sm" accept="image/*" />
-                <div class="form-text">Chọn ảnh để thay thế (tuỳ chọn)</div>
+                <label class="form-label fw-semibold">
+                  <i class="bi bi-image me-1"></i>Ảnh mới
+                </label>
+                <input type="file" name="ImageFile" id="editImageFile" class="form-control form-control-sm" accept="image/*" />
+                <button type="button" class="btn btn-outline-primary btn-sm w-100 mt-2" id="btnEditAnalyzeImage" style="display: none;">
+                  <i class="bi bi-robot me-1"></i>Phân tích ảnh bằng AI
+                </button>
+                <div id="editImageAnalysisResult" class="alert alert-info d-none mt-2" style="font-size: 0.875rem;"></div>
+                <div class="form-text small">Chọn ảnh để thay thế (tuỳ chọn)</div>
               </div>
-              <div class="col-12 col-md-6 d-flex align-items-end gap-2">
-                <img id="imgPreview" src="@Model.ImageUrl" class="img-preview" alt="preview"/>
+              <div class="col-12 col-md-6">
+                <div class="text-center">
+                  <img id="editImagePreview" src="@(Model.ImageUrl ?? "#")" alt="Preview" class="img-preview @(string.IsNullOrEmpty(Model.ImageUrl) ? "d-none" : "")" style="max-width: 200px; max-height: 200px; object-fit: contain;" />
+                  <div class="text-muted small mt-2 @(!string.IsNullOrEmpty(Model.ImageUrl) ? "d-none" : "")" id="editImagePlaceholder">
+                    <i class="bi bi-image"></i> Chưa có ảnh
+                  </div>
                 @if (!string.IsNullOrEmpty(Model.ImageUrl))
                 {
+                    <div class="mt-2">
                   <a href="@Model.ImageUrl" target="_blank" class="small">Xem ảnh hiện tại</a>
+                    </div>
                 }
+                </div>
               </div>
             </div>
 
@@ -134,6 +283,699 @@
       </div>
     </div>
   </div>
+
+  <script>
+    // Script cho Edit Material Modal - chạy ngay khi được inject
+    (function() {
+      'use strict';
+      console.log('Material edit form script loaded');
+      
+      let initialized = false;
+      
+      // Khởi tạo ngay
+      function init() {
+        if (initialized) {
+          console.log('Already initialized, skipping...');
+          return;
+        }
+        
+        console.log('Initializing material edit form...');
+        try {
+          initializeEditMaterialForm();
+          initialized = true;
+          // Load specifications ngay
+          setTimeout(function() { loadEditSpecifications(); }, 100);
+        } catch (error) {
+          console.error('Error initializing material edit form:', error);
+        }
+      }
+
+      // Chạy ngay nếu DOM đã ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+      } else {
+        // DOM đã ready, chạy ngay
+        setTimeout(init, 50);
+      }
+
+      // Cũng khởi tạo khi modal được hiển thị (backup)
+      function setupModalListener() {
+        const modal = document.getElementById('materialEditModal');
+        if (modal) {
+          modal.addEventListener('shown.bs.modal', function() {
+            console.log('Edit modal shown, reloading specifications...');
+            if (!initialized) {
+              init();
+            } else {
+              loadEditSpecifications();
+            }
+          });
+          return true;
+        }
+        return false;
+      }
+
+      // Thử setup listener ngay
+      if (!setupModalListener()) {
+        // Nếu modal chưa có, thử lại sau
+        let retries = 0;
+        const maxRetries = 10;
+        const checkInterval = setInterval(function() {
+          retries++;
+          if (setupModalListener() || retries >= maxRetries) {
+            clearInterval(checkInterval);
+            if (retries >= maxRetries) {
+              console.warn('Edit modal not found after', maxRetries, 'retries');
+            }
+          }
+        }, 200);
+      }
+    })();
+
+    // Helper function để làm sạch mô tả - loại bỏ JSON metadata
+    function cleanDescriptionText(text) {
+      if (!text) return '';
+      
+      let cleanDescription = text;
+      
+      // BƯỚC 1: Sử dụng regex để loại bỏ trực tiếp - ƯU TIÊN CAO NHẤT
+      // Loại bỏ từ pattern JSON đến cuối chuỗi ngay lập tức
+      
+      // Danh sách các field metadata cần loại bỏ
+      const metadataFields = [
+        'category', 'tags', 'confidence', 'unit', 'specification',
+        'suggestedPurchasePrice', 'suggestedSellingPrice'
+      ];
+      
+      // Loại bỏ từng field với nhiều pattern khác nhau
+      metadataFields.forEach(field => {
+        // Pattern 1: ." , "field": ... hoặc .", "field": ...
+        cleanDescription = cleanDescription.replace(
+          new RegExp(`\\.\\s*"\\s*,\\s*"${field}"\\s*:.*$`, 'gi'), '');
+        cleanDescription = cleanDescription.replace(
+          new RegExp(`\\.\\s*",\\s*"${field}"\\s*:.*$`, 'gi'), '');
+        
+        // Pattern 2: ", "field": ... hoặc , "field": ...
+        cleanDescription = cleanDescription.replace(
+          new RegExp(`"\\s*,\\s*"${field}"\\s*:.*$`, 'gi'), '');
+        cleanDescription = cleanDescription.replace(
+          new RegExp(`,\\s*"${field}"\\s*:.*$`, 'gi'), '');
+        
+        // Pattern 3: Không có dấu ngoặc kép (trường hợp đặc biệt)
+        cleanDescription = cleanDescription.replace(
+          new RegExp(`\\.\\s*,\\s*${field}\\s*:.*$`, 'gi'), '');
+        cleanDescription = cleanDescription.replace(
+          new RegExp(`,\\s*${field}\\s*:.*$`, 'gi'), '');
+      });
+      
+      // Loại bỏ JSON object patterns ở cuối
+      cleanDescription = cleanDescription.replace(/\.\s*"\s*,\s*\{.*\}$/gi, '');
+      cleanDescription = cleanDescription.replace(/\.\s*",\s*\{.*\}$/gi, '');
+      cleanDescription = cleanDescription.replace(/"\s*,\s*\{.*\}$/gi, '');
+      cleanDescription = cleanDescription.replace(/,\s*\{.*\}$/gi, '');
+      
+      // BƯỚC 2: Tìm dấu chấm và kiểm tra JSON (nếu regex không bắt được)
+      // Pattern để kiểm tra JSON sau dấu chấm
+      const jsonAfterPeriodPatterns = [];
+      metadataFields.forEach(field => {
+        jsonAfterPeriodPatterns.push(
+          new RegExp(`\\.\\s*"\\s*,\\s*"${field}"`, 'i'),
+          new RegExp(`\\.\\s*",\\s*"${field}"`, 'i'),
+          new RegExp(`\\.\\s*,\\s*${field}`, 'i')
+        );
+      });
+      jsonAfterPeriodPatterns.push(
+        /\.\s*"\s*,\s*\{/i,
+        /\.\s*",\s*\{/i,
+        /\.\s*,\s*\{/i
+      );
+      
+      // Tìm tất cả các dấu chấm trong mô tả, duyệt từ cuối lên đầu
+      let cutIndex = -1;
+      for (let i = cleanDescription.length - 1; i >= 0; i--) {
+        if (cleanDescription[i] === '.') {
+          // Kiểm tra xem sau dấu chấm này có JSON pattern không
+          const textAfterPeriod = cleanDescription.substring(i);
+          for (const pattern of jsonAfterPeriodPatterns) {
+            if (pattern.test(textAfterPeriod)) {
+              // Tìm thấy JSON pattern sau dấu chấm, cắt từ dấu chấm này (loại bỏ dấu chấm)
+              cutIndex = i;
+              break;
+            }
+          }
+          if (cutIndex >= 0) break;
+        }
+      }
+      
+      // Nếu tìm thấy dấu chấm có JSON sau đó, cắt từ đó
+      if (cutIndex >= 0) {
+        cleanDescription = cleanDescription.substring(0, cutIndex).trim();
+      }
+      
+      // BƯỚC 3: Làm sạch cuối cùng - Loại bỏ các ký tự JSON còn sót lại ở cuối
+      cleanDescription = cleanDescription.replace(/\s*[,\s]*\}\s*$/g, '');
+      cleanDescription = cleanDescription.replace(/\s*[,\s]*\]\s*$/g, '');
+      cleanDescription = cleanDescription.replace(/\s*[,\s]*```\s*$/g, '');
+      
+      // Loại bỏ bất kỳ dấu phẩy, dấu ngoặc kép, hoặc dấu hai chấm còn sót ở cuối
+      cleanDescription = cleanDescription.replace(/[,":\s]+$/g, '');
+      
+      // Loại bỏ các chuỗi JSON còn sót (ví dụ: ", category": "Đường")
+      cleanDescription = cleanDescription.replace(/["\s]*,\s*["\s]*[a-zA-Z]+\s*:\s*["\s]*[^"]*["\s]*/gi, '');
+      
+      cleanDescription = cleanDescription.trim();
+      
+      return cleanDescription;
+    }
+
+    function initializeEditMaterialForm() {
+      // Image preview
+      (function(){
+        const file = document.getElementById('editImageFile');
+        const img  = document.getElementById('editImagePreview');
+        const placeholder = document.getElementById('editImagePlaceholder');
+        const btnAnalyze = document.getElementById('btnEditAnalyzeImage');
+        if (!file) return;
+        file.addEventListener('change', function() {
+          const f = file.files && file.files.length > 0 ? file.files[0] : null;
+          if (!f) { 
+            if (placeholder) placeholder.classList.remove('d-none');
+            if (btnAnalyze) btnAnalyze.style.display = 'none';
+            return; 
+          }
+          const fr = new FileReader();
+          fr.onload = function(e) { 
+            img.src = e.target.result; 
+            img.classList.remove('d-none'); 
+            if (placeholder) placeholder.classList.add('d-none');
+            if (btnAnalyze) btnAnalyze.style.display = 'block';
+          }
+          fr.readAsDataURL(f);
+        });
+      })();
+
+      // Analyze image with AI (Edit form)
+      (function(){
+        const btnAnalyze = document.getElementById('btnEditAnalyzeImage');
+        const fileInput = document.getElementById('editImageFile');
+        const resultDiv = document.getElementById('editImageAnalysisResult');
+        const nameInput = document.getElementById('Name');
+        const descInput = document.getElementById('Description');
+        
+        if (!btnAnalyze || !fileInput) return;
+
+        btnAnalyze.addEventListener('click', async function() {
+          const file = fileInput.files?.[0];
+          if (!file) {
+            alert('Vui lòng chọn ảnh trước');
+            return;
+          }
+
+          if (file.size > 10 * 1024 * 1024) {
+            alert('File ảnh quá lớn (tối đa 10MB)');
+            return;
+          }
+
+          btnAnalyze.disabled = true;
+          btnAnalyze.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Đang phân tích...';
+          resultDiv.classList.remove('d-none');
+          resultDiv.innerHTML = '<div class="spinner-border spinner-border-sm me-2" role="status"></div><span>Đang phân tích ảnh bằng AI...</span>';
+
+          const formData = new FormData();
+          formData.append('imageFile', file);
+
+          try {
+            const response = await fetch('/Materials/AnalyzeImage', {
+              method: 'POST',
+              body: formData,
+              headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+              }
+            });
+
+            if (!response.ok) {
+              throw new Error('Lỗi khi phân tích ảnh');
+            }
+
+            const result = await response.json();
+            
+            // Điền thông tin vào form - luôn update khi phân tích ảnh mới
+            if (result.suggestedName && nameInput) {
+              nameInput.value = result.suggestedName;
+              nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            if (result.suggestedDescription && descInput) {
+              // Làm sạch mô tả - loại bỏ phần JSON metadata hoàn toàn
+              const cleanDescription = cleanDescriptionText(result.suggestedDescription);
+              descInput.value = cleanDescription;
+              descInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+
+            // Hiển thị kết quả
+            let resultHtml = '<strong><i class="bi bi-check-circle me-1"></i>Phân tích thành công!</strong><br>';
+            if (result.suggestedName) {
+              resultHtml += `<div class="mt-2"><strong>Tên gợi ý:</strong> ${result.suggestedName}</div>`;
+            }
+            if (result.suggestedDescription) {
+              // Làm sạch mô tả - chỉ hiển thị phần mô tả thuần túy, không hiển thị JSON metadata
+              const cleanDescription = cleanDescriptionText(result.suggestedDescription);
+              resultHtml += `<div class="mt-1"><strong>Mô tả:</strong> ${cleanDescription}</div>`;
+            }
+            if (result.category) {
+              resultHtml += `<div class="mt-1"><strong>Danh mục:</strong> ${result.category}</div>`;
+            }
+            if (result.tags && result.tags.length > 0) {
+              resultHtml += `<div class="mt-1"><strong>Tags:</strong> ${result.tags.join(', ')}</div>`;
+            }
+            resultDiv.className = 'alert alert-success mt-2';
+            resultDiv.innerHTML = resultHtml;
+          } catch (error) {
+            resultDiv.className = 'alert alert-danger mt-2';
+            resultDiv.innerHTML = `<i class="bi bi-exclamation-triangle me-1"></i>Lỗi: ${error.message}`;
+          } finally {
+            btnAnalyze.disabled = false;
+            btnAnalyze.innerHTML = '<i class="bi bi-robot me-1"></i>Phân tích ảnh bằng AI';
+          }
+        });
+      })();
+
+      // ===== Quick Add Supplier - Dùng event delegation =====
+      setupEditQuickAddSupplier();
+
+      // ===== Quick Add Specification - Dùng event delegation =====
+      setupEditQuickAddSpecification();
+    }
+
+    // Load danh sách quy cách
+    function loadEditSpecifications() {
+      console.log('Loading specifications for edit...');
+      const select = document.getElementById('editSpecificationSelect');
+      if (!select) {
+        console.warn('editSpecificationSelect not found, retrying...');
+        setTimeout(loadEditSpecifications, 200);
+        return;
+      }
+
+      // Lưu giá trị hiện tại
+      const currentValue = select.value;
+
+      fetch('/Materials/GetSpecifications', {
+        method: 'GET',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'same-origin'
+      })
+      .then(function(response) {
+        console.log('Response status:', response.status);
+        if (response.ok) {
+          return response.json().then(function(specs) {
+            console.log('Specifications loaded:', specs);
+            
+            // Xóa các option cũ (trừ option đầu tiên)
+            while (select.options.length > 1) {
+              select.remove(1);
+            }
+            
+            // Thêm các option mới
+            if (specs && specs.length > 0) {
+              specs.forEach(function(spec) {
+                const option = document.createElement('option');
+                option.value = spec.name;
+                option.textContent = spec.name;
+                select.appendChild(option);
+              });
+              console.log('Specifications added to dropdown:', specs.length);
+            } else {
+              console.warn('No specifications found in database.');
+            }
+            
+            // Khôi phục giá trị đã chọn
+            if (currentValue) {
+              select.value = currentValue;
+              // Nếu giá trị không tồn tại trong danh sách, thêm vào
+              if (!Array.from(select.options).some(opt => opt.value === currentValue)) {
+                const option = document.createElement('option');
+                option.value = currentValue;
+                option.textContent = currentValue;
+                option.selected = true;
+                select.appendChild(option);
+              }
+            }
+          });
+        } else {
+          console.error('Failed to load specifications:', response.status, response.statusText);
+        }
+      })
+      .catch(function(error) {
+        console.error('Error loading specifications:', error);
+      });
+    }
+
+    function setupEditQuickAddSupplier() {
+      console.log('Setting up quick add supplier for edit...');
+      
+      // Sử dụng event delegation đơn giản hơn - giống Create modal
+      document.addEventListener('click', function(e) {
+        // Kiểm tra nếu click vào button hoặc icon bên trong button
+        const clickedEl = e.target;
+        const parentBtn = clickedEl.closest('button');
+        
+        if (!parentBtn || parentBtn.id !== 'btnEditQuickAddSupplier') {
+          return;
+        }
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        console.log('Quick add supplier button clicked (edit)');
+        
+        const quickForm = document.getElementById('editQuickSupplierForm');
+        const quickNameInput = document.getElementById('editQuickSupplierName');
+        
+        if (!quickForm) {
+          console.error('editQuickSupplierForm not found');
+          return;
+        }
+        
+        const isVisible = quickForm.style.display !== 'none' && quickForm.style.display !== '';
+        quickForm.style.display = isVisible ? 'none' : 'block';
+        console.log('Supplier form toggled, visible:', !isVisible);
+        
+        if (!isVisible && quickNameInput) {
+          setTimeout(() => {
+            quickNameInput.focus();
+            console.log('Focused on supplier name input');
+          }, 100);
+        } else {
+          resetEditQuickSupplierForm();
+        }
+      });
+
+      // Setup save và cancel buttons
+      const btnSave = document.getElementById('btnEditSaveQuickSupplier');
+      const btnCancel = document.getElementById('btnEditCancelQuickSupplier');
+      const quickForm = document.getElementById('editQuickSupplierForm');
+      const supplierSelect = document.getElementById('editSupplierSelect');
+      const quickNameInput = document.getElementById('editQuickSupplierName');
+      const quickPhoneInput = document.getElementById('editQuickSupplierPhone');
+      const quickEmailInput = document.getElementById('editQuickSupplierEmail');
+      const quickAddressInput = document.getElementById('editQuickSupplierAddress');
+      const errorDiv = document.getElementById('editQuickSupplierError');
+
+      function resetEditQuickSupplierForm() {
+        if (quickNameInput) quickNameInput.value = '';
+        if (quickPhoneInput) quickPhoneInput.value = '';
+        if (quickEmailInput) quickEmailInput.value = '';
+        if (quickAddressInput) quickAddressInput.value = '';
+        if (errorDiv) {
+          errorDiv.textContent = '';
+          errorDiv.style.display = 'none';
+        }
+      }
+
+      if (btnCancel) {
+        btnCancel.addEventListener('click', function(e) {
+          e.preventDefault();
+          if (quickForm) quickForm.style.display = 'none';
+          resetEditQuickSupplierForm();
+        });
+      }
+
+      function isValidEmail(email) {
+        if (!email || email.trim() === '') return true;
+        const emailRegex = /^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/;
+        return emailRegex.test(email.trim());
+      }
+
+      function isValidPhone(phone) {
+        if (!phone || phone.trim() === '') return true;
+        const phoneRegex = /^[\d\s\+\-\(\)]+$/;
+        return phoneRegex.test(phone.trim()) && phone.trim().length >= 8;
+      }
+
+      if (btnSave) {
+        btnSave.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          const name = quickNameInput ? quickNameInput.value.trim() : '';
+          const phone = quickPhoneInput ? quickPhoneInput.value.trim() : '';
+          const email = quickEmailInput ? quickEmailInput.value.trim() : '';
+          const address = quickAddressInput ? quickAddressInput.value.trim() : '';
+          
+          if (errorDiv) {
+            errorDiv.textContent = '';
+            errorDiv.style.display = 'none';
+          }
+
+          if (!name) {
+            if (errorDiv) {
+              errorDiv.textContent = 'Vui lòng nhập tên nhà cung cấp.';
+              errorDiv.style.display = 'block';
+            }
+            return;
+          }
+
+          if (email && !isValidEmail(email)) {
+            if (errorDiv) {
+              errorDiv.textContent = 'Email không đúng định dạng.';
+              errorDiv.style.display = 'block';
+            }
+            return;
+          }
+
+          if (phone && !isValidPhone(phone)) {
+            if (errorDiv) {
+              errorDiv.textContent = 'Số điện thoại không đúng định dạng.';
+              errorDiv.style.display = 'block';
+            }
+            return;
+          }
+
+          btnSave.disabled = true;
+          btnSave.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Đang lưu...';
+
+          fetch('/Suppliers/CreateQuick', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({ 
+              name: name,
+              phoneNumber: phone || null,
+              email: email || null,
+              address: address || null
+            })
+          })
+          .then(function(response) {
+            return response.json();
+          })
+          .then(function(result) {
+            if (result.success) {
+              if (supplierSelect) {
+                const option = document.createElement('option');
+                option.value = result.id;
+                option.textContent = result.name;
+                option.selected = true;
+                supplierSelect.appendChild(option);
+              }
+
+              if (quickForm) quickForm.style.display = 'none';
+              resetEditQuickSupplierForm();
+
+              const successMsg = document.createElement('div');
+              successMsg.className = 'alert alert-success alert-dismissible fade show mt-2';
+              successMsg.innerHTML = 
+                '<i class="bi bi-check-circle me-1"></i>Đã thêm nhà cung cấp "' + result.name + '" thành công. ' +
+                '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+              quickForm.parentElement.insertBefore(successMsg, quickForm);
+              setTimeout(function() { successMsg.remove(); }, 3000);
+            } else {
+              if (errorDiv) {
+                errorDiv.textContent = result.error || 'Có lỗi xảy ra khi tạo nhà cung cấp.';
+                errorDiv.style.display = 'block';
+              }
+            }
+            btnSave.disabled = false;
+            btnSave.innerHTML = '<i class="bi bi-check-lg me-1"></i>Lưu';
+          })
+          .catch(function(error) {
+            if (errorDiv) {
+              errorDiv.textContent = 'Lỗi kết nối: ' + error.message;
+              errorDiv.style.display = 'block';
+            }
+            btnSave.disabled = false;
+            btnSave.innerHTML = '<i class="bi bi-check-lg me-1"></i>Lưu';
+          });
+        });
+      }
+
+      if (quickNameInput) {
+        quickNameInput.addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            if (btnSave) btnSave.click();
+          }
+        });
+      }
+      
+      [quickPhoneInput, quickEmailInput, quickAddressInput].forEach(function(input) {
+        if (input) {
+          input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              if (btnSave) btnSave.click();
+            }
+          });
+        }
+      });
+    }
+
+    function setupEditQuickAddSpecification() {
+      console.log('Setting up quick add specification for edit...');
+      // Sử dụng event delegation - giống Create modal
+      document.addEventListener('click', function(e) {
+        // Kiểm tra cả button và icon bên trong
+        const clickedEl = e.target;
+        const parentBtn = clickedEl.closest('button');
+        
+        if (!parentBtn || parentBtn.id !== 'btnEditQuickAddSpecification') {
+          return;
+        }
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        console.log('Quick add specification button clicked (edit)');
+        
+        const quickForm = document.getElementById('editQuickSpecificationForm');
+        const quickNameInput = document.getElementById('editQuickSpecificationName');
+        
+        if (!quickForm) {
+          console.error('editQuickSpecificationForm not found');
+          return;
+        }
+        
+        const isVisible = quickForm.style.display !== 'none' && quickForm.style.display !== '';
+        quickForm.style.display = isVisible ? 'none' : 'block';
+        console.log('Form visibility toggled:', !isVisible);
+        
+        if (!isVisible && quickNameInput) {
+          setTimeout(() => quickNameInput.focus(), 100);
+        } else {
+          resetEditQuickSpecForm();
+        }
+      });
+
+      const btnSave = document.getElementById('btnEditSaveQuickSpecification');
+      const btnCancel = document.getElementById('btnEditCancelQuickSpecification');
+      const quickForm = document.getElementById('editQuickSpecificationForm');
+      const specificationSelect = document.getElementById('editSpecificationSelect');
+      const quickNameInput = document.getElementById('editQuickSpecificationName');
+      const errorDiv = document.getElementById('editQuickSpecificationError');
+
+      function resetEditQuickSpecForm() {
+        if (quickNameInput) quickNameInput.value = '';
+        if (errorDiv) {
+          errorDiv.textContent = '';
+          errorDiv.style.display = 'none';
+        }
+      }
+
+      if (btnCancel) {
+        btnCancel.addEventListener('click', function(e) {
+          e.preventDefault();
+          if (quickForm) quickForm.style.display = 'none';
+          resetEditQuickSpecForm();
+        });
+      }
+
+      if (btnSave) {
+        btnSave.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const name = quickNameInput.value.trim();
+          if (errorDiv) {
+            errorDiv.textContent = '';
+            errorDiv.style.display = 'none';
+          }
+
+          if (!name) {
+            if (errorDiv) {
+              errorDiv.textContent = 'Vui lòng nhập tên quy cách.';
+              errorDiv.style.display = 'block';
+            }
+            return;
+          }
+
+          btnSave.disabled = true;
+          btnSave.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Đang lưu...';
+
+          fetch('/Materials/AddSpecification', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({ name: name })
+          })
+          .then(function(response) {
+            return response.json();
+          })
+          .then(function(result) {
+            if (result.success) {
+              if (specificationSelect) {
+                const option = document.createElement('option');
+                option.value = result.name;
+                option.textContent = result.name;
+                option.selected = true;
+                specificationSelect.appendChild(option);
+              }
+
+              if (quickForm) quickForm.style.display = 'none';
+              resetEditQuickSpecForm();
+
+              const successMsg = document.createElement('div');
+              successMsg.className = 'alert alert-success alert-dismissible fade show mt-2';
+              successMsg.innerHTML = 
+                '<i class="bi bi-check-circle me-1"></i>Đã thêm quy cách "' + result.name + '" thành công. ' +
+                '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+              quickForm.parentElement.insertBefore(successMsg, quickForm);
+              setTimeout(function() { successMsg.remove(); }, 3000);
+            } else {
+              if (errorDiv) {
+                errorDiv.textContent = result.error || 'Có lỗi xảy ra khi tạo quy cách.';
+                errorDiv.style.display = 'block';
+              }
+            }
+            btnSave.disabled = false;
+            btnSave.innerHTML = '<i class="bi bi-check-lg me-1"></i>Lưu';
+          })
+          .catch(function(error) {
+            if (errorDiv) {
+              errorDiv.textContent = 'Lỗi kết nối: ' + error.message;
+              errorDiv.style.display = 'block';
+            }
+            btnSave.disabled = false;
+            btnSave.innerHTML = '<i class="bi bi-check-lg me-1"></i>Lưu';
+          });
+        });
+      }
+
+      if (quickNameInput) {
+        quickNameInput.addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            if (btnSave) btnSave.click();
+          }
+        });
+      }
+    }
+  </script>
 }
 else
 {
@@ -175,27 +1017,145 @@ else
 
             <div class="col-12 col-md-6">
               <label class="form-label">Nhà cung cấp</label>
-              <select asp-for="SupplierId" asp-items="supplierList" class="form-select form-select-sm">
+              <div class="input-group">
+                <select asp-for="SupplierId" asp-items="supplierList" class="form-select form-select-sm" id="pageSupplierSelect">
                 <option value="">-- Chọn --</option>
               </select>
+                <button type="button" class="btn btn-outline-primary btn-sm" id="btnPageQuickAddSupplier" title="Thêm nhanh nhà cung cấp">
+                  <i class="bi bi-plus-lg"></i>
+                </button>
+              </div>
+              <span asp-validation-for="SupplierId" class="text-danger small"></span>
+              <!-- Form tạo nhanh nhà cung cấp (ẩn mặc định) -->
+              <div id="pageQuickSupplierForm" class="mt-2 p-3 border rounded bg-light" style="display: none;">
+                <h6 class="mb-3 fw-semibold text-primary">
+                  <i class="bi bi-plus-circle me-1"></i>Thêm nhanh nhà cung cấp
+                </h6>
+                <div class="row g-2">
+                  <div class="col-12">
+                    <label class="form-label small fw-semibold">Tên nhà cung cấp <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm" id="pageQuickSupplierName" placeholder="Nhập tên nhà cung cấp" />
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label small fw-semibold">Số điện thoại</label>
+                    <input type="tel" class="form-control form-control-sm" id="pageQuickSupplierPhone" placeholder="Nhập số điện thoại" />
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label small fw-semibold">Email</label>
+                    <input type="email" class="form-control form-control-sm" id="pageQuickSupplierEmail" placeholder="Nhập email" />
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label small fw-semibold">Địa chỉ</label>
+                    <textarea class="form-control form-control-sm" id="pageQuickSupplierAddress" rows="2" placeholder="Nhập địa chỉ"></textarea>
+                  </div>
+                </div>
+                <div class="text-danger small mt-2" id="pageQuickSupplierError"></div>
+                <div class="d-flex gap-2 mt-3">
+                  <button type="button" class="btn btn-sm btn-primary" id="btnPageSaveQuickSupplier">
+                    <i class="bi bi-check-lg me-1"></i>Lưu
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" id="btnPageCancelQuickSupplier">
+                    <i class="bi bi-x-lg me-1"></i>Hủy
+                  </button>
+                </div>
+              </div>
             </div>
             <div class="col-12 col-md-6">
               <label class="form-label">Quy cách</label>
-              <input asp-for="Specification" class="form-control form-control-sm" />
+              <div class="input-group">
+                <select asp-for="Specification" class="form-select form-select-sm" id="pageSpecificationSelect">
+                  <option value="">-- Chọn quy cách --</option>
+                  @if (!string.IsNullOrEmpty(Model.Specification))
+                  {
+                    <option value="@Model.Specification" selected>@Model.Specification</option>
+                  }
+                </select>
+                <button type="button" class="btn btn-outline-primary btn-sm" id="btnPageQuickAddSpecification" title="Thêm quy cách mới">
+                  <i class="bi bi-plus-lg"></i>
+                </button>
+              </div>
+              <span asp-validation-for="Specification" class="text-danger small"></span>
+              <!-- Form tạo nhanh quy cách (ẩn mặc định) -->
+              <div id="pageQuickSpecificationForm" class="mt-2 p-3 border rounded bg-light" style="display: none;">
+                <div class="mb-2">
+                  <label class="form-label small fw-semibold">Tên quy cách <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control form-control-sm" id="pageQuickSpecificationName" placeholder="Nhập tên quy cách" />
+                  <div class="text-danger small" id="pageQuickSpecificationError"></div>
+                </div>
+                <div class="d-flex gap-2">
+                  <button type="button" class="btn btn-sm btn-primary" id="btnPageSaveQuickSpecification">
+                    <i class="bi bi-check-lg me-1"></i>Lưu
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" id="btnPageCancelQuickSpecification">
+                    <i class="bi bi-x-lg me-1"></i>Hủy
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div class="col-6 col-md-3">
               <label class="form-label">Giá nhập</label>
-              <input asp-for="PurchasePrice" type="number" step="0.01" class="form-control form-control-sm text-end" />
+              <input asp-for="PurchasePrice" type="number" step="0.01" class="form-control form-control-sm text-end" 
+                     value="@Model.PurchasePrice?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)" />
             </div>
             <div class="col-6 col-md-3">
               <label class="form-label">Giá bán</label>
-              <input asp-for="SellingPrice" type="number" step="0.01" class="form-control form-control-sm text-end" />
+              <input asp-for="SellingPrice" type="number" step="0.01" class="form-control form-control-sm text-end" 
+                     value="@Model.SellingPrice?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)" />
+            </div>
+            <div class="col-6 col-md-3">
+              <label class="form-label">Phương pháp tính giá</label>
+              <select asp-for="CostingMethod" class="form-select form-select-sm">
+                <option value="1">Bình quân gia quyền</option>
+                <option value="0">FIFO</option>
+              </select>
+            </div>
+
+            <div class="col-6 col-md-3">
+              <label class="form-label">Ngày sản xuất</label>
+              <input asp-for="ManufactureDate" type="date" class="form-control form-control-sm" />
+            </div>
+            <div class="col-6 col-md-3">
+              <label class="form-label">Hạn sử dụng</label>
+              <input asp-for="ExpiryDate" type="date" class="form-control form-control-sm" />
             </div>
 
             <div class="col-12">
               <label class="form-label">Mô tả</label>
               <textarea asp-for="Description" rows="2" class="form-control form-control-sm"></textarea>
+            </div>
+
+            <div class="col-12">
+              <hr class="my-2" />
+              <h6 class="text-muted mb-2">
+                <i class="bi bi-lightning-charge me-1"></i>
+                Đặt hàng tự động
+              </h6>
+            </div>
+
+            <div class="col-6 col-md-3">
+              <label class="form-label">Tồn tối thiểu</label>
+              <input asp-for="MinimumStock" type="number" step="0.01" min="0" class="form-control form-control-sm" 
+                     value="@Model.MinimumStock?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)"
+                     placeholder="0" title="Mức tồn kho tối thiểu để tạo đề xuất đặt hàng" />
+            </div>
+            <div class="col-6 col-md-3">
+              <label class="form-label">Tồn tối đa</label>
+              <input asp-for="MaximumStock" type="number" step="0.01" min="0" class="form-control form-control-sm" 
+                     value="@Model.MaximumStock?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)"
+                     placeholder="0" title="Mức tồn kho tối đa cho phép" />
+            </div>
+            <div class="col-6 col-md-3">
+              <label class="form-label">Số lượng đặt lại</label>
+              <input asp-for="ReorderQuantity" type="number" step="0.01" min="0" class="form-control form-control-sm" 
+                     value="@Model.ReorderQuantity?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)"
+                     placeholder="0" title="Số lượng tự động đề xuất khi tồn thấp" />
+            </div>
+            <div class="col-12 col-md-3">
+              <label class="form-label">NCC ưu tiên</label>
+              <select asp-for="PreferredSupplierId" asp-items="supplierList" class="form-select form-select-sm">
+                <option value="">-- Chọn --</option>
+              </select>
             </div>
 
             <div class="col-12 col-md-6">
@@ -225,16 +1185,377 @@ else
 @section Scripts {
   <partial name="_ValidationScriptsPartial" />
   <script>
-    // Preview ảnh khi chọn file
-    document.addEventListener('change', function(e){
-      if (e.target && e.target.id === 'ImageFile') {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        const img = document.getElementById('imgPreview');
-        if (img) img.src = URL.createObjectURL(file);
+    // Script cho non-modal mode (page mode)
+    (function() {
+      'use strict';
+      // Chỉ chạy nếu không có modal
+      if (document.getElementById('materialEditModal')) {
+        return; // Đã có modal, không chạy page mode
       }
-    });
 
-    
+      console.log('Material edit page mode script loaded');
+      
+      // Load specifications cho page mode
+      function loadPageSpecifications() {
+        const select = document.getElementById('pageSpecificationSelect');
+        if (!select) return;
+
+        fetch('/Materials/GetSpecifications', {
+          method: 'GET',
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          credentials: 'same-origin'
+        })
+        .then(function(response) {
+          if (response.ok) {
+            return response.json().then(function(specs) {
+              const currentValue = select.value;
+              while (select.options.length > 1) {
+                const lastOption = select.options[select.options.length - 1];
+                if (lastOption.value !== currentValue) {
+                  select.remove(select.options.length - 1);
+                } else {
+                  break;
+                }
+              }
+              if (specs && specs.length > 0) {
+                specs.forEach(function(spec) {
+                  if (Array.from(select.options).some(opt => opt.value === spec.name)) {
+                    return;
+                  }
+                  const option = document.createElement('option');
+                  option.value = spec.name;
+                  option.textContent = spec.name;
+                  select.appendChild(option);
+                });
+                if (currentValue) {
+                  select.value = currentValue;
+                }
+              }
+            });
+          }
+        })
+        .catch(function(error) {
+          console.error('Error loading specifications:', error);
+        });
+      }
+
+      // Setup Quick Add Supplier cho page mode
+      function setupPageQuickAddSupplier() {
+        document.addEventListener('click', function(e) {
+          const clickedEl = e.target;
+          const parentBtn = clickedEl.closest('button');
+          
+          if (!parentBtn || parentBtn.id !== 'btnPageQuickAddSupplier') {
+            return;
+          }
+          
+          e.preventDefault();
+          e.stopPropagation();
+          
+          const quickForm = document.getElementById('pageQuickSupplierForm');
+          const quickNameInput = document.getElementById('pageQuickSupplierName');
+          
+          if (!quickForm) return;
+          
+          const isVisible = quickForm.style.display !== 'none' && quickForm.style.display !== '';
+          quickForm.style.display = isVisible ? 'none' : 'block';
+          
+          if (!isVisible && quickNameInput) {
+            setTimeout(() => quickNameInput.focus(), 100);
+          } else {
+            resetPageQuickSupplierForm();
+          }
+        });
+
+        const btnSave = document.getElementById('btnPageSaveQuickSupplier');
+        const btnCancel = document.getElementById('btnPageCancelQuickSupplier');
+        const quickForm = document.getElementById('pageQuickSupplierForm');
+        const supplierSelect = document.getElementById('pageSupplierSelect');
+        const quickNameInput = document.getElementById('pageQuickSupplierName');
+        const quickPhoneInput = document.getElementById('pageQuickSupplierPhone');
+        const quickEmailInput = document.getElementById('pageQuickSupplierEmail');
+        const quickAddressInput = document.getElementById('pageQuickSupplierAddress');
+        const errorDiv = document.getElementById('pageQuickSupplierError');
+
+        function resetPageQuickSupplierForm() {
+          if (quickNameInput) quickNameInput.value = '';
+          if (quickPhoneInput) quickPhoneInput.value = '';
+          if (quickEmailInput) quickEmailInput.value = '';
+          if (quickAddressInput) quickAddressInput.value = '';
+          if (errorDiv) {
+            errorDiv.textContent = '';
+            errorDiv.style.display = 'none';
+          }
+        }
+
+        if (btnCancel) {
+          btnCancel.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (quickForm) quickForm.style.display = 'none';
+            resetPageQuickSupplierForm();
+          });
+        }
+
+        function isValidEmail(email) {
+          if (!email || email.trim() === '') return true;
+          const emailRegex = /^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/;
+          return emailRegex.test(email.trim());
+        }
+
+        function isValidPhone(phone) {
+          if (!phone || phone.trim() === '') return true;
+          const phoneRegex = /^[\d\s\+\-\(\)]+$/;
+          return phoneRegex.test(phone.trim()) && phone.trim().length >= 8;
+        }
+
+        if (btnSave) {
+          btnSave.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const name = quickNameInput ? quickNameInput.value.trim() : '';
+            const phone = quickPhoneInput ? quickPhoneInput.value.trim() : '';
+            const email = quickEmailInput ? quickEmailInput.value.trim() : '';
+            const address = quickAddressInput ? quickAddressInput.value.trim() : '';
+            
+            if (errorDiv) {
+              errorDiv.textContent = '';
+              errorDiv.style.display = 'none';
+            }
+
+            if (!name) {
+              if (errorDiv) {
+                errorDiv.textContent = 'Vui lòng nhập tên nhà cung cấp.';
+                errorDiv.style.display = 'block';
+              }
+              return;
+            }
+
+            if (email && !isValidEmail(email)) {
+              if (errorDiv) {
+                errorDiv.textContent = 'Email không đúng định dạng.';
+                errorDiv.style.display = 'block';
+              }
+              return;
+            }
+
+            if (phone && !isValidPhone(phone)) {
+              if (errorDiv) {
+                errorDiv.textContent = 'Số điện thoại không đúng định dạng.';
+                errorDiv.style.display = 'block';
+              }
+              return;
+            }
+
+            btnSave.disabled = true;
+            btnSave.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Đang lưu...';
+
+            fetch('/Suppliers/CreateQuick', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+              },
+              credentials: 'same-origin',
+              body: JSON.stringify({ 
+                name: name,
+                phoneNumber: phone || null,
+                email: email || null,
+                address: address || null
+              })
+            })
+            .then(function(response) {
+              return response.json();
+            })
+            .then(function(result) {
+              if (result.success) {
+                if (supplierSelect) {
+                  const option = document.createElement('option');
+                  option.value = result.id;
+                  option.textContent = result.name;
+                  option.selected = true;
+                  supplierSelect.appendChild(option);
+                }
+
+                if (quickForm) quickForm.style.display = 'none';
+                resetPageQuickSupplierForm();
+
+                const successMsg = document.createElement('div');
+                successMsg.className = 'alert alert-success alert-dismissible fade show mt-2';
+                successMsg.innerHTML = 
+                  '<i class="bi bi-check-circle me-1"></i>Đã thêm nhà cung cấp "' + result.name + '" thành công. ' +
+                  '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+                quickForm.parentElement.insertBefore(successMsg, quickForm);
+                setTimeout(function() { successMsg.remove(); }, 3000);
+              } else {
+                if (errorDiv) {
+                  errorDiv.textContent = result.error || 'Có lỗi xảy ra khi tạo nhà cung cấp.';
+                  errorDiv.style.display = 'block';
+                }
+              }
+              btnSave.disabled = false;
+              btnSave.innerHTML = '<i class="bi bi-check-lg me-1"></i>Lưu';
+            })
+            .catch(function(error) {
+              if (errorDiv) {
+                errorDiv.textContent = 'Lỗi kết nối: ' + error.message;
+                errorDiv.style.display = 'block';
+              }
+              btnSave.disabled = false;
+              btnSave.innerHTML = '<i class="bi bi-check-lg me-1"></i>Lưu';
+            });
+          });
+        }
+      }
+
+      // Setup Quick Add Specification cho page mode
+      function setupPageQuickAddSpecification() {
+        document.addEventListener('click', function(e) {
+          const clickedEl = e.target;
+          const parentBtn = clickedEl.closest('button');
+          
+          if (!parentBtn || parentBtn.id !== 'btnPageQuickAddSpecification') {
+            return;
+          }
+          
+          e.preventDefault();
+          e.stopPropagation();
+          
+          const quickForm = document.getElementById('pageQuickSpecificationForm');
+          const quickNameInput = document.getElementById('pageQuickSpecificationName');
+          
+          if (!quickForm) return;
+          
+          const isVisible = quickForm.style.display !== 'none' && quickForm.style.display !== '';
+          quickForm.style.display = isVisible ? 'none' : 'block';
+          
+          if (!isVisible && quickNameInput) {
+            setTimeout(() => quickNameInput.focus(), 100);
+          } else {
+            resetPageQuickSpecForm();
+          }
+        });
+
+        const btnSave = document.getElementById('btnPageSaveQuickSpecification');
+        const btnCancel = document.getElementById('btnPageCancelQuickSpecification');
+        const quickForm = document.getElementById('pageQuickSpecificationForm');
+        const specificationSelect = document.getElementById('pageSpecificationSelect');
+        const quickNameInput = document.getElementById('pageQuickSpecificationName');
+        const errorDiv = document.getElementById('pageQuickSpecificationError');
+
+        function resetPageQuickSpecForm() {
+          if (quickNameInput) quickNameInput.value = '';
+          if (errorDiv) {
+            errorDiv.textContent = '';
+            errorDiv.style.display = 'none';
+          }
+        }
+
+        if (btnCancel) {
+          btnCancel.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (quickForm) quickForm.style.display = 'none';
+            resetPageQuickSpecForm();
+          });
+        }
+
+        if (btnSave) {
+          btnSave.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const name = quickNameInput.value.trim();
+            if (errorDiv) {
+              errorDiv.textContent = '';
+              errorDiv.style.display = 'none';
+            }
+
+            if (!name) {
+              if (errorDiv) {
+                errorDiv.textContent = 'Vui lòng nhập tên quy cách.';
+                errorDiv.style.display = 'block';
+              }
+              return;
+            }
+
+            btnSave.disabled = true;
+            btnSave.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Đang lưu...';
+
+            fetch('/Materials/AddSpecification', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+              },
+              credentials: 'same-origin',
+              body: JSON.stringify({ name: name })
+            })
+            .then(function(response) {
+              return response.json();
+            })
+            .then(function(result) {
+              if (result.success) {
+                if (specificationSelect) {
+                  const option = document.createElement('option');
+                  option.value = result.name;
+                  option.textContent = result.name;
+                  option.selected = true;
+                  specificationSelect.appendChild(option);
+                }
+
+                if (quickForm) quickForm.style.display = 'none';
+                resetPageQuickSpecForm();
+
+                const successMsg = document.createElement('div');
+                successMsg.className = 'alert alert-success alert-dismissible fade show mt-2';
+                successMsg.innerHTML = 
+                  '<i class="bi bi-check-circle me-1"></i>Đã thêm quy cách "' + result.name + '" thành công. ' +
+                  '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+                quickForm.parentElement.insertBefore(successMsg, quickForm);
+                setTimeout(function() { successMsg.remove(); }, 3000);
+              } else {
+                if (errorDiv) {
+                  errorDiv.textContent = result.error || 'Có lỗi xảy ra khi tạo quy cách.';
+                  errorDiv.style.display = 'block';
+                }
+              }
+              btnSave.disabled = false;
+              btnSave.innerHTML = '<i class="bi bi-check-lg me-1"></i>Lưu';
+            })
+            .catch(function(error) {
+              if (errorDiv) {
+                errorDiv.textContent = 'Lỗi kết nối: ' + error.message;
+                errorDiv.style.display = 'block';
+              }
+              btnSave.disabled = false;
+              btnSave.innerHTML = '<i class="bi bi-check-lg me-1"></i>Lưu';
+            });
+          });
+        }
+
+        if (quickNameInput) {
+          quickNameInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              if (btnSave) btnSave.click();
+            }
+          });
+        }
+      }
+
+      // Khởi tạo khi DOM ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+          setupPageQuickAddSupplier();
+          setupPageQuickAddSpecification();
+          setTimeout(loadPageSpecifications, 100);
+        });
+      } else {
+        setupPageQuickAddSupplier();
+        setupPageQuickAddSpecification();
+        setTimeout(loadPageSpecifications, 100);
+      }
+    })();
   </script>
 }

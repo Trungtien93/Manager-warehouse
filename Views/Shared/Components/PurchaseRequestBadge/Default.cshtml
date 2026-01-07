@@ -1,0 +1,14 @@
+@model int
+
+@if (Model > 0)
+{
+    <span class="absolute top-1/2 right-2 -translate-y-1/2 flex h-5 min-w-[20px] items-center justify-center">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+        <span class="relative inline-flex items-center justify-center rounded-full h-5 min-w-[20px] px-1.5 bg-amber-600 text-white text-[10px] font-bold">
+            @(Model > 99 ? "99+" : Model.ToString())
+        </span>
+    </span>
+}
+
+
+

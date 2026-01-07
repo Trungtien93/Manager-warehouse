@@ -1,0 +1,416 @@
+@model MNBEMART.Models.StockLot
+@{
+    ViewData["Title"] = "Phân tách lô hàng";
+}
+
+@functions {
+    string FormatQuantity(decimal value) {
+        if (value % 1 == 0) {
+            return value.ToString("N0", System.Globalization.CultureInfo.GetCultureInfo("vi-VN"));
+        }
+        return value.ToString("N2", System.Globalization.CultureInfo.GetCultureInfo("vi-VN"));
+    }
+}
+
+<div class="max-w-4xl mx-auto px-6 py-8">
+    <div class="mb-8">
+        <h1 class="text-3xl font-black text-slate-900 tracking-tight mb-2">
+            <i class="bi bi-scissors text-amber-600 me-2"></i>
+            Phân tách lô hàng
+        </h1>
+        <p class="text-slate-600">Tách lô @Model.LotNumber thành nhiều lô nhỏ hơn</p>
+    </div>
+
+    <!-- Current Lot Info -->
+    <div class="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 mb-6">
+        <h3 class="text-lg font-bold text-blue-900 mb-3">Lô hiện tại</h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+                <label class="text-sm font-semibold text-blue-700">Số lô</label>
+                <p class="text-blue-900 font-mono">@Model.LotNumber</p>
+            </div>
+            <div>
+                <label class="text-sm font-semibold text-blue-700">Vật tư</label>
+                <p class="text-blue-900">@Model.Material?.Name</p>
+            </div>
+            <div>
+                <label class="text-sm font-semibold text-blue-700">Số lượng</label>
+                <p class="text-2xl font-black text-blue-900 font-mono">@FormatQuantity(Model.Quantity)</p>
+            </div>
+            <div>
+                <label class="text-sm font-semibold text-blue-700">HSD</label>
+                <p class="text-blue-900">@(Model.ExpiryDate?.ToString("dd/MM/yyyy") ?? "-")</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error/Success Messages -->
+    @if (TempData["Error"] != null)
+    {
+        <div class="mb-6 bg-red-50 border-2 border-red-200 rounded-xl p-4">
+            <div class="flex items-center gap-2 text-red-700">
+                <i class="bi bi-exclamation-circle text-xl"></i>
+                <span class="font-semibold">@TempData["Error"]</span>
+            </div>
+        </div>
+    }
+    @if (TempData["Msg"] != null)
+    {
+        <div class="mb-6 bg-green-50 border-2 border-green-200 rounded-xl p-4">
+            <div class="flex items-center gap-2 text-green-700">
+                <i class="bi bi-check-circle text-xl"></i>
+                <span class="font-semibold">@TempData["Msg"]</span>
+            </div>
+        </div>
+    }
+
+    <!-- Split Form -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+        <form method="post" id="splitForm">
+            @Html.AntiForgeryToken()
+            <div class="mb-6">
+                <label class="block text-sm font-semibold text-slate-700 mb-2">Ghi chú</label>
+                <textarea name="notes" rows="2" 
+                          class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500"
+                          placeholder="Lý do phân tách..."></textarea>
+            </div>
+
+            <div class="mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900">Số lượng các lô mới</h3>
+                        <p class="text-sm text-slate-500 mt-1">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Nhấn "Thêm lô" để tạo các lô mới, nhập số lượng cho từng lô
+                        </p>
+                    </div>
+                    <button type="button" id="addRowBtn" 
+                            class="bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 rounded-lg transition text-sm shadow-sm">
+                        <i class="bi bi-plus-circle me-1"></i> Thêm lô
+                    </button>
+                </div>
+
+                <div id="splitContainer" class="space-y-3 min-h-[60px]">
+                    <div class="text-center py-4 text-slate-400 text-sm" id="emptyMessage">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Chưa có lô nào. Nhấn nút "Thêm lô" ở trên để bắt đầu.
+                    </div>
+                </div>
+
+                <div class="mt-4 p-4 bg-slate-50 rounded-lg">
+                    <div class="flex justify-between text-sm">
+                        <span class="font-semibold text-slate-700">Tổng đã chia:</span>
+                        <span id="totalSplit" class="font-bold text-blue-600 font-mono">0</span>
+                    </div>
+                    <div class="flex justify-between text-sm mt-2">
+                        <span class="font-semibold text-slate-700">Còn lại trong lô gốc:</span>
+                        <span id="remaining" class="font-bold text-amber-600 font-mono">@FormatQuantity(Model.Quantity)</span>
+                    </div>
+                    <div id="validationError" class="mt-2 text-sm text-red-600 font-semibold hidden">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        <span id="validationErrorText"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <button type="submit" id="submitBtn" disabled
+                        class="flex-1 bg-amber-600 hover:bg-amber-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-semibold px-6 py-3 rounded-lg transition">
+                    <span id="submitBtnText">
+                        <i class="bi bi-scissors me-1"></i> Phân tách
+                    </span>
+                    <span id="submitBtnLoading" class="hidden">
+                        <span class="spinner-border spinner-border-sm me-2"></span> Đang xử lý...
+                    </span>
+                </button>
+                <a asp-action="Details" asp-route-id="@Model.Id" 
+                   class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold px-6 py-3 rounded-lg transition text-center">
+                    Hủy
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Initializing split form...');
+            
+            const maxQuantity = parseFloat('@Model.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture)') || 0;
+            console.log('Max quantity:', maxQuantity);
+            
+            let rowCounter = 0;
+
+            // Helper function để format số lượng thông minh (bỏ .00 nếu là số nguyên)
+            function formatQuantity(value) {
+                const num = parseFloat(value) || 0;
+                // Nếu là số nguyên, hiển thị không có phần thập phân
+                if (num % 1 === 0) {
+                    return num.toLocaleString('vi-VN', { maximumFractionDigits: 0 });
+                }
+                // Nếu có phần thập phân, hiển thị với phần thập phân
+                return num.toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+            }
+
+            function addSplitRow() {
+                const container = document.getElementById('splitContainer');
+                if (!container) {
+                    console.error('splitContainer not found!');
+                    return;
+                }
+                
+                // Hide empty message
+                const emptyMessage = document.getElementById('emptyMessage');
+                if (emptyMessage) {
+                    emptyMessage.style.display = 'none';
+                }
+                
+                const row = document.createElement('div');
+                row.className = 'flex gap-3 items-center bg-slate-50 p-3 rounded-lg border border-slate-200';
+                const uniqueId = `split-row-${rowCounter}`;
+                row.id = uniqueId;
+                row.dataset.rowIndex = rowCounter.toString();
+                
+                // Sử dụng index-based naming ngay từ đầu để bind vào List<decimal>
+                const currentIndex = rowCounter;
+                row.innerHTML = `
+                    <div class="flex-1">
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Lô ${currentIndex + 1}</label>
+                        <input type="number" name="quantities[${currentIndex}]" step="0.01" min="0.01" 
+                               max="${maxQuantity}" required
+                               class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 split-input font-mono"
+                               placeholder="Nhập số lượng..." />
+                        <div class="text-xs text-red-600 mt-1 hidden input-error"></div>
+                    </div>
+                    <button type="button" data-row-id="${uniqueId}" 
+                            class="mt-6 text-red-600 hover:text-red-900 transition remove-row-btn p-2 hover:bg-red-50 rounded"
+                            title="Xóa lô này">
+                        <i class="bi bi-trash text-xl"></i>
+                    </button>
+                `;
+                
+                container.appendChild(row);
+                
+                // Attach event listeners
+                const input = row.querySelector('.split-input');
+                if (input) {
+                    input.addEventListener('input', function() { validateInput(this); });
+                    input.addEventListener('change', function() { calculateTotal(); });
+                    // Focus on the new input
+                    setTimeout(() => input.focus(), 100);
+                }
+                
+                const removeBtn = row.querySelector('.remove-row-btn');
+                if (removeBtn) {
+                    removeBtn.addEventListener('click', function() {
+                        removeRow(uniqueId);
+                    });
+                }
+                
+                rowCounter++;
+                updateInputNames();
+                calculateTotal();
+            }
+
+            function updateInputNames() {
+                // Cập nhật lại tên của tất cả inputs với index tuần tự (0, 1, 2...)
+                const rows = document.querySelectorAll('[id^="split-row-"]');
+                rows.forEach((row, index) => {
+                    const input = row.querySelector('.split-input');
+                    const label = row.querySelector('label');
+                    if (input) {
+                        input.name = `quantities[${index}]`;
+                    }
+                    if (label) {
+                        label.textContent = `Lô ${index + 1}`;
+                    }
+                });
+            }
+
+            function removeRow(rowId) {
+                const row = document.getElementById(rowId);
+                if (row) {
+                    row.remove();
+                    updateInputNames();
+                    calculateTotal();
+                    
+                    // Show empty message if no rows left
+                    const container = document.getElementById('splitContainer');
+                    const rows = container.querySelectorAll('[id^="split-row-"]');
+                    const emptyMessage = document.getElementById('emptyMessage');
+                    if (rows.length === 0 && emptyMessage) {
+                        emptyMessage.style.display = 'block';
+                    }
+                }
+            }
+
+            function validateInput(input) {
+                const value = parseFloat(input.value) || 0;
+                const errorDiv = input.parentElement.querySelector('.input-error');
+                
+                if (value <= 0) {
+                    input.classList.add('border-red-500');
+                    if (errorDiv) {
+                        errorDiv.textContent = 'Số lượng phải lớn hơn 0';
+                        errorDiv.classList.remove('hidden');
+                    }
+                    return false;
+                }
+                
+                if (value > maxQuantity) {
+                    input.classList.add('border-red-500');
+                    if (errorDiv) {
+                        errorDiv.textContent = `Số lượng không được vượt quá ${formatQuantity(maxQuantity)}`;
+                        errorDiv.classList.remove('hidden');
+                    }
+                    return false;
+                }
+                
+                input.classList.remove('border-red-500');
+                if (errorDiv) {
+                    errorDiv.classList.add('hidden');
+                }
+                return true;
+            }
+
+        function calculateTotal() {
+            const inputs = document.querySelectorAll('.split-input');
+            let total = 0;
+            let hasError = false;
+            
+            inputs.forEach(input => {
+                const value = parseFloat(input.value) || 0;
+                if (value > 0) {
+                    if (!validateInput(input)) {
+                        hasError = true;
+                    }
+                    total += value;
+                }
+            });
+
+            const remaining = maxQuantity - total;
+            
+            document.getElementById('totalSplit').textContent = formatQuantity(total);
+            document.getElementById('remaining').textContent = formatQuantity(Math.max(0, remaining));
+
+            // Validation
+            const validationError = document.getElementById('validationError');
+            const validationErrorText = document.getElementById('validationErrorText');
+            
+            if (total > maxQuantity) {
+                validationError.classList.remove('hidden');
+                validationErrorText.textContent = `Tổng số lượng (${formatQuantity(total)}) vượt quá số lượng lô gốc (${formatQuantity(maxQuantity)})`;
+                hasError = true;
+            } else if (total <= 0) {
+                validationError.classList.remove('hidden');
+                validationErrorText.textContent = 'Vui lòng nhập ít nhất một số lượng hợp lệ';
+                hasError = true;
+            } else if (remaining < 0) {
+                validationError.classList.remove('hidden');
+                validationErrorText.textContent = 'Tổng số lượng vượt quá số lượng lô gốc';
+                hasError = true;
+            } else {
+                validationError.classList.add('hidden');
+            }
+
+            // Enable/disable submit button
+            const submitBtn = document.getElementById('submitBtn');
+            const hasInputs = inputs.length > 0;
+            const hasValidInputs = Array.from(inputs).some(input => {
+                const value = parseFloat(input.value) || 0;
+                return value > 0 && value <= maxQuantity;
+            });
+            const allValid = !hasError && total > 0 && total <= maxQuantity && remaining >= 0 && hasValidInputs;
+            submitBtn.disabled = !hasInputs || !allValid;
+            console.log('Submit button state:', { hasInputs, allValid, total, remaining, disabled: submitBtn.disabled });
+        }
+
+            // Form submit handler
+            const splitForm = document.getElementById('splitForm');
+            if (splitForm) {
+                splitForm.addEventListener('submit', function(e) {
+                    console.log('Form submit triggered');
+                    
+                    // Ensure input names are updated before submit
+                    updateInputNames();
+                    
+                    const inputs = document.querySelectorAll('.split-input');
+                    const quantities = Array.from(inputs)
+                        .map(input => {
+                            const value = parseFloat(input.value) || 0;
+                            console.log(`Input ${input.name}: ${input.value} -> ${value}`);
+                            return value;
+                        })
+                        .filter(q => q > 0);
+                    
+                    console.log('Quantities to submit:', quantities);
+                    console.log('Form data before submit:', new FormData(splitForm));
+                    
+                    if (quantities.length === 0) {
+                        e.preventDefault();
+                        alert('Vui lòng nhập ít nhất một số lượng hợp lệ');
+                        return false;
+                    }
+                    
+                    const total = quantities.reduce((sum, q) => sum + q, 0);
+                    if (total > maxQuantity) {
+                        e.preventDefault();
+                        alert(`Tổng số lượng (${formatQuantity(total)}) vượt quá số lượng lô gốc (${formatQuantity(maxQuantity)})`);
+                        return false;
+                    }
+                    
+                    console.log('Form validation passed, submitting...');
+                    
+                    // Show loading state
+                    const submitBtn = document.getElementById('submitBtn');
+                    const submitBtnText = document.getElementById('submitBtnText');
+                    const submitBtnLoading = document.getElementById('submitBtnLoading');
+                    if (submitBtn) submitBtn.disabled = true;
+                    if (submitBtnText) submitBtnText.classList.add('hidden');
+                    if (submitBtnLoading) submitBtnLoading.classList.remove('hidden');
+                });
+            } else {
+                console.error('Split form not found!');
+            }
+
+            // Attach event listener to "Add Row" button
+            const addRowBtn = document.getElementById('addRowBtn');
+            if (addRowBtn) {
+                addRowBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    console.log('Add row button clicked');
+                    addSplitRow();
+                });
+                console.log('Add row button event listener attached');
+            } else {
+                console.error('Add row button not found!');
+            }
+            
+            // Add initial row automatically
+            console.log('Adding initial split row...');
+            try {
+                addSplitRow();
+                console.log('Initial split row added successfully');
+            } catch (error) {
+                console.error('Error adding initial row:', error);
+            }
+            
+            console.log('Split form initialized successfully');
+        });
+    </script>
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+

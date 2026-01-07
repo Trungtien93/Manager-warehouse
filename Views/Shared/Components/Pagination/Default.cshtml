@@ -1,0 +1,56 @@
+@model MNBEMART.ViewComponents.PaginationViewModel
+@using Microsoft.AspNetCore.Mvc.Rendering
+
+@if (Model.TotalPages > 1)
+{
+    <div class="flex justify-end mt-4">
+        <nav class="flex items-center gap-1">
+            @{
+                int prev = System.Math.Max(1, Model.Page - 1);
+                int next = System.Math.Min(Model.TotalPages, Model.Page + 1);
+                
+                // Build route values dictionary from current query string
+                var routeDict = new Dictionary<string, object?>();
+                
+                // Add current query string parameters (except page and pageSize)
+                foreach (var kvp in ViewContext.HttpContext.Request.Query)
+                {
+                    if (kvp.Key != "page" && kvp.Key != "pageSize")
+                    {
+                        routeDict[kvp.Key] = kvp.Value.ToString();
+                    }
+                }
+                
+                // Add route values from Model if provided
+                if (Model.RouteValues != null)
+                {
+                    var props = Model.RouteValues.GetType().GetProperties();
+                    foreach (var prop in props)
+                    {
+                        var value = prop.GetValue(Model.RouteValues);
+                        if (value != null)
+                            routeDict[prop.Name] = value;
+                    }
+                }
+                
+                // Helper function to build URL with page number
+                string BuildUrl(int p)
+                {
+                    routeDict["page"] = p;
+                    routeDict["pageSize"] = Model.PageSize;
+                    return Url.Action(Model.ActionName, routeDict)!;
+                }
+            }
+            <a href="@BuildUrl(prev)"
+               class="px-3 py-1 text-sm rounded-md border border-slate-300 text-slate-600 hover:bg-slate-100 @(Model.Page==1?"opacity-40 pointer-events-none":"")">&laquo;</a>
+            @for (int i = 1; i <= Model.TotalPages; i++)
+            {
+                <a href="@BuildUrl(i)"
+                   class="px-3 py-1 text-sm rounded-md border @(i==Model.Page?"bg-blue-600 text-white border-blue-600":"border-slate-300 text-slate-600 hover:bg-slate-100")">@i</a>
+            }
+            <a href="@BuildUrl(next)"
+               class="px-3 py-1 text-sm rounded-md border border-slate-300 text-slate-600 hover:bg-slate-100 @(Model.Page==Model.TotalPages?"opacity-40 pointer-events-none":"")">&raquo;</a>
+        </nav>
+    </div>
+}
+

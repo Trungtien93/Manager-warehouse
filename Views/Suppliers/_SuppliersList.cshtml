@@ -1,0 +1,156 @@
+@model MNBEMART.Models.SupplierIndexVM
+@using System.Linq
+@{
+    Layout = null;
+    var q = Model.Q ?? "";
+    
+    // Calculate pagination display
+    var startItem = (Model.Page - 1) * Model.PageSize + 1;
+    var endItem = Math.Min(Model.Page * Model.PageSize, Model.TotalItems);
+}
+
+<!-- Tailwind + Bootstrap Icons -->
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+<!-- Success Message -->
+@if (ViewBag.SuccessMessage != null)
+{
+    <div class="mb-6 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm flex items-center gap-2">
+        <i class="bi bi-check-circle-fill"></i> @ViewBag.SuccessMessage
+    </div>
+}
+
+<!-- Table -->
+<div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+    <div class="overflow-x-auto max-h-[600px] relative">
+        <table class="min-w-full divide-y divide-slate-200">
+            <thead class="bg-slate-50 sticky top-0 z-10">
+                <tr>
+                    <th class="px-6 py-4 w-12">
+                        <input type="checkbox" class="rounded border-slate-300 text-green-600 focus:ring-green-500" id="selectAll" />
+                    </th>
+                    <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition">
+                        Tên <i class="bi bi-arrow-down-up text-green-600 ml-1"></i>
+                    </th>
+                    <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        SĐT
+                    </th>
+                    <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        Email
+                    </th>
+                    <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        Địa chỉ
+                    </th>
+                    <th class="px-6 py-4 text-right text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition">
+                        Số nguyên liệu <i class="bi bi-arrow-down-up text-green-600 ml-1"></i>
+                    </th>
+                    <th class="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider w-24">
+                        Thao tác
+                    </th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-slate-200">
+                @if (Model.Items != null && Model.Items.Any())
+                {
+                    @foreach (var s in Model.Items)
+                    {
+                        <tr class="hover:bg-slate-50 transition-colors duration-150">
+                            <td class="px-6 py-4">
+                                <input type="checkbox" class="row-checkbox rounded border-slate-300 text-green-600 focus:ring-green-500" value="@s.Id" />
+                            </td>
+                            <td class="px-6 py-4 font-semibold text-slate-900">
+                                @s.Name
+                            </td>
+                            <td class="px-6 py-4 text-slate-600">
+                                @s.PhoneNumber
+                            </td>
+                            <td class="px-6 py-4 text-slate-600">
+                                @s.Email
+                            </td>
+                            <td class="px-6 py-4 text-slate-600">
+                                @s.Address
+                            </td>
+                            <td class="px-6 py-4 text-right font-semibold text-slate-700">
+                                @((s.Materials?.Count ?? 0).ToString())
+                            </td>
+                            <td class="px-6 py-4 text-center">
+                                <div class="relative inline-block">
+                                    <button type="button" class="action-menu-btn p-2 hover:bg-slate-100 rounded-lg transition"
+                                            data-id="@s.Id">
+                                        <i class="bi bi-three-dots-vertical text-slate-600"></i>
+                                    </button>
+                                    <div class="action-menu hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-slate-200 z-10">
+                                        <button type="button" data-action="edit" data-id="@s.Id" 
+                                               onclick="loadEditModal(@s.Id)"
+                                               class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-green-50 hover:text-green-700 transition flex items-center gap-2">
+                                            <i class="bi bi-pencil text-green-600"></i> Sửa
+                                        </button>
+                                        <button type="button" data-action="view" data-id="@s.Id"
+                                               class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-green-50 hover:text-green-700 transition flex items-center gap-2">
+                                            <i class="bi bi-eye text-green-600"></i> Xem
+                                        </button>
+                                        <hr class="my-1">
+                                        <button type="button" data-action="delete" data-id="@s.Id"
+                                               class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition flex items-center gap-2 supplier-delete-btn">
+                                            <i class="bi bi-trash"></i> Xóa
+                                        </button>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="7" class="px-6 py-12 text-center">
+                            <div class="flex flex-col items-center justify-center">
+                                <i class="bi bi-inbox text-4xl text-slate-300 mb-3"></i>
+                                <p class="text-slate-500 font-medium">Chưa có nhà cung cấp nào</p>
+                                <p class="text-sm text-slate-400 mt-1">Hãy thêm nhà cung cấp mới để bắt đầu</p>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Pagination -->
+<div class="flex items-center justify-between mt-6">
+    <div class="text-sm text-slate-600">
+        Hiển thị <span class="font-semibold">@startItem-@endItem</span> trong tổng <span class="font-semibold">@Model.TotalItems</span>
+    </div>
+    <div class="flex items-center gap-2">
+        @if (Model.Page > 1)
+        {
+            <a href="@Url.Action("Index", new { page = Model.Page - 1, q = Model.Q, pageSize = Model.PageSize })"
+               class="px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition">
+                Trước
+            </a>
+        }
+        else
+        {
+            <button disabled class="px-4 py-2 text-sm font-semibold text-slate-400 bg-white border border-slate-200 rounded-lg opacity-50 cursor-not-allowed">
+                Trước
+            </button>
+        }
+        
+        @if (Model.Page < Model.TotalPages)
+        {
+            <a href="@Url.Action("Index", new { page = Model.Page + 1, q = Model.Q, pageSize = Model.PageSize })"
+               class="px-4 py-2 text-sm font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition">
+                Tiếp theo
+            </a>
+        }
+        else
+        {
+            <button disabled class="px-4 py-2 text-sm font-semibold text-slate-400 bg-slate-200 rounded-lg opacity-50 cursor-not-allowed">
+                Tiếp theo
+            </button>
+        }
+    </div>
+</div>
+

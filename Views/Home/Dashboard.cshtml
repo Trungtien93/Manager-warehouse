@@ -1,753 +1,762 @@
-@* @{
-    ViewData["Title"] = "Bảng điều khiển";
+@{
+    ViewData["Title"] = SR["Dashboard_Title"];
 
-    // ---- Numbers (an toàn nếu ViewBag chưa có) ----
-    int totalMaterials   = ViewBag.TotalMaterials   as int?    ?? 0;
-    int totalWarehouses  = ViewBag.TotalWarehouses  as int?    ?? 0;
-    int totalReceipts    = ViewBag.TotalReceipts    as int?    ?? 0;
-    int totalIssues      = ViewBag.TotalIssues      as int?    ?? 0;
-    int totalUsers       = ViewBag.TotalUsers       as int?    ?? 0;
-    decimal totalStocks  = ViewBag.TotalStocks      as decimal? ?? 0m;
+    // Numbers
+    int totalMaterials = ViewBag.TotalMaterials as int? ?? 0;
+    int totalWarehouses = ViewBag.TotalWarehouses as int? ?? 0;
+    int totalReceipts = ViewBag.TotalReceipts as int? ?? 0;
+    int totalIssues = ViewBag.TotalIssues as int? ?? 0;
+    int totalUsers = ViewBag.TotalUsers as int? ?? 0;
+    decimal totalStocks = ViewBag.TotalStocks as decimal? ?? 0m;
+    
+    // Lot tracking data
+    int totalLots = ViewBag.TotalLots as int? ?? 0;
+    int expiredLots = ViewBag.ExpiredLots as int? ?? 0;
+    int expiringSoonLots = ViewBag.ExpiringSoonLots as int? ?? 0;
+    var expiringLots = ViewBag.ExpiringLots as IEnumerable<dynamic>;
 
-    // Dữ liệu mở rộng (nếu controller có set)
-    var lowStock = ViewBag.LowStock as IEnumerable<dynamic>;            // { MaterialCode, MaterialName, Unit, WarehouseName, Qty, ReorderLevel }
-    var recentReceipts = ViewBag.RecentReceipts as IEnumerable<dynamic>; // { Id, Number, WarehouseName, CreatedAt, Status, SumQty, SumAmt }
-    var recentIssues   = ViewBag.RecentIssues   as IEnumerable<dynamic>; // { Id, Number, WarehouseName, CreatedAt, Status, SumQty, SumAmt }
-    var stockByWh      = ViewBag.StockByWarehouse as IEnumerable<dynamic>; // { WarehouseName, Qty }
-
-    string FQty(decimal v) => (v % 1m == 0m) ? ((long)v).ToString() : v.ToString("0.##");
-    Func<int, string> StatusBadge = s => s switch {
-        // ép về int để dùng chung cho nhập/xuất: Moi=0, DaXacNhan=1, DaNhapHang/DaXuatHang=2, DaHuy=3
-        0 => "badge bg-secondary",             // Mới
-        1 => "badge bg-warning text-dark",     // Đã xác nhận
-        2 => "badge bg-success",               // Đã nhập/đã xuất
-        3 => "badge bg-danger",                // Đã huỷ
-        _ => "badge bg-light text-dark"
-    };
-}
-
-<!-- Bootstrap Icons (nếu app bạn chưa add) -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-
-<style>
-  :root{
-    --ink:#0f172a; --muted:#64748b; --line:#e5e7eb; --card:#ffffff; --subtle:#f8fafc;
-    --blue:#3b82f6; --green:#10b981; --amber:#f59e0b; --rose:#ef4444; --violet:#8b5cf6; --cyan:#06b6d4;
-  }
-  .page-title{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:.75rem}
-  .page-title h2{margin:0;font-weight:800;color:var(--ink)}
-  .page-title .sub{color:var(--muted)}
-
-  .grid{display:grid;gap:.75rem}
-  .grid.cols-4{grid-template-columns:repeat(4, minmax(0,1fr))}
-  .grid.cols-3{grid-template-columns:repeat(3, minmax(0,1fr))}
-  @@media (max-width:1200px){ .grid.cols-4{grid-template-columns:repeat(2,1fr)} }
-  @@media (max-width:768px){ .grid.cols-4,.grid.cols-3{grid-template-columns:1fr} }
-
-  .metric{
-    background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px;
-    display:flex; align-items:center; gap:12px; box-shadow:0 1px 0 rgba(0,0,0,.03)
-  }
-  .metric .icon{
-    width:42px;height:42px;border-radius:10px; display:grid;place-items:center; color:#fff; font-size:1.15rem;
-  }
-  .metric .meta small{color:var(--muted);font-weight:700}
-  .metric .val{font-weight:900;font-size:1.35rem;color:var(--ink)}
-  .bg-blue{background:var(--blue)} .bg-green{background:var(--green)} .bg-amber{background:var(--amber)}
-  .bg-rose{background:var(--rose)} .bg-violet{background:var(--violet)} .bg-cyan{background:var(--cyan)}
-
-  .cardx{background:var(--card); border:1px solid var(--line); border-radius:14px; overflow:hidden}
-  .cardx .hd{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
-  .cardx .hd .title{margin:0;font-weight:800;color:var(--ink)}
-  .cardx .bd{padding:12px 14px}
-
-  .table-sm>:not(caption)>*>*{padding:.45rem .55rem}
-  .num{text-align:right}
-  .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
-  .muted{color:var(--muted)}
-  .progress{height:8px}
-  .badge{font-weight:800}
-</style>
-
-<div class="page-title">
-  <div>
-    <h2>Bảng điều khiển</h2>
-    <div class="sub">Tổng quan kho – @DateTime.Now</div>
-  </div>
-  <div class="d-none d-md-flex gap-2">
-    <a class="btn btn-outline-secondary btn-sm" asp-controller="StockReceipts" asp-action="Index">Phiếu nhập</a>
-    <a class="btn btn-outline-secondary btn-sm" asp-controller="StockIssues" asp-action="Index">Phiếu xuất</a>
-    <a class="btn btn-primary btn-sm" asp-controller="Materials" asp-action="Index">Quản lý nguyên liệu</a>
-  </div>
-</div>
-
-<!-- ===== Metrics ===== -->
-<div class="grid cols-4 mb-3">
-  <div class="metric">
-    <div class="icon bg-blue"><i class="bi bi-boxes"></i></div>
-    <div class="meta">
-      <small>Nguyên liệu</small>
-      <div class="val">@totalMaterials</div>
-    </div>
-  </div>
-  <div class="metric">
-    <div class="icon bg-violet"><i class="bi bi-buildings"></i></div>
-    <div class="meta">
-      <small>Kho hàng</small>
-      <div class="val">@totalWarehouses</div>
-    </div>
-  </div>
-  <div class="metric">
-    <div class="icon bg-green"><i class="bi bi-box-arrow-in-down"></i></div>
-    <div class="meta">
-      <small>Phiếu nhập</small>
-      <div class="val">@totalReceipts</div>
-    </div>
-  </div>
-  <div class="metric">
-    <div class="icon bg-amber"><i class="bi bi-box-arrow-up"></i></div>
-    <div class="meta">
-      <small>Phiếu xuất</small>
-      <div class="val">@totalIssues</div>
-    </div>
-  </div>
-</div>
-
-<div class="grid cols-4 mb-3">
-  <div class="metric">
-    <div class="icon bg-cyan"><i class="bi bi-archive"></i></div>
-    <div class="meta">
-      <small>Tổng SL tồn (tất cả kho)</small>
-      <div class="val">@FQty(totalStocks)</div>
-    </div>
-  </div>
-
-  @if (User.IsInRole("admin"))
-  {
-    <div class="metric">
-      <div class="icon bg-rose"><i class="bi bi-people"></i></div>
-      <div class="meta">
-        <small>Người dùng</small>
-        <div class="val">@totalUsers</div>
-      </div>
-    </div>
-  }
-
-  <!-- Quick actions -->
-  <div class="metric">
-    <div class="icon bg-blue"><i class="bi bi-plus-square"></i></div>
-    <div class="meta">
-      <small>Tạo nhanh</small>
-      <div class="d-flex gap-2">
-        <a class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#srCreateModal">Phiếu nhập</a>
-        <a class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#siCreateModal">Phiếu xuất</a>
-      </div>
-    </div>
-  </div>
-
-  <div class="metric">
-    <div class="icon bg-violet"><i class="bi bi-gear"></i></div>
-    <div class="meta">
-      <small>Thiết lập</small>
-      <div class="d-flex gap-2">
-        <a class="btn btn-sm btn-outline-secondary" asp-controller="Warehouses" asp-action="Index">Kho</a>
-        <a class="btn btn-sm btn-outline-secondary" asp-controller="Suppliers"  asp-action="Index">Nhà cung cấp</a>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ===== 2 Columns ===== -->
-<div class="row g-3">
-  <!-- Left: Low stock + Stock by warehouse -->
-  <div class="col-lg-7">
-    <div class="cardx mb-3">
-      <div class="hd">
-        <h6 class="title mb-0">Cảnh báo tồn thấp</h6>
-        <a class="small" asp-controller="Materials" asp-action="Index">Xem danh sách</a>
-      </div>
-      <div class="bd">
-        @if (lowStock != null && lowStock.Any())
-        {
-          <div class="table-responsive">
-            <table class="table table-sm align-middle">
-              <thead class="table-light">
-                <tr>
-                  <th style="width:120px">Mã</th>
-                  <th>Tên</th>
-                  <th style="width:100px">ĐVT</th>
-                  <th style="width:180px">Kho</th>
-                  <th class="num" style="width:110px">SL</th>
-                  <th class="num" style="width:120px">Mức đặt lại</th>
-                </tr>
-              </thead>
-              <tbody>
-                @foreach (var r in lowStock)
-                {
-                  decimal qty = (decimal)(r.Qty ?? 0m);
-                  decimal rl  = (decimal)(r.ReorderLevel ?? 0m);
-                  <tr>
-                    <td class="mono fw-semibold">@r.MaterialCode</td>
-                    <td>@r.MaterialName</td>
-                    <td>@r.Unit</td>
-                    <td>@r.WarehouseName</td>
-                    <td class="num"><span class="badge @(qty<=0? "bg-danger" : qty<=rl? "bg-warning text-dark" : "bg-success")">@FQty(qty)</span></td>
-                    <td class="num">@FQty(rl)</td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        }
-        else
-        {
-          <div class="text-muted">Không có cảnh báo tồn thấp.</div>
-        }
-      </div>
-    </div>
-
-    <div class="cardx">
-      <div class="hd">
-        <h6 class="title mb-0">Tổng tồn theo kho</h6>
-      </div>
-      <div class="bd">
-        @if (stockByWh != null && stockByWh.Any())
-        {
-          var maxQty = (decimal)stockByWh.Max(x => (decimal)(x.Qty ?? 0m));
-          foreach (var w in stockByWh)
-          {
-            decimal q = (decimal)(w.Qty ?? 0m);
-            var pct = maxQty > 0 ? Math.Round(q * 100m / maxQty, 2) : 0;
-            <div class="mb-2">
-              <div class="d-flex justify-content-between">
-                <div class="fw-semibold">@w.WarehouseName</div>
-                <div class="mono">@FQty(q)</div>
-              </div>
-              <div class="progress">
-                <div class="progress-bar bg-success" role="progressbar" style="width:@pct%"></div>
-              </div>
-            </div>
-          }
-        }
-        else
-        {
-          <div class="text-muted">Chưa có dữ liệu tồn theo kho.</div>
-        }
-      </div>
-    </div>
-  </div>
-
-  <!-- Right: Recent activity -->
-  <div class="col-lg-5">
-    <div class="cardx mb-3">
-      <div class="hd">
-        <h6 class="title mb-0">Phiếu nhập gần đây</h6>
-        <a class="small" asp-controller="StockReceipts" asp-action="Index">Tất cả</a>
-      </div>
-      <div class="bd">
-        @if (recentReceipts != null && recentReceipts.Any())
-        {
-          <div class="list-group list-group-flush">
-            @foreach (var r in recentReceipts)
-            {
-              int st = (int)(r.Status ?? 0);
-              <div class="list-group-item d-flex justify-content-between align-items-center">
-                <div>
-                  <div class="fw-bold mono">@r.Number</div>
-                  <div class="small muted">
-                    @r.WarehouseName • @(((DateTime)r.CreatedAt).ToString("dd/MM/yyyy HH:mm"))
-                  </div>
-                </div>
-                <div class="text-end">
-                  <div><span class="@StatusBadge(st)">@r.Status</span></div>
-                  <div class="small mono mt-1">@FQty((decimal)(r.SumQty ?? 0m)) • @(((decimal)(r.SumAmt ?? 0m)).ToString("n0")) đ</div>
-                </div>
-              </div>
-            }
-          </div>
-        }
-        else
-        {
-          <div class="text-muted">Chưa có phiếu nhập gần đây.</div>
-        }
-      </div>
-    </div>
-
-    <div class="cardx">
-      <div class="hd">
-        <h6 class="title mb-0">Phiếu xuất gần đây</h6>
-        <a class="small" asp-controller="StockIssues" asp-action="Index">Tất cả</a>
-      </div>
-      <div class="bd">
-        @if (recentIssues != null && recentIssues.Any())
-        {
-          <div class="list-group list-group-flush">
-            @foreach (var r in recentIssues)
-            {
-              int st = (int)(r.Status ?? 0);
-              <div class="list-group-item d-flex justify-content-between align-items-center">
-                <div>
-                  <div class="fw-bold mono">@r.Number</div>
-                  <div class="small muted">
-                    @r.WarehouseName • @(((DateTime)r.CreatedAt).ToString("dd/MM/yyyy HH:mm"))
-                  </div>
-                </div>
-                <div class="text-end">
-                  <div><span class="@StatusBadge(st)">@r.Status</span></div>
-                  <div class="small mono mt-1">@FQty((decimal)(r.SumQty ?? 0m)) • @(((decimal)(r.SumAmt ?? 0m)).ToString("n0")) đ</div>
-                </div>
-              </div>
-            }
-          </div>
-        }
-        else
-        {
-          <div class="text-muted">Chưa có phiếu xuất gần đây.</div>
-        }
-      </div>
-    </div>
-  </div>
-</div>
-@await Html.PartialAsync("~/Views/StockReceipts/_CreateModal.cshtml", new MNBEMART.Models.StockReceipt())
-@await Html.PartialAsync("~/Views/StockIssues/_CreateModal.cshtml",   new MNBEMART.Models.StockIssue())
-<!-- Footer small system info -->
-<div class="mt-3 text-muted small">
-  Phiên bản: 1.0.0 • Cập nhật: @DateTime.Now:dd/MM/yyyy
-</div> *@
-
-@* @{
-    ViewData["Title"] = "Bảng điều khiển";
-
-    // ---- Numbers (an toàn nếu ViewBag chưa có) ----
-    int totalMaterials   = ViewBag.TotalMaterials   as int?    ?? 0;
-    int totalWarehouses  = ViewBag.TotalWarehouses  as int?    ?? 0;
-    int totalReceipts    = ViewBag.TotalReceipts    as int?    ?? 0;
-    int totalIssues      = ViewBag.TotalIssues      as int?    ?? 0;
-    int totalUsers       = ViewBag.TotalUsers       as int?    ?? 0;
-    decimal totalStocks  = ViewBag.TotalStocks      as decimal? ?? 0m;
-
-    // Dữ liệu mở rộng (nếu controller có set)
-    var lowStock = ViewBag.LowStock as IEnumerable<dynamic>;            // { MaterialCode, MaterialName, Unit, WarehouseName, Qty, ReorderLevel }
-    var recentReceipts = ViewBag.RecentReceipts as IEnumerable<dynamic>; // { Id, Number, WarehouseName, CreatedAt, Status, SumQty, SumAmt }
-    var recentIssues   = ViewBag.RecentIssues   as IEnumerable<dynamic>; // { Id, Number, WarehouseName, CreatedAt, Status, SumQty, SumAmt }
-    var stockByWh      = ViewBag.StockByWarehouse as IEnumerable<dynamic>; // { WarehouseName, Qty }
-
-    // Helper functions
+    // Other data
+    var lowStock = ViewBag.LowStock as IEnumerable<dynamic>;
+    var recentReceipts = ViewBag.RecentReceipts as IEnumerable<dynamic>;
+    var recentIssues = ViewBag.RecentIssues as IEnumerable<dynamic>;
+    var stockByWh = ViewBag.StockByWarehouse as IEnumerable<dynamic>;
+    var stockoutPredictions = ViewBag.StockoutPredictions as IEnumerable<dynamic>;
+    
+    // Helpers
     string FQty(decimal v) => (v % 1m == 0m) ? ((long)v).ToString("N0") : v.ToString("N2");
     string FAmount(decimal v) => v.ToString("N0") + " đ";
     
     Func<int, string> StatusBadge = s => s switch {
-        0 => "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800",           // Mới
-        1 => "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800",     // Đã xác nhận  
-        2 => "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800",       // Đã nhập/đã xuất
-        3 => "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800",           // Đã huỷ
-        _ => "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
+        0 => "inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200",
+        1 => "inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200",
+        2 => "inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200",
+        3 => "inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200",
+        _ => "inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200"
     };
 
     Func<int, string> StatusText = s => s switch {
-        0 => "Mới",
-        1 => "Đã xác nhận", 
-        2 => "Hoàn thành",
-        3 => "Đã hủy",
+        0 => "Mới", 1 => "Đã xác nhận", 2 => "Hoàn thành", 3 => "Đã hủy",
         _ => "Không xác định"
     };
 
-    // Tính toán cho progress bar warehouse
-    var maxStock = stockByWh != null && stockByWh.Any() ? 
-        (decimal)stockByWh.Max(x => (decimal)(x.Qty ?? 0m)) : 0m;
+    var maxStock = stockByWh != null && stockByWh.Any() ? (decimal)stockByWh.Max(x => (decimal)(x.Qty ?? 0m)) : 0m;
 }
 
-<!-- Tailwind CSS -->
 <script src="https://cdn.tailwindcss.com"></script>
-<!-- Bootstrap Icons -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-<!-- Google Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-<script>
-tailwind.config = {
-  theme: {
-    extend: {
-      fontFamily: {
-        'sans': ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-        'mono': ['JetBrains Mono', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
-      },
-      colors: {
-        primary: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
-        }
-      },
-      animation: {
-        'fade-in': 'fadeIn 0.5s ease-in-out',
-        'slide-up': 'slideUp 0.5s ease-out',
-        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-      },
-      keyframes: {
-        fadeIn: {
-          '0%': { opacity: '0', transform: 'translateY(10px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)' }
-        },
-        slideUp: {
-          '0%': { opacity: '0', transform: 'translateY(20px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)' }
-        }
-      }
+<style>
+    * { 
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+        letter-spacing: -0.01em;
     }
-  }
-}
-</script>
+    
+    /* Enhanced Card Design with Glassmorphism */
+    .stat-card { 
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
+        backdrop-filter: blur(10px);
+        background: rgba(255, 255, 255, 0.95);
+    }
+    .stat-card:hover { 
+        transform: translateY(-6px) scale(1.02); 
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15), 
+                    0 0 0 1px rgba(255, 255, 255, 0.5);
+    }
+    
+    /* Professional Color Gradients */
+    .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .gradient-cyan { background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%); }
+    .gradient-emerald { background: linear-gradient(135deg, #059669 0%, #10b981 100%); }
+    .gradient-amber { background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%); }
+    .gradient-rose { background: linear-gradient(135deg, #e11d48 0%, #f43f5e 100%); }
+    
+    /* Refined Animations */
+    .animate-pulse-slow { animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    
+    @@keyframes slideInUp {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    @@keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    @@keyframes scaleIn {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
+    }
+    
+    .slide-in { 
+        animation: slideInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    
+    .fade-in {
+        animation: fadeIn 0.8s ease-out;
+    }
+    
+    .scale-in {
+        animation: scaleIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    
+    /* Enhanced Typography */
+    h1, h2, h3 {
+        font-weight: 700;
+        letter-spacing: -0.025em;
+    }
+    
+    /* Professional Shadows */
+    .shadow-professional {
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08),
+                    0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    }
+    
+    .shadow-professional-lg {
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+                    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+    
+    /* Smooth Transitions */
+    * {
+        transition-property: color, background-color, border-color, transform, box-shadow;
+        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        transition-duration: 200ms;
+    }
+    
+    /* Chart Container Enhancement */
+    .chart-container {
+        background: linear-gradient(135deg, rgba(249, 250, 251, 0.8) 0%, rgba(241, 245, 249, 0.6) 100%);
+        border-radius: 1rem;
+        padding: 1.5rem;
+    }
+</style>
 
-<div class="min-h-screen bg-gray-50">
+<div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 via-green-50/50 to-emerald-50/40 relative overflow-hidden fade-in">
+    <!-- Background Pattern -->
+    <div class="absolute inset-0 opacity-[0.03]" style="background-image: radial-gradient(circle at 2px 2px, rgb(0,0,0) 1px, transparent 0); background-size: 40px 40px;"></div>
+    
     <!-- Header -->
-    <div class="bg-white shadow-sm border-b border-gray-200">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center py-6">
-                <div>
-                    <h1 class="text-3xl font-bold text-gray-900 tracking-tight">
-                        Bảng điều khiển
-                    </h1>
-                    <p class="mt-1 text-sm text-gray-500 flex items-center">
-                        <i class="bi bi-clock mr-2"></i>
-                        Cập nhật lúc @DateTime.Now.ToString("dd/MM/yyyy HH:mm") • Tổng quan hệ thống quản lý kho
-                    </p>
+    <div class="bg-white/90 backdrop-blur-xl border-b border-slate-200/80 sticky top-0 z-50 shadow-professional-lg relative">
+        <div class="max-w-[1600px] mx-auto px-6 lg:px-8">
+            <div class="flex items-center justify-between h-24">
+                <div class="flex items-center space-x-5 scale-in">
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-green-500/40 ring-4 ring-green-500/10">
+                        <i class="bi bi-speedometer2 text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight leading-tight">@SR["Dashboard_Title"]</h1>
+                        <p class="text-sm text-slate-600 flex items-center gap-2 mt-1 font-medium">
+                            <i class="bi bi-calendar3 text-xs text-emerald-600"></i>
+                            <span>@DateTime.Now.ToString("dddd, dd/MM/yyyy HH:mm")</span>
+                        </p>
+                    </div>
                 </div>
-                <div class="hidden md:flex items-center space-x-3">
-                    <a asp-controller="StockReceipts" asp-action="Index" 
-                       class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 shadow-sm">
-                        <i class="bi bi-box-arrow-in-down mr-2"></i>
-                        Phiếu nhập
-                    </a>
-                    <a asp-controller="StockIssues" asp-action="Index" 
-                       class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 shadow-sm">
-                        <i class="bi bi-box-arrow-up mr-2"></i>
-                        Phiếu xuất
+                <div class="hidden lg:flex items-center gap-4">
+                    <a asp-controller="Reports" asp-action="Inventory" 
+                       class="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-slate-700 bg-white/80 backdrop-blur-sm border border-slate-200/80 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 transition-all shadow-professional hover:shadow-professional-lg hover:scale-105">
+                        <i class="bi bi-graph-up-arrow"></i>
+                        <span>@SR["Nav_Reports_Inventory"]</span>
                     </a>
                     <a asp-controller="Materials" asp-action="Index" 
-                       class="inline-flex items-center px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm">
-                        <i class="bi bi-boxes mr-2"></i>
-                        Quản lý nguyên liệu
+                       class="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 hover:from-green-700 hover:via-emerald-700 hover:to-teal-700 transition-all shadow-lg shadow-green-500/40 hover:shadow-xl hover:shadow-green-500/50 hover:scale-105">
+                        <i class="bi bi-boxes"></i>
+                        <span>@SR["Nav_Materials"]</span>
                     </a>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- Stats Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div class="max-w-[1600px] mx-auto px-6 lg:px-8 py-10 space-y-10 relative">
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 scale-in">
             <!-- Nguyên liệu -->
-            <div class="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200 hover:shadow-md transition-shadow duration-200">
-                <div class="p-6">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <div class="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
-                                <i class="bi bi-boxes text-white text-xl"></i>
-                            </div>
+            <a asp-controller="Materials" asp-action="Index" class="stat-card bg-white/95 backdrop-blur-sm rounded-2xl p-7 border border-slate-200/80 shadow-professional overflow-hidden relative group block cursor-pointer hover:opacity-90 transition-opacity">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-green-500/10 to-emerald-600/5 rounded-full blur-2xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+                <div class="relative z-10 flex items-start justify-between">
+                    <div class="space-y-4 flex-1">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg shadow-green-500/40 ring-4 ring-green-500/10">
+                            <i class="bi bi-boxes text-white text-2xl"></i>
                         </div>
-                        <div class="ml-4 flex-1">
-                            <dt class="text-sm font-medium text-gray-500 uppercase tracking-wide">
-                                Nguyên liệu
-                            </dt>
-                            <dd class="mt-1 text-3xl font-bold text-gray-900 font-mono">
-                                @totalMaterials.ToString("N0")
-                            </dd>
+                        <div>
+                            <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">@SR["Dashboard_Materials"]</p>
+                            <p class="text-5xl font-extrabold text-slate-900 tracking-tight leading-none">@totalMaterials.ToString("N0")</p>
                         </div>
                     </div>
+                    <div class="flex items-center justify-center w-11 h-11 rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 group-hover:from-green-100 group-hover:to-emerald-100 transition-all">
+                        <i class="bi bi-arrow-up-right text-green-600 text-xl"></i>
+                    </div>
                 </div>
-            </div>
+            </a>
 
             <!-- Kho hàng -->
-            <div class="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200 hover:shadow-md transition-shadow duration-200">
-                <div class="p-6">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <div class="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center">
-                                <i class="bi bi-buildings text-white text-xl"></i>
-                            </div>
+            <a asp-controller="Warehouses" asp-action="Index" class="stat-card bg-white/95 backdrop-blur-sm rounded-2xl p-7 border border-slate-200/80 shadow-professional overflow-hidden relative group block cursor-pointer hover:opacity-90 transition-opacity">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/10 to-indigo-600/5 rounded-full blur-2xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+                <div class="relative z-10 flex items-start justify-between">
+                    <div class="space-y-4 flex-1">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 shadow-lg shadow-purple-500/40 ring-4 ring-purple-500/10">
+                            <i class="bi bi-buildings text-white text-2xl"></i>
                         </div>
-                        <div class="ml-4 flex-1">
-                            <dt class="text-sm font-medium text-gray-500 uppercase tracking-wide">
-                                Kho hàng
-                            </dt>
-                            <dd class="mt-1 text-3xl font-bold text-gray-900 font-mono">
-                                @totalWarehouses.ToString("N0")
-                            </dd>
+                        <div>
+                            <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">@SR["Dashboard_Warehouses"]</p>
+                            <p class="text-5xl font-extrabold text-slate-900 tracking-tight leading-none">@totalWarehouses.ToString("N0")</p>
                         </div>
                     </div>
+                    <div class="flex items-center justify-center w-11 h-11 rounded-xl bg-gradient-to-br from-purple-50 to-indigo-50 group-hover:from-purple-100 group-hover:to-indigo-100 transition-all">
+                        <i class="bi bi-building text-purple-600 text-xl"></i>
+                    </div>
                 </div>
-            </div>
+            </a>
 
             <!-- Phiếu nhập -->
-            <div class="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200 hover:shadow-md transition-shadow duration-200">
-                <div class="p-6">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <div class="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
-                                <i class="bi bi-box-arrow-in-down text-white text-xl"></i>
-                            </div>
+            <a asp-controller="StockReceipts" asp-action="Index" class="stat-card bg-white/95 backdrop-blur-sm rounded-2xl p-7 border border-slate-200/80 shadow-professional overflow-hidden relative group block cursor-pointer hover:opacity-90 transition-opacity">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-500/10 to-teal-600/5 rounded-full blur-2xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+                <div class="relative z-10 flex items-start justify-between">
+                    <div class="space-y-4 flex-1">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/40 ring-4 ring-emerald-500/10">
+                            <i class="bi bi-arrow-down-circle text-white text-2xl"></i>
                         </div>
-                        <div class="ml-4 flex-1">
-                            <dt class="text-sm font-medium text-gray-500 uppercase tracking-wide">
-                                Phiếu nhập
-                            </dt>
-                            <dd class="mt-1 text-3xl font-bold text-gray-900 font-mono">
-                                @totalReceipts.ToString("N0")
-                            </dd>
+                        <div>
+                            <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">@SR["Dashboard_Receipts"]</p>
+                            <p class="text-5xl font-extrabold text-slate-900 tracking-tight leading-none">@totalReceipts.ToString("N0")</p>
                         </div>
                     </div>
+                    <div class="flex items-center justify-center w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 group-hover:from-emerald-100 group-hover:to-teal-100 transition-all">
+                        <i class="bi bi-graph-up text-emerald-600 text-xl"></i>
+                    </div>
                 </div>
-            </div>
+            </a>
 
             <!-- Phiếu xuất -->
-            <div class="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200 hover:shadow-md transition-shadow duration-200">
-                <div class="p-6">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <div class="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center">
-                                <i class="bi bi-box-arrow-up text-white text-xl"></i>
-                            </div>
+            <a asp-controller="StockIssues" asp-action="Index" class="stat-card bg-white/95 backdrop-blur-sm rounded-2xl p-7 border border-slate-200/80 shadow-professional overflow-hidden relative group block cursor-pointer hover:opacity-90 transition-opacity">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-orange-500/10 to-amber-600/5 rounded-full blur-2xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+                <div class="relative z-10 flex items-start justify-between">
+                    <div class="space-y-4 flex-1">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 shadow-lg shadow-orange-500/40 ring-4 ring-orange-500/10">
+                            <i class="bi bi-arrow-up-circle text-white text-2xl"></i>
                         </div>
-                        <div class="ml-4 flex-1">
-                            <dt class="text-sm font-medium text-gray-500 uppercase tracking-wide">
-                                Phiếu xuất
-                            </dt>
-                            <dd class="mt-1 text-3xl font-bold text-gray-900 font-mono">
-                                @totalIssues.ToString("N0")
-                            </dd>
+                        <div>
+                            <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">@SR["Dashboard_Issues"]</p>
+                            <p class="text-5xl font-extrabold text-slate-900 tracking-tight leading-none">@totalIssues.ToString("N0")</p>
                         </div>
                     </div>
+                    <div class="flex items-center justify-center w-11 h-11 rounded-xl bg-gradient-to-br from-orange-50 to-amber-50 group-hover:from-orange-100 group-hover:to-amber-100 transition-all">
+                        <i class="bi bi-graph-down text-orange-600 text-xl"></i>
+                    </div>
                 </div>
-            </div>
+            </a>
         </div>
 
-        <!-- Second Row Stats -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Inventory & Lot Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
             <!-- Tổng tồn kho -->
-            <div class="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200 hover:shadow-md transition-shadow duration-200">
-                <div class="p-6">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <div class="w-12 h-12 bg-cyan-500 rounded-lg flex items-center justify-center">
-                                <i class="bi bi-archive text-white text-xl"></i>
+            <a asp-controller="Stocks" asp-action="Index" class="stat-card rounded-2xl p-7 bg-white/95 backdrop-blur-sm border-2 border-cyan-200/60 shadow-professional overflow-hidden relative group block cursor-pointer hover:opacity-90 transition-opacity">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-cyan-500/10 to-sky-500/5 rounded-full blur-2xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+                <div class="relative z-10">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-4">
+                            <div class="flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500 to-sky-500 text-white shadow-lg shadow-cyan-500/40 ring-4 ring-cyan-500/10">
+                                <i class="bi bi-archive-fill text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold text-slate-500 uppercase tracking-widest">@SR["Dashboard_TotalStock"]</p>
+                                <p class="text-5xl font-extrabold text-slate-900 leading-tight mt-1">@FQty(totalStocks)</p>
                             </div>
                         </div>
-                        <div class="ml-4 flex-1">
-                            <dt class="text-sm font-medium text-gray-500 uppercase tracking-wide">
-                                Tổng tồn kho
-                            </dt>
-                            <dd class="mt-1 text-3xl font-bold text-gray-900 font-mono">
-                                @FQty(totalStocks)
-                            </dd>
-                        </div>
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-cyan-50 text-cyan-700 text-xs font-bold border border-cyan-200/80">
+                            <i class="bi bi-check2-circle"></i>
+                            Tổng
+                        </span>
                     </div>
+                    <div class="mt-3 text-xs text-slate-600 font-semibold">Tất cả kho hàng</div>
                 </div>
-            </div>
+            </a>
 
-            @if (User.IsInRole("admin"))
-            {
-                <!-- Người dùng -->
-                <div class="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200 hover:shadow-md transition-shadow duration-200">
-                    <div class="p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-12 h-12 bg-red-500 rounded-lg flex items-center justify-center">
-                                    <i class="bi bi-people text-white text-xl"></i>
-                                </div>
-                            </div>
-                            <div class="ml-4 flex-1">
-                                <dt class="text-sm font-medium text-gray-500 uppercase tracking-wide">
-                                    Người dùng
-                                </dt>
-                                <dd class="mt-1 text-3xl font-bold text-gray-900 font-mono">
-                                    @totalUsers.ToString("N0")
-                                </dd>
-                            </div>
+            <!-- Tổng số lô -->
+            <a asp-controller="Lots" asp-action="Index" class="stat-card bg-white/95 backdrop-blur-sm rounded-2xl p-7 border-2 border-green-200/60 shadow-professional overflow-hidden relative group block cursor-pointer hover:opacity-90 transition-opacity">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-green-500/10 to-emerald-500/5 rounded-full blur-2xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+                <div class="relative z-10">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200/60">
+                            <i class="bi bi-tags-fill text-green-600 text-2xl"></i>
                         </div>
+                        <span class="px-3 py-1.5 rounded-full bg-green-50 text-green-700 text-xs font-bold border border-green-200/80">@SR["Dashboard_TotalLots"]</span>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-slate-500 uppercase tracking-widest">@SR["Dashboard_TotalLots"]</p>
+                        <p class="text-5xl font-extrabold text-slate-900 mt-2 tracking-tight leading-tight">@totalLots.ToString("N0")</p>
+                        <p class="text-xs text-slate-600 mt-2 font-semibold">Đang quản lý</p>
                     </div>
                 </div>
-            }
+            </a>
 
-            <!-- Quick Actions -->
-            <div class="bg-gradient-to-br from-blue-50 to-indigo-100 overflow-hidden shadow-sm rounded-lg border border-blue-200">
-                <div class="p-6">
-                    <div class="flex items-start">
-                        <div class="flex-shrink-0">
-                            <div class="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
-                                <i class="bi bi-plus-square text-white text-xl"></i>
-                            </div>
+            <!-- Lô sắp hết hạn -->
+            <a asp-controller="Lots" asp-action="Index" asp-route-status="expiring" class="stat-card bg-gradient-to-br from-amber-50/95 to-orange-50/95 backdrop-blur-sm rounded-2xl p-7 border-2 border-amber-300/60 shadow-professional overflow-hidden relative group block cursor-pointer hover:opacity-90 transition-opacity">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-amber-500/10 to-orange-500/5 rounded-full blur-2xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+                <div class="relative z-10">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center justify-center w-14 h-14 rounded-2xl bg-amber-100/80 border-2 border-amber-300/60">
+                            <i class="bi bi-exclamation-triangle-fill text-amber-600 text-2xl animate-pulse-slow"></i>
                         </div>
-                        <div class="ml-4 flex-1">
-                            <dt class="text-sm font-medium text-blue-900 uppercase tracking-wide">
-                                Tạo nhanh
-                            </dt>
-                            <div class="mt-3 space-y-2">
-                                <button data-bs-toggle="modal" data-bs-target="#srCreateModal"
-                                        class="w-full inline-flex items-center justify-center px-3 py-2 border border-blue-300 text-sm leading-4 font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
-                                    <i class="bi bi-plus mr-2"></i>Phiếu nhập
-                                </button>
-                                <button data-bs-toggle="modal" data-bs-target="#siCreateModal"
-                                        class="w-full inline-flex items-center justify-center px-3 py-2 border border-blue-300 text-sm leading-4 font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
-                                    <i class="bi bi-plus mr-2"></i>Phiếu xuất
-                                </button>
-                            </div>
-                        </div>
+                        <span class="px-3 py-1.5 rounded-full bg-amber-100/80 text-amber-700 text-xs font-bold border border-amber-300/60">Cảnh báo</span>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-amber-700 uppercase tracking-widest">Sắp hết hạn</p>
+                        <p class="text-5xl font-extrabold text-amber-900 mt-2 tracking-tight leading-tight">@expiringSoonLots.ToString("N0")</p>
+                        <p class="text-xs text-amber-700 mt-2 font-semibold">≤ 30 ngày • Cần xử lý</p>
                     </div>
                 </div>
-            </div>
+            </a>
 
-            <!-- Settings -->
-            <div class="bg-gradient-to-br from-gray-50 to-slate-100 overflow-hidden shadow-sm rounded-lg border border-gray-200">
-                <div class="p-6">
-                    <div class="flex items-start">
-                        <div class="flex-shrink-0">
-                            <div class="w-12 h-12 bg-gray-600 rounded-lg flex items-center justify-center">
-                                <i class="bi bi-gear text-white text-xl"></i>
-                            </div>
+            <!-- Lô đã hết hạn -->
+            <a asp-controller="Lots" asp-action="Index" class="stat-card bg-gradient-to-br from-rose-50/95 to-red-50/95 backdrop-blur-sm rounded-2xl p-7 border-2 border-rose-300/60 shadow-professional overflow-hidden relative group block cursor-pointer hover:opacity-90 transition-opacity">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-rose-500/10 to-red-500/5 rounded-full blur-2xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+                <div class="relative z-10">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center justify-center w-14 h-14 rounded-2xl bg-rose-100/80 border-2 border-rose-300/60">
+                            <i class="bi bi-x-octagon-fill text-rose-600 text-2xl"></i>
                         </div>
-                        <div class="ml-4 flex-1">
-                            <dt class="text-sm font-medium text-gray-900 uppercase tracking-wide">
-                                Thiết lập
-                            </dt>
-                            <div class="mt-3 space-y-2">
-                                <a asp-controller="Warehouses" asp-action="Index"
-                                   class="w-full inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200">
-                                    <i class="bi bi-building mr-2"></i>Kho
-                                </a>
-                                <a asp-controller="Suppliers" asp-action="Index"
-                                   class="w-full inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200">
-                                    <i class="bi bi-truck mr-2"></i>Nhà cung cấp
-                                </a>
-                            </div>
-                        </div>
+                        <span class="px-3 py-1.5 rounded-full bg-rose-100/80 text-rose-700 text-xs font-bold border border-rose-300/60">Khẩn cấp</span>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-rose-700 uppercase tracking-widest">Đã hết hạn</p>
+                        <p class="text-5xl font-extrabold text-rose-900 mt-2 tracking-tight leading-tight">@expiredLots.ToString("N0")</p>
+                        <p class="text-xs text-rose-700 mt-2 font-semibold">Cần xử lý ngay</p>
                     </div>
                 </div>
-            </div>
+            </a>
         </div>
 
-        <!-- Main Content Grid -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Left Column (2/3) -->
-            <div class="lg:col-span-2 space-y-8">
-                <!-- Low Stock Alert -->
-                <div class="bg-white shadow-sm rounded-lg border border-gray-200">
-                    <div class="px-6 py-4 border-b border-gray-200">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center">
-                                <i class="bi bi-exclamation-triangle text-amber-500 text-xl mr-3"></i>
-                                <h3 class="text-lg font-semibold text-gray-900">Cảnh báo tồn kho thấp</h3>
-                            </div>
-                            <a asp-controller="Materials" asp-action="Index" 
-                               class="text-sm font-medium text-blue-600 hover:text-blue-500">
-                                Xem tất cả →
-                            </a>
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            <!-- Trends Chart -->
+            <div class="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl border border-slate-200/80 shadow-professional-lg overflow-hidden slide-in">
+                <div class="px-8 pt-6 pb-4 border-b border-slate-100 bg-gradient-to-r from-slate-50/50 to-transparent">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-xl font-extrabold text-slate-900 tracking-tight">Xu hướng nhập/xuất 30 ngày</h3>
+                            <p class="text-sm text-slate-600 mt-1.5 font-medium">Biểu đồ số lượng nhập và xuất kho</p>
+                        </div>
+                        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-100">
+                            <i class="bi bi-graph-up text-emerald-600 text-xl"></i>
                         </div>
                     </div>
-                    <div class="p-6">
-                        @if (lowStock != null && lowStock.Any())
-                        {
+                </div>
+                <div class="p-6">
+                    <div class="chart-container" style="height: 320px;">
+                        <canvas id="trendsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Distribution Chart -->
+            <div class="bg-white/95 backdrop-blur-sm rounded-2xl border border-slate-200/80 shadow-professional-lg overflow-hidden slide-in">
+                <div class="px-8 pt-6 pb-4 border-b border-slate-100 bg-gradient-to-r from-purple-50/50 to-transparent">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-xl font-extrabold text-slate-900 tracking-tight">Phân bố tồn kho</h3>
+                            <p class="text-sm text-slate-600 mt-1.5 font-medium">Theo kho hàng</p>
+                        </div>
+                        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-100">
+                            <i class="bi bi-pie-chart text-purple-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <div class="chart-container" style="height: 320px;">
+                        <canvas id="distributionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Main Content -->
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 items-stretch">
+            <!-- Left Column (2/3) -->
+            <div class="xl:col-span-2 space-y-8">
+                <!-- Stockout Predictions Alert (AI) -->
+                @if (stockoutPredictions != null && stockoutPredictions.Any())
+                {
+                    <div class="bg-white rounded-2xl border-l-4 border-orange-500 shadow-lg overflow-hidden slide-in">
+                        <div class="bg-gradient-to-r from-orange-50 via-amber-50 to-yellow-50 px-8 py-6 border-b border-orange-100">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-4">
+                                    <div class="flex items-center justify-center w-14 h-14 rounded-xl bg-orange-100 border-2 border-orange-200">
+                                        <i class="bi bi-robot text-orange-600 text-2xl"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-xl font-black text-orange-900">Cảnh báo thiếu hàng (AI dự đoán)</h3>
+                                        <p class="text-sm text-orange-700 font-medium mt-1">
+                                            <i class="bi bi-info-circle mr-1"></i>
+                                            Dự đoán dựa trên lịch sử xuất kho và tồn hiện tại
+                                        </p>
+                                    </div>
+                                </div>
+                                <a asp-controller="Materials" asp-action="Index" 
+                                   class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-orange-700 bg-white border-2 border-orange-200 hover:bg-orange-50 transition-all">
+                                    <span>Xem chi tiết</span>
+                                    <i class="bi bi-arrow-right"></i>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="p-8">
                             <div class="overflow-x-auto">
-                                <table class="min-w-full divide-y divide-gray-200">
-                                    <thead class="bg-gray-50">
-                                        <tr>
-                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã NL</th>
-                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tên nguyên liệu</th>
-                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ĐVT</th>
-                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kho</th>
-                                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">SL tồn</th>
-                                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Mức đặt lại</th>
+                                <table class="w-full">
+                                    <thead>
+                                        <tr class="border-b-2 border-slate-200">
+                                            <th class="pb-4 pr-6 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Nguyên liệu</th>
+                                            <th class="pb-4 px-6 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Kho</th>
+                                            <th class="pb-4 px-6 text-right text-xs font-bold text-slate-600 uppercase tracking-wider">Tồn hiện tại</th>
+                                            <th class="pb-4 px-6 text-right text-xs font-bold text-slate-600 uppercase tracking-wider">Dự đoán hết</th>
+                                            <th class="pb-4 px-6 text-right text-xs font-bold text-slate-600 uppercase tracking-wider">SL đề xuất</th>
+                                            <th class="pb-4 pl-6 text-center text-xs font-bold text-slate-600 uppercase tracking-wider">Mức độ</th>
                                         </tr>
                                     </thead>
-                                    <tbody class="bg-white divide-y divide-gray-200">
-                                        @foreach (var r in lowStock)
+                                    <tbody class="divide-y divide-slate-100">
+                                        @foreach (var pred in stockoutPredictions)
                                         {
-                                            decimal qty = (decimal)(r.Qty ?? 0m);
-                                            decimal rl = (decimal)(r.ReorderLevel ?? 0m);
-                                            
-                                            <tr class="hover:bg-gray-50 transition-colors duration-200">
-                                                <td class="px-4 py-4 whitespace-nowrap">
-                                                    <code class="font-mono text-sm font-semibold text-gray-900 bg-gray-100 px-2 py-1 rounded">
-                                                        @r.MaterialCode
-                                                    </code>
-                                                </td>
-                                                <td class="px-4 py-4">
-                                                    <div class="text-sm font-medium text-gray-900">@r.MaterialName</div>
-                                                </td>
-                                                <td class="px-4 py-4 whitespace-nowrap">
-                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                                        @r.Unit
-                                                    </span>
-                                                </td>
-                                                <td class="px-4 py-4 whitespace-nowrap">
-                                                    <div class="flex items-center text-sm text-gray-900">
-                                                        <i class="bi bi-building text-gray-400 mr-2"></i>
-                                                        @r.WarehouseName
+                                            var riskColor = pred.RiskLevel switch {
+                                                "Critical" => "bg-red-100 text-red-800 border-red-200",
+                                                "High" => "bg-orange-100 text-orange-800 border-orange-200",
+                                                "Medium" => "bg-amber-100 text-amber-800 border-amber-200",
+                                                _ => "bg-yellow-100 text-yellow-800 border-yellow-200"
+                                            };
+                                            var rowBg = pred.RiskLevel switch {
+                                                "Critical" => "bg-red-50/80",
+                                                "High" => "bg-orange-50/80",
+                                                "Medium" => "bg-amber-50/50",
+                                                _ => "bg-yellow-50/50"
+                                            };
+                                            <tr class="@rowBg hover:bg-opacity-100 transition-all group">
+                                                <td class="py-5 pr-6">
+                                                    <div>
+                                                        <p class="text-sm font-bold text-slate-900 group-hover:text-orange-600 transition-colors">@pred.MaterialName</p>
+                                                        <p class="text-xs text-slate-500 mt-1 font-mono">@pred.MaterialCode</p>
                                                     </div>
                                                 </td>
-                                                <td class="px-4 py-4 whitespace-nowrap text-right">
-                                                    @if (qty <= 0)
-                                                    {
-                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800">
-                                                            <i class="bi bi-x-circle mr-1"></i>@FQty(qty)
-                                                        </span>
-                                                    }
-                                                    else if (qty <= rl)
-                                                    {
-                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
-                                                            <i class="bi bi-exclamation-triangle mr-1"></i>@FQty(qty)
-                                                        </span>
-                                                    }
-                                                    else
-                                                    {
-                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-800">
-                                                            <i class="bi bi-check-circle mr-1"></i>@FQty(qty)
-                                                        </span>
-                                                    }
+                                                <td class="py-5 px-6">
+                                                    <span class="text-sm font-semibold text-slate-700">@pred.WarehouseName</span>
                                                 </td>
-                                                <td class="px-4 py-4 whitespace-nowrap text-right text-sm font-mono text-gray-600">
-                                                    @FQty(rl)
+                                                <td class="py-5 px-6 text-right">
+                                                    <span class="text-lg font-black text-slate-900">@FQty(pred.CurrentStock)</span>
+                                                </td>
+                                                <td class="py-5 px-6 text-right">
+                                                    <div>
+                                                        <span class="text-sm font-bold text-orange-600">@(pred.PredictedStockoutDate != null ? ((DateTime)pred.PredictedStockoutDate).ToString("dd/MM/yyyy") : "-")</span>
+                                                        <div class="text-xs text-slate-500">Còn @pred.DaysUntilStockout ngày</div>
+                                                    </div>
+                                                </td>
+                                                <td class="py-5 px-6 text-right">
+                                                    <span class="text-sm font-semibold text-green-600">@FQty(pred.RecommendedOrderQuantity)</span>
+                                                </td>
+                                                <td class="py-5 pl-6 text-center">
+                                                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border-2 @riskColor">
+                                                        @pred.RiskLevel
+                                                    </span>
                                                 </td>
                                             </tr>
                                         }
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <!-- Thông báo khi không có dữ liệu cảnh báo thiếu hàng -->
+                    <div class="bg-white rounded-2xl border-l-4 border-slate-300 shadow-sm p-6">
+                        <div class="flex items-center gap-4">
+                            <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-slate-100">
+                                <i class="bi bi-info-circle text-slate-400 text-2xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-slate-600">Cảnh báo thiếu hàng (AI dự đoán)</h3>
+                                <p class="text-sm text-slate-500 mt-1">
+                                    Hiện tại không có nguyên liệu nào có nguy cơ thiếu hàng trong 14 ngày tới.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                <!-- Expiring Lots Alert -->
+                @if (expiringLots != null && expiringLots.Any())
+                {
+                    <div class="bg-white rounded-2xl border-l-4 border-rose-500 shadow-lg overflow-hidden slide-in">
+                        <div class="bg-gradient-to-r from-rose-50 via-red-50 to-orange-50 px-8 py-6 border-b border-rose-100">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-4">
+                                    <div class="flex items-center justify-center w-14 h-14 rounded-xl bg-rose-100 border-2 border-rose-200">
+                                        <i class="bi bi-exclamation-triangle-fill text-rose-600 text-2xl animate-pulse-slow"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-xl font-black text-rose-900">Cảnh báo lô hàng hết hạn</h3>
+                                        <p class="text-sm text-rose-700 font-medium mt-1">
+                                            <i class="bi bi-info-circle mr-1"></i>
+                                            Xử lý ưu tiên theo nguyên tắc FEFO (First Expired, First Out)
+                                        </p>
+                                    </div>
+                                </div>
+                                <a asp-controller="Reports" asp-action="Inventory" 
+                                   class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-rose-700 bg-white border-2 border-rose-200 hover:bg-rose-50 transition-all">
+                                    <span>Xem báo cáo đầy đủ</span>
+                                    <i class="bi bi-arrow-right"></i>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="p-8">
+                            <div class="overflow-x-auto">
+                                <table class="w-full">
+                                    <thead>
+                                        <tr class="border-b-2 border-slate-200">
+                                            <th class="pb-4 pr-6 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Số lô</th>
+                                            <th class="pb-4 px-6 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Nguyên liệu</th>
+                                            <th class="pb-4 px-6 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Kho</th>
+                                            <th class="pb-4 px-6 text-right text-xs font-bold text-slate-600 uppercase tracking-wider">Số lượng</th>
+                                            <th class="pb-4 px-6 text-center text-xs font-bold text-slate-600 uppercase tracking-wider">NSX</th>
+                                            <th class="pb-4 px-6 text-center text-xs font-bold text-slate-600 uppercase tracking-wider">HSD</th>
+                                            <th class="pb-4 pl-6 text-center text-xs font-bold text-slate-600 uppercase tracking-wider">Trạng thái</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100">
+                                        @foreach (var lot in expiringLots)
+                                        {
+                                            int daysLeft = lot.DaysLeft;
+                                            var rowBg = daysLeft < 0 ? "bg-rose-50/80" : daysLeft <= 7 ? "bg-orange-50/80" : "bg-amber-50/50";
+                                            var badgeClass = daysLeft < 0 ? "bg-rose-100 text-rose-800 border-rose-200" : daysLeft <= 7 ? "bg-orange-100 text-orange-800 border-orange-200" : "bg-amber-100 text-amber-800 border-amber-200";
+                                            var statusText = daysLeft < 0 ? "Đã hết hạn" : $"Còn {daysLeft} ngày";
+                                            
+                                            <tr class="@rowBg hover:bg-opacity-100 transition-all group">
+                                                <td class="py-5 pr-6">
+                                                    <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 text-white shadow-sm">
+                                                        <i class="bi bi-tag-fill"></i>
+                                                        <span>@(lot.LotNumber ?? "N/A")</span>
+                                                    </span>
+                                                </td>
+                                                <td class="py-5 px-6">
+                                                    <div>
+                                                        <p class="text-sm font-bold text-slate-900 group-hover:text-green-600 transition-colors">@lot.MaterialName</p>
+                                                        <p class="text-xs text-slate-500 mt-1 font-mono">@lot.MaterialCode</p>
+                                                    </div>
+                                                </td>
+                                                <td class="py-5 px-6">
+                                                    <div class="flex items-center gap-2">
+                                                        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100">
+                                                            <i class="bi bi-building text-slate-600 text-sm"></i>
+                                                        </div>
+                                                        <span class="text-sm font-semibold text-slate-700">@lot.WarehouseName</span>
+                                                    </div>
+                                                </td>
+                                                <td class="py-5 px-6 text-right">
+                                                    <div class="inline-flex items-baseline gap-1">
+                                                        <span class="text-lg font-black text-slate-900">@FQty(lot.Quantity)</span>
+                                                        <span class="text-xs font-semibold text-slate-500">@lot.Unit</span>
+                                                    </div>
+                                                </td>
+                                                <td class="py-5 px-6 text-center">
+                                                    <span class="text-sm font-semibold text-slate-600">
+                                                        @(lot.ManufactureDate != null ? ((DateTime)lot.ManufactureDate).ToString("dd/MM/yy") : "-")
+                                                    </span>
+                                                </td>
+                                                <td class="py-5 px-6 text-center">
+                                                    <span class="text-sm font-black @(daysLeft < 0 ? "text-rose-600" : "text-slate-900")">
+                                                        @(lot.ExpiryDate != null ? ((DateTime)lot.ExpiryDate).ToString("dd/MM/yyyy") : "-")
+                                                    </span>
+                                                </td>
+                                                <td class="py-5 pl-6 text-center">
+                                                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border-2 @badgeClass">
+                                                        @if (daysLeft < 0)
+                                                        {
+                                                            <i class="bi bi-x-circle-fill"></i>
+                                                        }
+                                                        else
+                                                        {
+                                                            <i class="bi bi-exclamation-triangle-fill"></i>
+                                                        }
+                                                        <span>@statusText</span>
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                <!-- Low Stock Alert (compact) -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="px-6 py-5 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-transparent">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-100">
+                                    <i class="bi bi-exclamation-triangle text-amber-600"></i>
+                                </div>
+                                <h3 class="text-base font-black text-slate-900">Cảnh báo tồn kho thấp</h3>
+                            </div>
+                            <a asp-controller="Materials" asp-action="Index" class="text-xs font-bold text-green-600 hover:text-green-700">Xem tất cả →</a>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        @{ var lowTop = lowStock != null ? lowStock.Take(5) : null; }
+                        @if (lowTop != null && lowTop.Any())
+                        {
+                            <div class="space-y-2">
+                                @foreach (var r in lowTop)
+                                {
+                                    decimal qty = (decimal)(r.Qty ?? 0m);
+                                    var isZero = qty <= 0;
+                                    <div class="flex items-center justify-between py-2.5 px-3 rounded-lg border @((isZero ? "border-rose-200 bg-rose-50" : "border-slate-200 hover:border-slate-300"))">
+                                        <div class="flex items-center gap-3 min-w-0">
+                                            <span class="inline-block px-2.5 py-1 rounded-md text-[11px] font-bold bg-slate-900 text-white font-mono shrink-0">@r.MaterialCode</span>
+                                            <div class="min-w-0">
+                                                <p class="text-sm font-semibold text-slate-900 truncate">@r.MaterialName</p>
+                                                <p class="text-xs text-slate-500">Kho: <span class="font-semibold">@r.WarehouseName</span></p>
+                                            </div>
+                                        </div>
+                                        <div class="text-right shrink-0">
+                                            @if (isZero)
+                                            {
+                                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-rose-600 text-white text-xs font-bold">
+                                                    <i class="bi bi-x-circle-fill"></i> Hết
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <div class="inline-flex items-baseline gap-1 px-2.5 py-1 rounded-md bg-slate-50 border border-slate-200">
+                                                    <span class="text-base font-black text-slate-900">@FQty(qty)</span>
+                                                    <span class="text-[10px] font-bold text-slate-500 uppercase">@r.Unit</span>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
                         }
                         else
                         {
-                            <div class="text-center py-12">
-                                <i class="bi bi-check-circle text-green-500 text-4xl mb-4"></i>
-                                <h3 class="text-lg font-medium text-gray-900 mb-2">Tuyệt vời!</h3>
-                                <p class="text-gray-500">Tất cả nguyên liệu đều đủ tồn kho.</p>
+                            <div class="text-center py-10">
+                                <div class="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-emerald-100 mb-3">
+                                    <i class="bi bi-check-circle-fill text-emerald-600 text-2xl"></i>
+                                </div>
+                                <p class="text-sm text-slate-600 font-semibold">Tất cả nguyên liệu đều đủ tồn kho.</p>
                             </div>
                         }
                     </div>
                 </div>
+            </div>
 
-                <!-- Stock by Warehouse -->
-                <div class="bg-white shadow-sm rounded-lg border border-gray-200">
-                    <div class="px-6 py-4 border-b border-gray-200">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center">
-                                <i class="bi bi-bar-chart text-blue-500 text-xl mr-3"></i>
-                                <h3 class="text-lg font-semibold text-gray-900">Phân bố tồn kho theo kho</h3>
+            <!-- Right Column (1/3) -->
+            <div class="flex flex-col h-full space-y-8">
+                <!-- Nhập / Xuất gần đây (compact tabs) -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="px-6 py-5 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-transparent flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-100">
+                                <i class="bi bi-clock-history text-slate-600"></i>
                             </div>
-                            <div class="text-sm text-gray-500">
-                                Tổng: <span class="font-mono font-semibold">@FQty(totalStocks)</span>
-                            </div>
+                            <h3 class="text-base font-black text-slate-900">Nhập / Xuất gần đây</h3>
+                        </div>
+                        <div class="inline-flex bg-slate-100 rounded-lg p-1">
+                            <button type="button" class="tab-btn px-3 py-1.5 text-xs font-bold rounded-md bg-white text-slate-900 shadow" data-target="#tab-receipts">Phiếu nhập</button>
+                            <button type="button" class="tab-btn px-3 py-1.5 text-xs font-bold rounded-md text-slate-600 hover:text-slate-900" data-target="#tab-issues">Phiếu xuất</button>
                         </div>
                     </div>
                     <div class="p-6">
+                        @{ var receiptsTop = recentReceipts != null ? recentReceipts.Take(5) : null; var issuesTop = recentIssues != null ? recentIssues.Take(5) : null; }
+                        <div id="tab-receipts" class="tab-pane space-y-3">
+                            @if (receiptsTop != null && receiptsTop.Any())
+                            {
+                                foreach (var r in receiptsTop)
+                                {
+                                    int st = (int)(r.Status ?? 0);
+                                    <div class="flex items-center justify-between p-3 rounded-lg border border-slate-100 hover:border-slate-200">
+                                        <div class="flex items-center gap-3">
+                                            <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-100">
+                                                <i class="bi bi-arrow-down-circle-fill text-emerald-600 text-sm"></i>
+                                            </div>
+                                            <div>
+                                                <div class="flex items-center gap-2">
+                                                    <h4 class="text-sm font-bold text-slate-900 font-mono">@r.Number</h4>
+                                                    <span class="@StatusBadge(st)">@StatusText(st)</span>
+                                                </div>
+                                                <p class="text-xs text-slate-500 mt-1"><i class="bi bi-building"></i> <span class="font-semibold">@r.WarehouseName</span> • <i class="bi bi-calendar3"></i> @(((DateTime)r.CreatedAt).ToString("dd/MM/yyyy HH:mm"))</p>
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="text-xs font-semibold text-slate-500"><i class="bi bi-box"></i> @FQty((decimal)(r.SumQty ?? 0m))</div>
+                                            <div class="text-sm font-black text-emerald-600">@FAmount((decimal)(r.SumAmt ?? 0m))</div>
+                                        </div>
+                                    </div>
+                                }
+                                <div class="pt-2 text-right">
+                                    <a asp-controller="StockReceipts" asp-action="Index" class="text-xs font-bold text-green-600 hover:text-green-700">Xem tất cả →</a>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="text-center py-8 text-slate-500 text-sm">Chưa có phiếu nhập.</div>
+                            }
+                        </div>
+
+                        <div id="tab-issues" class="tab-pane hidden space-y-3">
+                            @if (issuesTop != null && issuesTop.Any())
+                            {
+                                foreach (var r in issuesTop)
+                                {
+                                    int st = (int)(r.Status ?? 0);
+                                    <div class="flex items-center justify-between p-3 rounded-lg border border-slate-100 hover:border-slate-200">
+                                        <div class="flex items-center gap-3">
+                                            <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-orange-100">
+                                                <i class="bi bi-arrow-up-circle-fill text-orange-600 text-sm"></i>
+                                            </div>
+                                            <div>
+                                                <div class="flex items-center gap-2">
+                                                    <h4 class="text-sm font-bold text-slate-900 font-mono">@r.Number</h4>
+                                                    <span class="@StatusBadge(st)">@StatusText(st)</span>
+                                                </div>
+                                                <p class="text-xs text-slate-500 mt-1"><i class="bi bi-building"></i> <span class="font-semibold">@r.WarehouseName</span> • <i class="bi bi-calendar3"></i> @(((DateTime)r.CreatedAt).ToString("dd/MM/yyyy HH:mm"))</p>
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="text-xs font-semibold text-slate-500"><i class="bi bi-box"></i> @FQty((decimal)(r.SumQty ?? 0m))</div>
+                                            <div class="text-sm font-black text-orange-600">@FAmount((decimal)(r.SumAmt ?? 0m))</div>
+                                        </div>
+                                    </div>
+                                }
+                                <div class="pt-2 text-right">
+                                    <a asp-controller="StockIssues" asp-action="Index" class="text-xs font-bold text-green-600 hover:text-green-700">Xem tất cả →</a>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="text-center py-8 text-slate-500 text-sm">Chưa có phiếu xuất.</div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stock by Warehouse -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex-1 flex flex-col">
+                    <div class="px-8 py-6 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-transparent">
+                        <div class="flex items-center gap-4">
+                            <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-blue-100">
+                                <i class="bi bi-bar-chart-fill text-green-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-black text-slate-900">Phân bố tồn kho theo kho</h3>
+                                <p class="text-sm text-slate-500 font-medium mt-0.5">Biểu đồ tồn kho trong từng kho hàng</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-8 flex-1">
                         @if (stockByWh != null && stockByWh.Any())
                         {
                             <div class="space-y-6">
@@ -756,158 +765,32 @@ tailwind.config = {
                                     decimal q = (decimal)(w.Qty ?? 0m);
                                     var pct = maxStock > 0 ? Math.Round(q * 100m / maxStock, 1) : 0;
                                     
-                                    <div class="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors duration-200">
-                                        <div class="flex items-center justify-between mb-2">
-                                            <div class="flex items-center">
-                                                <i class="bi bi-building text-gray-400 mr-3"></i>
-                                                <span class="font-semibold text-gray-900">@w.WarehouseName</span>
+                                    <div class="group">
+                                        <div class="flex items-center justify-between mb-3">
+                                            <div class="flex items-center gap-3">
+                                                <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-md">
+                                                    <i class="bi bi-building text-white"></i>
+                                                </div>
+                                                <span class="text-base font-bold text-slate-900 group-hover:text-green-600 transition-colors">@w.WarehouseName</span>
                                             </div>
-                                            <span class="font-mono text-lg font-bold text-gray-900">@FQty(q)</span>
+                                            <div class="text-right">
+                                                <p class="text-2xl font-black text-slate-900">@FQty(q)</p>
+                                                <p class="text-xs font-bold text-slate-500 mt-0.5">@pct% tổng tồn</p>
+                                            </div>
                                         </div>
-                                        <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
-                                            <div class="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-700 ease-out" 
+                                        <div class="relative w-full h-4 bg-slate-100 rounded-full overflow-hidden">
+                                            <div class="absolute inset-0 bg-gradient-to-r from-green-500 via-emerald-500 to-green-600 rounded-full transition-all duration-1000 ease-out shadow-lg" 
                                                  style="width: @pct%"></div>
                                         </div>
-                                        <div class="text-sm text-gray-500">
-                                            <span class="font-medium">@pct%</span> của tổng tồn kho
-                                        </div>
                                     </div>
                                 }
                             </div>
                         }
                         else
                         {
-                            <div class="text-center py-12">
-                                <i class="bi bi-inbox text-gray-400 text-4xl mb-4"></i>
-                                <h3 class="text-lg font-medium text-gray-900 mb-2">Chưa có dữ liệu</h3>
-                                <p class="text-gray-500">Chưa có thông tin tồn kho theo kho.</p>
-                            </div>
-                        }
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right Column (1/3) -->
-            <div class="space-y-8">
-                <!-- Recent Receipts -->
-                <div class="bg-white shadow-sm rounded-lg border border-gray-200">
-                    <div class="px-6 py-4 border-b border-gray-200">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center">
-                                <i class="bi bi-box-arrow-in-down text-green-500 text-xl mr-3"></i>
-                                <h3 class="text-lg font-semibold text-gray-900">Phiếu nhập gần đây</h3>
-                            </div>
-                            <a asp-controller="StockReceipts" asp-action="Index" 
-                               class="text-sm font-medium text-blue-600 hover:text-blue-500">
-                                Xem tất cả →
-                            </a>
-                        </div>
-                    </div>
-                    <div class="p-6">
-                        @if (recentReceipts != null && recentReceipts.Any())
-                        {
-                            <div class="space-y-4">
-                                @foreach (var r in recentReceipts)
-                                {
-                                    int st = (int)(r.Status ?? 0);
-                                    <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors duration-200">
-                                        <div class="flex items-start justify-between">
-                                            <div class="flex-1">
-                                                <div class="flex items-center mb-2">
-                                                    <i class="bi bi-receipt text-gray-400 mr-2"></i>
-                                                    <h4 class="font-mono font-bold text-gray-900">@r.Number</h4>
-                                                </div>
-                                                <div class="flex items-center text-sm text-gray-500 mb-2">
-                                                    <i class="bi bi-building mr-1"></i>
-                                                    <span class="mr-3">@r.WarehouseName</span>
-                                                    <i class="bi bi-calendar3 mr-1"></i>
-                                                    <span>@(((DateTime)r.CreatedAt).ToString("dd/MM/yyyy HH:mm"))</span>
-                                                </div>
-                                                <div class="flex items-center justify-between">
-                                                    <span class="@StatusBadge(st)">@StatusText(st)</span>
-                                                    <div class="text-right">
-                                                        <div class="text-sm font-mono text-gray-600">
-                                                            <i class="bi bi-box mr-1"></i>@FQty((decimal)(r.SumQty ?? 0m))
-                                                        </div>
-                                                        <div class="text-sm font-mono font-bold text-gray-900">
-                                                            @FAmount((decimal)(r.SumAmt ?? 0m))
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                }
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="text-center py-8">
-                                <i class="bi bi-inbox text-gray-400 text-3xl mb-3"></i>
-                                <h3 class="text-base font-medium text-gray-900 mb-1">Chưa có phiếu nhập</h3>
-                                <p class="text-sm text-gray-500">Chưa có phiếu nhập gần đây.</p>
-                            </div>
-                        }
-                    </div>
-                </div>
-
-                <!-- Recent Issues -->
-                <div class="bg-white shadow-sm rounded-lg border border-gray-200">
-                    <div class="px-6 py-4 border-b border-gray-200">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center">
-                                <i class="bi bi-box-arrow-up text-orange-500 text-xl mr-3"></i>
-                                <h3 class="text-lg font-semibold text-gray-900">Phiếu xuất gần đây</h3>
-                            </div>
-                            <a asp-controller="StockIssues" asp-action="Index" 
-                               class="text-sm font-medium text-blue-600 hover:text-blue-500">
-                                Xem tất cả →
-                            </a>
-                        </div>
-                    </div>
-                    <div class="p-6">
-                        @if (recentIssues != null && recentIssues.Any())
-                        {
-                            <div class="space-y-4">
-                                @foreach (var r in recentIssues)
-                                {
-                                    int st = (int)(r.Status ?? 0);
-                                    <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors duration-200">
-                                        <div class="flex items-start justify-between">
-                                            <div class="flex-1">
-                                                <div class="flex items-center mb-2">
-                                                    <i class="bi bi-receipt-cutoff text-gray-400 mr-2"></i>
-                                                    <h4 class="font-mono font-bold text-gray-900">@r.Number</h4>
-                                                </div>
-                                                <div class="flex items-center text-sm text-gray-500 mb-2">
-                                                    <i class="bi bi-building mr-1"></i>
-                                                    <span class="mr-3">@r.WarehouseName</span>
-                                                    <i class="bi bi-calendar3 mr-1"></i>
-                                                    <span>@(((DateTime)r.CreatedAt).ToString("dd/MM/yyyy HH:mm"))</span>
-                                                </div>
-                                                <div class="flex items-center justify-between">
-                                                    <span class="@StatusBadge(st)">@StatusText(st)</span>
-                                                    <div class="text-right">
-                                                        <div class="text-sm font-mono text-gray-600">
-                                                            <i class="bi bi-box mr-1"></i>@FQty((decimal)(r.SumQty ?? 0m))
-                                                        </div>
-                                                        <div class="text-sm font-mono font-bold text-gray-900">
-                                                            @FAmount((decimal)(r.SumAmt ?? 0m))
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                }
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="text-center py-8">
-                                <i class="bi bi-inbox text-gray-400 text-3xl mb-3"></i>
-                                <h3 class="text-base font-medium text-gray-900 mb-1">Chưa có phiếu xuất</h3>
-                                <p class="text-sm text-gray-500">Chưa có phiếu xuất gần đây.</p>
+                            <div class="text-center py-16">
+                                <i class="bi bi-inbox text-slate-300 text-5xl mb-4"></i>
+                                <p class="text-slate-500">Chưa có dữ liệu tồn kho.</p>
                             </div>
                         }
                     </div>
@@ -916,19 +799,22 @@ tailwind.config = {
         </div>
 
         <!-- Footer -->
-        <div class="mt-12 border-t border-gray-200 pt-8">
-            <div class="text-center">
-                <div class="text-gray-900 font-semibold mb-2">
-                    <i class="bi bi-shield-check text-green-500 mr-2"></i>
-                    Hệ thống quản lý kho MNBEMART
+        <div class="mt-12 pt-8 border-t-2 border-slate-200">
+            <div class="text-center space-y-3">
+                <div class="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-100">
+                    <i class="bi bi-shield-check-fill text-emerald-600 text-2xl"></i>
+                    <span class="text-base font-black text-slate-900">Hệ thống quản lý kho MNBEMART</span>
                 </div>
-                <div class="text-sm text-gray-500 space-x-4">
-                    <span>Phiên bản 2.0.0</span>
-                    <span>•</span>
+                <div class="flex items-center justify-center gap-6 text-sm text-slate-500">
+                    <span class="font-semibold">Phiên bản 2.0.0</span>
+                    <span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
                     <span>Cập nhật: @DateTime.Now.ToString("dd/MM/yyyy")</span>
-                    <span>•</span>
-                    <span class="inline-flex items-center text-green-600">
-                        <i class="bi bi-circle-fill text-xs mr-1"></i>
+                    <span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+                    <span class="inline-flex items-center gap-2 text-emerald-600 font-semibold">
+                        <span class="relative flex h-2.5 w-2.5">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                        </span>
                         Hệ thống hoạt động ổn định
                     </span>
                 </div>
@@ -937,573 +823,29 @@ tailwind.config = {
     </div>
 </div>
 
-<!-- Include Modals -->
-@await Html.PartialAsync("~/Views/StockReceipts/_CreateModal.cshtml", new MNBEMART.Models.StockReceipt())
-@await Html.PartialAsync("~/Views/StockIssues/_CreateModal.cshtml", new MNBEMART.Models.StockIssue())
-
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Add loading animation to stats cards
-    const statsCards = document.querySelectorAll('[data-animate="counter"]');
-    
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const target = entry.target;
-                const finalValue = parseInt(target.textContent.replace(/,/g, ''));
-                animateCounter(target, 0, finalValue, 1500);
-                observer.unobserve(target);
-            }
-        });
+document.addEventListener('DOMContentLoaded', function () {
+  const btns = document.querySelectorAll('.tab-btn');
+  btns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.getAttribute('data-target');
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.add('hidden'));
+      const pane = document.querySelector(target);
+      if (pane) pane.classList.remove('hidden');
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('bg-white','text-slate-900','shadow'));
+      btn.classList.add('bg-white','text-slate-900','shadow');
     });
-
-    // Animate counters when in view
-    function animateCounter(element, start, end, duration) {
-        const startTime = performance.now();
-        const animate = (currentTime) => {
-            const elapsed = currentTime - startTime;
-            const progress = Math.min(elapsed / duration, 1);
-            
-            const currentValue = Math.floor(start + (end - start) * easeOutCubic(progress));
-            element.textContent = currentValue.toLocaleString();
-            
-            if (progress < 1) {
-                requestAnimationFrame(animate);
-            }
-        };
-        requestAnimationFrame(animate);
-    }
-
-    // Easing function
-    function easeOutCubic(t) {
-        return 1 - Math.pow(1 - t, 3);
-    }
-
-    // Add hover effects to cards
-    const cards = document.querySelectorAll('.bg-white, .bg-gradient-to-br');
-    cards.forEach(card => {
-        card.addEventListener('mouseenter', function() {
-            this.style.transform = 'translateY(-2px)';
-            this.style.boxShadow = '0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)';
-        });
-        
-        card.addEventListener('mouseleave', function() {
-            this.style.transform = 'translateY(0)';
-            this.style.boxShadow = '';
-        });
-    });
-
-    // Add pulse animation to status indicators
-    const statusBadges = document.querySelectorAll('.bg-green-100, .bg-yellow-100, .bg-red-100');
-    statusBadges.forEach(badge => {
-        if (badge.classList.contains('bg-red-100') || badge.classList.contains('bg-yellow-100')) {
-            badge.classList.add('animate-pulse');
-        }
-    });
-
-    // Progressive loading animation for tables
-    const tableRows = document.querySelectorAll('tbody tr');
-    tableRows.forEach((row, index) => {
-        row.style.opacity = '0';
-        row.style.transform = 'translateY(10px)';
-        
-        setTimeout(() => {
-            row.style.transition = 'all 0.3s ease-out';
-            row.style.opacity = '1';
-            row.style.transform = 'translateY(0)';
-        }, index * 100);
-    });
-
-    // Add subtle animations to progress bars
-    const progressBars = document.querySelectorAll('.bg-gradient-to-r');
-    progressBars.forEach(bar => {
-        const width = bar.style.width;
-        bar.style.width = '0%';
-        
-        setTimeout(() => {
-            bar.style.transition = 'width 1.5s cubic-bezier(0.4, 0, 0.2, 1)';
-            bar.style.width = width;
-        }, 500);
-    });
-
-    // Auto-refresh functionality (optional)
-    let refreshTimer;
-    const enableAutoRefresh = false; // Set to true to enable
-
-    if (enableAutoRefresh) {
-        refreshTimer = setInterval(() => {
-            if (document.visibilityState === 'visible') {
-                // Only refresh if page is visible
-                console.log('Auto-refreshing dashboard...');
-                // window.location.reload();
-            }
-        }, 300000); // 5 minutes
-    }
-
-    // Cleanup on page unload
-    window.addEventListener('beforeunload', () => {
-        if (refreshTimer) {
-            clearInterval(refreshTimer);
-        }
-    });
-
-    // Add keyboard shortcuts
-    document.addEventListener('keydown', function(e) {
-        // Ctrl/Cmd + R for manual refresh
-        if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
-            e.preventDefault();
-            window.location.reload();
-        }
-        
-        // Ctrl/Cmd + N for new receipt
-        if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
-            e.preventDefault();
-            const modal = document.querySelector('#srCreateModal');
-            if (modal && typeof bootstrap !== 'undefined') {
-                new bootstrap.Modal(modal).show();
-            }
-        }
-    });
-
-    // Toast notification system (if needed)
-    function showToast(message, type = 'info') {
-        const toast = document.createElement('div');
-        toast.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg transition-all duration-300 transform translate-x-full ${
-            type === 'success' ? 'bg-green-500 text-white' :
-            type === 'error' ? 'bg-red-500 text-white' :
-            type === 'warning' ? 'bg-yellow-500 text-white' :
-            'bg-blue-500 text-white'
-        }`;
-        toast.innerHTML = `
-            <div class="flex items-center">
-                <i class="bi bi-${type === 'success' ? 'check-circle' : type === 'error' ? 'x-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'} mr-2"></i>
-                <span>${message}</span>
-                <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">
-                    <i class="bi bi-x"></i>
-                </button>
-            </div>
-        `;
-        
-        document.body.appendChild(toast);
-        
-        // Slide in
-        setTimeout(() => {
-            toast.style.transform = 'translateX(0)';
-        }, 100);
-        
-        // Auto remove after 5 seconds
-        setTimeout(() => {
-            toast.style.transform = 'translateX(full)';
-            setTimeout(() => toast.remove(), 300);
-        }, 5000);
-    }
-
-    // Example usage: showToast('Dữ liệu đã được cập nhật', 'success');
+  });
 });
 </script>
 
-<style>
-/* Additional custom styles for enhanced UX */
-.transition-all {
-    transition-property: all;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: 200ms;
+<!-- Chart.js Library -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<!-- Dashboard Charts -->
+<script src="~/js/dashboard-charts.js" asp-append-version="true"></script>
+
+@if (!User.IsInRole("Admin"))
+{
+    @await Html.PartialAsync("~/Views/StockReceipts/_CreateModal.cshtml", new MNBEMART.Models.StockReceipt())
+    @await Html.PartialAsync("~/Views/StockIssues/_CreateModal.cshtml", new MNBEMART.Models.StockIssue())
 }
-
-/* Smooth scroll behavior */
-html {
-    scroll-behavior: smooth;
-}
-
-/* Custom scrollbar for webkit browsers */
-::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-}
-
-::-webkit-scrollbar-track {
-    background: #f1f5f9;
-}
-
-::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
-}
-
-/* Loading state for dynamic content */
-.loading {
-    position: relative;
-    overflow: hidden;
-}
-
-.loading::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-    animation: loading-shimmer 1.5s infinite;
-}
-
-@@keyframes loading-shimmer {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
-}
-
-/* Focus styles for accessibility */
-.focus\:ring-2:focus {
-    outline: 2px solid transparent;
-    outline-offset: 2px;
-}
-
-/* Print styles */
-@@media print {
-    .no-print {
-        display: none !important;
-    }
-    
-    .bg-white {
-        background: white !important;
-    }
-    
-    .text-gray-500, .text-gray-600 {
-        color: #000 !important;
-    }
-    
-    .shadow-sm, .shadow-md {
-        box-shadow: none !important;
-        border: 1px solid #e5e7eb !important;
-    }
-}
-
-/* Dark mode support (if needed) */
-@@media (prefers-color-scheme: dark) {
-    /* Add dark mode styles here if needed */
-}
-</style> *@
-@{
-    ViewData["Title"] = "Bảng điều khiển hệ thống";
-    var totalMaterials  = (int)(ViewBag.TotalMaterials ?? 0);
-    var totalWarehouses = (int)(ViewBag.TotalWarehouses ?? 0);
-    var totalReceipts   = (int)(ViewBag.TotalReceipts ?? 0);
-    var totalIssues     = (int)(ViewBag.TotalIssues ?? 0);
-    var totalUsers      = (int)(ViewBag.TotalUsers ?? 0);
-    var totalStocks     = (int)(ViewBag.TotalStocks ?? 0);
-
-    var lowStock       = ViewBag.LowStock as IEnumerable<dynamic>;
-    var stockByWh      = ViewBag.StockByWarehouse as IEnumerable<dynamic> ?? new List<dynamic>();
-    var recentReceipts = ViewBag.RecentReceipts as IEnumerable<dynamic> ?? new List<dynamic>();
-    var recentIssues   = ViewBag.RecentIssues as IEnumerable<dynamic> ?? new List<dynamic>();
-    var monthlyStats   = ViewBag.MonthlyStats as IEnumerable<dynamic> ?? new List<dynamic>();
-}
-
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-
-<div class="min-h-screen bg-slate-50 text-slate-700 px-8 py-10 space-y-10">
-    <!-- Header -->
-    <div class="flex flex-col md:flex-row justify-between md:items-center gap-6">
-        <div>
-            <h1 class="text-3xl font-bold tracking-tight text-slate-800 flex items-center gap-3">
-                <i class="bi bi-speedometer2 text-blue-600 text-2xl"></i>
-                Bảng điều khiển hệ thống
-            </h1>
-            <p class="text-sm text-slate-500 mt-1 flex items-center gap-1">
-                <i class="bi bi-clock-history"></i>
-                Cập nhật: @DateTime.Now.ToString("dd/MM/yyyy HH:mm")
-            </p>
-        </div>
-        <div class="flex flex-wrap gap-3">
-            <a asp-controller="StockReceipts" asp-action="Index"
-               class="inline-flex items-center gap-2 bg-green-50 text-green-700 hover:bg-green-100 px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition">
-                <i class="bi bi-box-arrow-in-down"></i> Phiếu nhập
-            </a>
-            <a asp-controller="StockIssues" asp-action="Index"
-               class="inline-flex items-center gap-2 bg-orange-50 text-orange-700 hover:bg-orange-100 px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition">
-                <i class="bi bi-box-arrow-up"></i> Phiếu xuất
-            </a>
-            <a asp-controller="Materials" asp-action="Index"
-               class="inline-flex items-center gap-2 bg-blue-50 text-blue-700 hover:bg-blue-100 px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition">
-                <i class="bi bi-boxes"></i> Nguyên liệu
-            </a>
-        </div>
-    </div>
-
-    <!-- KPI Cards - Minimal Square Design -->
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mt-8">
-    @{
-        var kpis = new[] {
-            new { Title="Nguyên liệu", Value=totalMaterials, Icon="bi-boxes", Color="text-blue-600 bg-blue-50" },
-            new { Title="Kho hàng", Value=totalWarehouses, Icon="bi-buildings", Color="text-indigo-600 bg-indigo-50" },
-            new { Title="Phiếu nhập", Value=totalReceipts, Icon="bi-box-arrow-in-down", Color="text-emerald-600 bg-emerald-50" },
-            new { Title="Phiếu xuất", Value=totalIssues, Icon="bi-box-arrow-up", Color="text-orange-600 bg-orange-50" },
-            new { Title="Tổng tồn", Value=totalStocks, Icon="bi-archive", Color="text-sky-600 bg-sky-50" },
-            new { Title="Người dùng", Value=totalUsers, Icon="bi-people", Color="text-rose-600 bg-rose-50" },
-        };
-    }
-
-    @foreach (var k in kpis)
-    {
-        <div class="group relative bg-white border border-slate-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-all duration-150 ease-in-out hover:-translate-y-0.5">
-            <div class="flex justify-between items-center">
-                <!-- Text block -->
-                <div class="space-y-1">
-                    <p class="text-sm font-medium text-slate-500">@k.Title</p>
-                    <h2 class="text-3xl font-bold text-slate-800">@k.Value</h2>
-                </div>
-
-                <!-- Icon block -->
-                <div class="flex items-center justify-center w-12 h-12 rounded-md @k.Color shadow-inner">
-                    <i class="bi @k.Icon text-xl"></i>
-                </div>
-            </div>
-
-            <!-- Optional subtle divider -->
-            <div class="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-400 flex items-center gap-1">
-                <i class="bi bi-clock"></i>
-                Cập nhật gần đây
-            </div>
-        </div>
-    }
-</div>
-
-
-    <!-- Content Grid -->
-    <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
-        <!-- Left section -->
-        <div class="xl:col-span-2 space-y-8">
-            <!-- Low Stock -->
-            <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-                <div class="flex items-center gap-2 mb-5">
-                    <i class="bi bi-exclamation-triangle text-amber-500 text-xl"></i>
-                    <h3 class="text-lg font-semibold text-slate-800">Cảnh báo tồn kho thấp</h3>
-                </div>
-                <div class="grid md:grid-cols-2 gap-4">
-                    @if (lowStock != null && lowStock.Any()) {
-                        foreach (var item in lowStock)
-                        {
-                            int qty = (int)(item.Qty ?? 0);
-                            int rl = (int)(item.ReorderLevel ?? 0);
-                            string badge = qty <= 0 ? "bg-red-100 text-red-700" :
-                                           qty <= rl ? "bg-amber-100 text-amber-700" :
-                                           "bg-green-100 text-green-700";
-                            <div class="border border-slate-200 rounded-lg p-4 hover:bg-slate-50 transition">
-                                <div class="flex justify-between items-center mb-2">
-                                    <div>
-                                        <p class="font-semibold text-slate-800">@item.MaterialName</p>
-                                        <p class="text-xs text-slate-500">@item.WarehouseName</p>
-                                    </div>
-                                    <span class="px-3 py-1 rounded-full text-xs font-medium @badge">@qty</span>
-                                </div>
-                                <p class="text-xs text-slate-400">Mức đặt lại: @rl | ĐVT: @item.Unit</p>
-                            </div>
-                        }
-                    } else {
-                        <div class="col-span-2 text-center py-10 text-slate-500">
-                            <i class="bi bi-check-circle text-green-500 text-3xl mb-2"></i>
-                            Không có nguyên liệu nào dưới mức tồn kho
-                        </div>
-                    }
-                </div>
-            </div>
-
-            @* <!-- Charts -->
-            <div class="grid md:grid-cols-2 gap-8">
-                <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-                    <div class="flex items-center gap-2 mb-5">
-                        <i class="bi bi-pie-chart text-blue-500"></i>
-                        <h3 class="text-lg font-semibold text-slate-800">Phân bố tồn kho</h3>
-                    </div>
-                    <canvas id="stockChart" height="220"></canvas>
-                </div>
-                <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-                    <div class="flex items-center gap-2 mb-5">
-                        <i class="bi bi-graph-up text-green-500"></i>
-                        <h3 class="text-lg font-semibold text-slate-800">Doanh thu & Chi phí</h3>
-                    </div>
-                    <canvas id="financeChart" height="220"></canvas>
-                </div>
-            </div> *@
-            <!-- Charts Section -->
-<div class="grid md:grid-cols-2 gap-6 mt-6">
-    <!-- Stock Distribution -->
-    <div class="bg-white border border-slate-200 rounded-lg shadow-sm hover:shadow-md transition-all duration-150">
-        <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-            <div class="flex items-center gap-3">
-                <div class="flex items-center justify-center w-10 h-10 rounded-md bg-blue-50 text-blue-600">
-                    <i class="bi bi-pie-chart text-lg"></i>
-                </div>
-                <h3 class="text-base font-semibold text-slate-800">Phân bố tồn kho</h3>
-            </div>
-            <button class="text-slate-400 hover:text-slate-600 transition">
-                <i class="bi bi-three-dots-vertical"></i>
-            </button>
-        </div>
-
-        <div class="p-6 bg-slate-50/50 rounded-b-lg">
-            <canvas id="stockChart" height="240"></canvas>
-        </div>
-    </div>
-
-    <!-- Finance -->
-    <div class="bg-white border border-slate-200 rounded-lg shadow-sm hover:shadow-md transition-all duration-150">
-        <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-            <div class="flex items-center gap-3">
-                <div class="flex items-center justify-center w-10 h-10 rounded-md bg-emerald-50 text-emerald-600">
-                    <i class="bi bi-graph-up text-lg"></i>
-                </div>
-                <h3 class="text-base font-semibold text-slate-800">Doanh thu & Chi phí</h3>
-            </div>
-            <button class="text-slate-400 hover:text-slate-600 transition">
-                <i class="bi bi-three-dots-vertical"></i>
-            </button>
-        </div>
-
-        <div class="p-6 bg-slate-50/50 rounded-b-lg">
-            <canvas id="financeChart" height="240"></canvas>
-        </div>
-    </div>
-</div>
-
-        </div>
-
-        <!-- Right section -->
-        <div class="space-y-8">
-            <!-- Recent Receipts -->
-            <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-                <div class="flex justify-between items-center mb-5">
-                    <h3 class="font-semibold text-slate-800 flex items-center gap-2">
-                        <i class="bi bi-box-arrow-in-down text-green-500"></i> Phiếu nhập gần đây
-                    </h3>
-                    <a asp-controller="StockReceipts" asp-action="Index" class="text-sm text-blue-600 hover:underline">
-                        Xem tất cả <i class="bi bi-arrow-right"></i>
-                    </a>
-                </div>
-                <div class="space-y-3">
-                    @if (recentReceipts.Any()) {
-                        foreach (var r in recentReceipts.Take(4)) {
-                            <div class="border border-slate-200 rounded-lg p-4 hover:bg-slate-50 transition">
-                                <div class="flex justify-between">
-                                    <div>
-                                        <p class="font-mono text-slate-800 font-semibold">@r.Number</p>
-                                        <p class="text-xs text-slate-500">@r.WarehouseName</p>
-                                    </div>
-                                    <div class="text-right text-green-600">
-                                        <div class="text-sm font-bold">@String.Format("{0:N0} đ", r.SumAmt)</div>
-                                        <div class="text-xs">@((int)(r.SumQty ?? 0)) sp</div>
-                                    </div>
-                                </div>
-                            </div>
-                        }
-                    } else {
-                        <p class="text-slate-500 text-center py-6">Không có phiếu nhập gần đây</p>
-                    }
-                </div>
-            </div>
-
-            <!-- Recent Issues -->
-            <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-                <div class="flex justify-between items-center mb-5">
-                    <h3 class="font-semibold text-slate-800 flex items-center gap-2">
-                        <i class="bi bi-box-arrow-up text-orange-500"></i> Phiếu xuất gần đây
-                    </h3>
-                    <a asp-controller="StockIssues" asp-action="Index" class="text-sm text-blue-600 hover:underline">
-                        Xem tất cả <i class="bi bi-arrow-right"></i>
-                    </a>
-                </div>
-                <div class="space-y-3">
-                    @if (recentIssues.Any()) {
-                        foreach (var r in recentIssues.Take(4)) {
-                            <div class="border border-slate-200 rounded-lg p-4 hover:bg-slate-50 transition">
-                                <div class="flex justify-between">
-                                    <div>
-                                        <p class="font-mono text-slate-800 font-semibold">@r.Number</p>
-                                        <p class="text-xs text-slate-500">@r.WarehouseName</p>
-                                    </div>
-                                    <div class="text-right text-orange-600">
-                                        <div class="text-sm font-bold">@String.Format("{0:N0} đ", r.SumAmt)</div>
-                                        <div class="text-xs">@((int)(r.SumQty ?? 0)) sp</div>
-                                    </div>
-                                </div>
-                            </div>
-                        }
-                    } else {
-                        <p class="text-slate-500 text-center py-6">Không có phiếu xuất gần đây</p>
-                    }
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Chart.js -->
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-    // Mini KPI sparkline charts
-    const options = {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: { x: { display: false }, y: { display: false } },
-        plugins: { legend: { display: false } },
-        elements: { line: { borderWidth: 2, tension: 0.4 }, point: { radius: 0 } }
-    };
-
-    const mini = [
-        { id: "chart-Nguyênliệu", color: "#3b82f6" },
-        { id: "chart-Khàng", color: "#8b5cf6" },
-        { id: "chart-Phiếunhập", color: "#10b981" },
-        { id: "chart-Phiếuxuất", color: "#f97316" },
-        { id: "chart-Tổngtồn", color: "#0ea5e9" },
-        { id: "chart-Ngườidùng", color: "#f43f5e" }
-    ];
-    mini.forEach(m => {
-        const ctx = document.getElementById(m.id);
-        if (ctx) new Chart(ctx, {
-            type: "line",
-            data: { labels: [1,2,3,4,5,6,7], datasets: [{ data: [2,4,6,5,7,9,10], borderColor: m.color, backgroundColor: m.color + '33', fill: true }] },
-            options
-        });
-    });
-
-    // Stock distribution doughnut
-    const sctx = document.getElementById('stockChart');
-    if (sctx) new Chart(sctx, {
-        type: 'doughnut',
-        data: {
-            labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(stockByWh.Select(x => x.WarehouseName))),
-            datasets: [{
-                data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(stockByWh.Select(x => (int)(x.Qty ?? 0)))),
-                backgroundColor: ['#3b82f6','#8b5cf6','#10b981','#f97316','#0ea5e9','#f43f5e'],
-                borderWidth: 0
-            }]
-        },
-        options: {
-            plugins: { legend: { position: 'bottom', labels: { color: '#334155' } } }
-        }
-    });
-
-    // Finance bar chart
-    const fctx = document.getElementById('financeChart');
-    if (fctx) new Chart(fctx, {
-        type: 'bar',
-        data: {
-            labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(monthlyStats.Select(x => x.Month))),
-            datasets: [
-                { label: 'Doanh thu', data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(monthlyStats.Select(x => (int)x.Revenue))), backgroundColor: '#10b981' },
-                { label: 'Chi phí', data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(monthlyStats.Select(x => (int)x.Expense))), backgroundColor: '#f97316' }
-            ]
-        },
-        options: {
-            plugins: { legend: { position: 'bottom', labels: { color: '#334155' } } },
-            scales: { x: { grid: { display: false } }, y: { grid: { color: '#e2e8f0' } } }
-        }
-    });
-});
-</script>

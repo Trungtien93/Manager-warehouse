@@ -1,0 +1,646 @@
+@model List<MNBEMART.Models.Notification>
+@{
+    ViewData["Title"] = "Thông báo";
+    var typeFilter = ViewBag.TypeFilter as string;
+    var statusFilter = ViewBag.StatusFilter as string;
+    var isImportantFilter = ViewBag.IsImportantFilter as bool?;
+    var isArchivedFilter = ViewBag.IsArchivedFilter as bool?;
+    var search = ViewBag.Search as string;
+    var currentTab = statusFilter ?? "all";
+    var isPartial = Layout == null;
+}
+
+@if (!isPartial)
+{
+    <!-- Tailwind + Bootstrap Icons -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+}
+
+<div class="@(isPartial ? "" : "max-w-[1400px] mx-auto px-6 lg:px-8 py-8")">
+    @if (!isPartial)
+    {
+        <!-- Header -->
+        <div class="mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h1 class="text-3xl font-black text-slate-900 tracking-tight mb-2">
+                        <i class="bi bi-bell text-blue-600 me-2"></i>
+                        Thông báo
+                    </h1>
+                    <p class="text-slate-600">Quản lý và xem tất cả thông báo của bạn</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <a href="/Settings?tab=notifications" class="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 font-medium transition flex items-center gap-2">
+                        <i class="bi bi-gear"></i> Cài đặt
+                    </a>
+                    @if (Model.Any(n => !n.IsRead))
+                    {
+                        <form asp-action="MarkAllAsRead" method="post" id="markAllForm" class="inline">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2.5 rounded-lg transition flex items-center gap-2">
+                                <i class="bi bi-check-all"></i> Đánh dấu tất cả đã đọc
+                            </button>
+                        </form>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Compact header for partial view -->
+        <div class="mb-4 flex items-center justify-between">
+            <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                <i class="bi bi-inbox text-blue-600"></i>
+                Quản lý thông báo
+            </h2>
+            @if (Model.Any(n => !n.IsRead))
+            {
+                <form asp-action="MarkAllAsRead" method="post" id="markAllForm" class="inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg transition flex items-center gap-2 text-sm">
+                        <i class="bi bi-check-all"></i> Đánh dấu tất cả đã đọc
+                    </button>
+                </form>
+            }
+        </div>
+    }
+
+    <!-- Filters & Search -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+        <form method="get" asp-action="Index" id="filterForm" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <!-- Search -->
+                <div class="lg:col-span-2">
+                    <div class="relative">
+                        <i class="bi bi-search absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" name="search" value="@search" placeholder="Tìm kiếm thông báo..." 
+                               class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+
+                <!-- Type Filter -->
+                <div>
+                    <select name="type" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Tất cả loại</option>
+                        <option value="Receipt" selected="@(typeFilter == "Receipt")">Phiếu nhập</option>
+                        <option value="Issue" selected="@(typeFilter == "Issue")">Phiếu xuất</option>
+                        <option value="Transfer" selected="@(typeFilter == "Transfer")">Phiếu chuyển kho</option>
+                        <option value="PurchaseRequest" selected="@(typeFilter == "PurchaseRequest")">Đề xuất mua hàng</option>
+                        <option value="ExpiryAlert" selected="@(typeFilter == "ExpiryAlert")">Cảnh báo hết hạn</option>
+                        <option value="LowStockAlert" selected="@(typeFilter == "LowStockAlert")">Cảnh báo tồn kho</option>
+                        <option value="UserRegistration" selected="@(typeFilter == "UserRegistration")">Đăng ký tài khoản</option>
+                    </select>
+                </div>
+
+                <!-- Important Filter -->
+                <div>
+                    <select name="isImportant" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Tất cả</option>
+                        <option value="true" selected="@(isImportantFilter == true)">Quan trọng</option>
+                        <option value="false" selected="@(isImportantFilter == false)">Không quan trọng</option>
+                    </select>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex gap-2">
+                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg transition">
+                        <i class="bi bi-funnel me-1"></i> Lọc
+                    </button>
+                    <a href="/Notifications/Index" class="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tabs -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 mb-6">
+        <div class="border-b border-slate-200">
+            <nav class="flex -mb-px">
+                <a href="/Notifications/Index?status=all" 
+                   class="notification-tab-link @(currentTab == "all" ? "border-blue-500 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300") px-6 py-4 text-sm font-medium border-b-2 transition"
+                   data-tab-type="all">
+                    Tất cả
+                </a>
+                <a href="/Notifications/Index?status=unread" 
+                   class="notification-tab-link @(currentTab == "unread" ? "border-blue-500 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300") px-6 py-4 text-sm font-medium border-b-2 transition"
+                   data-tab-type="unread">
+                    Chưa đọc
+                </a>
+                <a href="/Notifications/Index?status=read" 
+                   class="notification-tab-link @(currentTab == "read" ? "border-blue-500 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300") px-6 py-4 text-sm font-medium border-b-2 transition"
+                   data-tab-type="read">
+                    Đã đọc
+                </a>
+                <a href="/Notifications/GetImportant" 
+                   class="notification-tab-link @(currentTab == "important" ? "border-blue-500 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300") px-6 py-4 text-sm font-medium border-b-2 transition"
+                   data-tab-type="important">
+                    <i class="bi bi-star-fill me-1"></i> Quan trọng
+                </a>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Bulk Actions -->
+    <div id="bulkActions" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex items-center justify-between">
+        <div class="flex items-center gap-4">
+            <span class="text-sm font-medium text-blue-900">
+                <span id="selectedCount">0</span> thông báo đã chọn
+            </span>
+            <button type="button" id="bulkMarkRead" class="text-sm text-blue-700 hover:text-blue-900 font-medium">
+                <i class="bi bi-check-circle me-1"></i> Đánh dấu đã đọc
+            </button>
+            <button type="button" id="bulkDelete" class="text-sm text-red-700 hover:text-red-900 font-medium">
+                <i class="bi bi-trash me-1"></i> Xóa
+            </button>
+            <button type="button" id="bulkArchive" class="text-sm text-slate-700 hover:text-slate-900 font-medium">
+                <i class="bi bi-archive me-1"></i> Lưu trữ
+            </button>
+        </div>
+        <button type="button" id="clearSelection" class="text-sm text-slate-600 hover:text-slate-900">
+            <i class="bi bi-x-lg"></i> Bỏ chọn
+        </button>
+    </div>
+
+    <!-- Notifications List -->
+    @if (Model.Any())
+    {
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="divide-y divide-slate-200">
+                @foreach (var notification in Model)
+                {
+                    var iconConfig = new Dictionary<MNBEMART.Models.NotificationType, (string icon, string color, string bg, string name)>
+                    {
+                        { MNBEMART.Models.NotificationType.Receipt, (icon: "bi-box-arrow-in-down", color: "text-blue-600", bg: "bg-blue-100", name: "Phiếu nhập") },
+                        { MNBEMART.Models.NotificationType.Issue, (icon: "bi-box-arrow-up", color: "text-green-600", bg: "bg-green-100", name: "Phiếu xuất") },
+                        { MNBEMART.Models.NotificationType.Transfer, (icon: "bi-arrow-left-right", color: "text-purple-600", bg: "bg-purple-100", name: "Phiếu chuyển kho") },
+                        { MNBEMART.Models.NotificationType.PurchaseRequest, (icon: "bi-cart-plus", color: "text-orange-600", bg: "bg-orange-100", name: "Đề xuất mua hàng") },
+                        { MNBEMART.Models.NotificationType.ExpiryAlert, (icon: "bi-exclamation-triangle", color: "text-red-600", bg: "bg-red-100", name: "Cảnh báo hết hạn") },
+                        { MNBEMART.Models.NotificationType.LowStockAlert, (icon: "bi-exclamation-circle", color: "text-yellow-600", bg: "bg-yellow-100", name: "Cảnh báo tồn kho") },
+                        { MNBEMART.Models.NotificationType.UserRegistration, (icon: "bi-person-plus", color: "text-indigo-600", bg: "bg-indigo-100", name: "Đăng ký tài khoản") },
+                        { MNBEMART.Models.NotificationType.RoleCreated, (icon: "bi-shield-check", color: "text-teal-600", bg: "bg-teal-100", name: "Vai trò mới") },
+                        { MNBEMART.Models.NotificationType.WarehouseCreated, (icon: "bi-building", color: "text-cyan-600", bg: "bg-cyan-100", name: "Kho mới") },
+                        { MNBEMART.Models.NotificationType.UnconfirmedDocument, (icon: "bi-clock-history", color: "text-amber-600", bg: "bg-amber-100", name: "Phiếu chưa xác nhận") }
+                    };
+
+                    var defaultConfig = (icon: "bi-bell", color: "text-slate-600", bg: "bg-slate-100", name: "Thông báo");
+                    var configTuple = iconConfig.ContainsKey(notification.Type) 
+                        ? iconConfig[notification.Type] 
+                        : defaultConfig;
+                    
+                    var iconClass = configTuple.icon;
+                    var iconColor = configTuple.color;
+                    var iconBg = configTuple.bg;
+                    var typeName = configTuple.name;
+
+                    var priorityColors = new Dictionary<MNBEMART.Models.NotificationPriority, string>
+                    {
+                        { MNBEMART.Models.NotificationPriority.Urgent, "border-l-4 border-red-500" },
+                        { MNBEMART.Models.NotificationPriority.High, "border-l-4 border-yellow-500" },
+                        { MNBEMART.Models.NotificationPriority.Normal, "" },
+                        { MNBEMART.Models.NotificationPriority.Low, "border-l-4 border-slate-300" }
+                    };
+
+                    var priorityClass = priorityColors.ContainsKey(notification.Priority) 
+                        ? priorityColors[notification.Priority] 
+                        : "";
+
+                    var detailUrl = notification.Type switch
+                    {
+                        MNBEMART.Models.NotificationType.Receipt => $"/StockReceipts/Details/{notification.DocumentId}",
+                        MNBEMART.Models.NotificationType.Issue => $"/StockIssues/Details/{notification.DocumentId}",
+                        MNBEMART.Models.NotificationType.Transfer => $"/StockTransfers/Details/{notification.DocumentId}",
+                        MNBEMART.Models.NotificationType.PurchaseRequest => $"/PurchaseRequests/Details/{notification.DocumentId}",
+                        MNBEMART.Models.NotificationType.ExpiryAlert => "/Materials/Expiring",
+                        MNBEMART.Models.NotificationType.LowStockAlert => "/Stocks/Index",
+                        MNBEMART.Models.NotificationType.UserRegistration => $"/Users/Details/{notification.DocumentId}",
+                        MNBEMART.Models.NotificationType.RoleCreated => $"/Roles/Details/{notification.DocumentId}",
+                        MNBEMART.Models.NotificationType.WarehouseCreated => $"/Warehouses/Details/{notification.DocumentId}",
+                        _ => "#"
+                    };
+
+                    var bgClass = notification.IsRead ? "bg-white" : "bg-blue-50";
+                    <div class="@bgClass @priorityClass p-4 hover:bg-slate-50 transition" data-notification-id="@notification.Id" data-important="@notification.IsImportant.ToString().ToLower()">
+                        <div class="flex items-start gap-4">
+                            <!-- Checkbox for bulk actions -->
+                            <input type="checkbox" class="notification-checkbox mt-1 w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500" value="@notification.Id">
+                            
+                            <!-- Icon -->
+                            <div class="flex-shrink-0 w-10 h-10 rounded-full @iconBg flex items-center justify-center">
+                                <i class="bi @iconClass @iconColor text-xl"></i>
+                            </div>
+                            
+                            <!-- Content -->
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-start justify-between gap-4">
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-2 mb-1 flex-wrap">
+                                            <h3 class="text-sm font-semibold text-slate-900">@notification.Title</h3>
+                                            @if (!notification.IsRead)
+                                            {
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
+                                                    Mới
+                                                </span>
+                                            }
+                                            @if (notification.IsImportant)
+                                            {
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
+                                                    <i class="bi bi-star-fill text-[10px] me-1"></i> Quan trọng
+                                                </span>
+                                            }
+                                            @if (notification.IsArchived)
+                                            {
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-800">
+                                                    <i class="bi bi-archive text-[10px] me-1"></i> Đã lưu trữ
+                                                </span>
+                                            }
+                                        </div>
+                                        @if (!string.IsNullOrEmpty(notification.Message))
+                                        {
+                                            <p class="text-sm text-slate-600 mb-2">@notification.Message</p>
+                                        }
+                                        <div class="flex items-center gap-4 text-xs text-slate-500">
+                                            <span><i class="bi bi-tag me-1"></i>@typeName</span>
+                                            <span><i class="bi bi-clock me-1"></i>@notification.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                                            @if (notification.Priority == MNBEMART.Models.NotificationPriority.Urgent)
+                                            {
+                                                <span class="text-red-600 font-medium"><i class="bi bi-exclamation-triangle me-1"></i>Khẩn cấp</span>
+                                            }
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2 flex-shrink-0">
+                                        <a href="@detailUrl" class="text-blue-600 hover:text-blue-900 text-sm font-medium px-3 py-1.5 rounded-lg hover:bg-blue-50 transition">
+                                            <i class="bi bi-eye me-1"></i> Xem
+                                        </a>
+                                        @if (!notification.IsRead)
+                                        {
+                                            <form asp-action="MarkAsRead" method="post" class="inline mark-read-form" data-id="@notification.Id">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@notification.Id" />
+                                                <button type="submit" class="text-slate-600 hover:text-slate-900 text-sm font-medium px-3 py-1.5 rounded-lg hover:bg-slate-100 transition">
+                                                    <i class="bi bi-check-circle me-1"></i> Đã đọc
+                                                </button>
+                                            </form>
+                                        }
+                                        <button type="button" class="toggle-important-btn text-yellow-600 hover:text-yellow-900 text-sm font-medium px-3 py-1.5 rounded-lg hover:bg-yellow-50 transition" 
+                                                data-id="@notification.Id" data-important="@notification.IsImportant.ToString().ToLower()">
+                                            <i class="bi @(notification.IsImportant ? "bi-star-fill" : "bi-star")"></i>
+                                        </button>
+                                        <button type="button" class="delete-notification-btn text-red-600 hover:text-red-900 text-sm font-medium px-3 py-1.5 rounded-lg hover:bg-red-50 transition" 
+                                                data-id="@notification.Id">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+        
+        <!-- Pagination -->
+        @await Component.InvokeAsync("Pagination", new { 
+            page = ViewBag.Page, 
+            totalPages = ViewBag.TotalPages, 
+            pageSize = ViewBag.PageSize,
+            actionName = "Index"
+        })
+
+        <!-- Export Buttons -->
+        <div class="mt-6 flex items-center justify-end gap-3">
+            <form asp-action="ExportExcel" method="get" class="inline">
+                <input type="hidden" name="type" value="@typeFilter" />
+                <input type="hidden" name="status" value="@statusFilter" />
+                <input type="hidden" name="search" value="@search" />
+                <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition flex items-center gap-2">
+                    <i class="bi bi-file-earmark-excel"></i> Xuất Excel
+                </button>
+            </form>
+        </div>
+    }
+    else
+    {
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-12 text-center">
+            <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-slate-100 mb-4">
+                <i class="bi bi-bell-slash text-slate-400 text-4xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900 mb-2">Chưa có thông báo</h3>
+            <p class="text-slate-600">Bạn sẽ nhận được thông báo khi có phiếu nhập, xuất, chuyển kho mới</p>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        // Helper function to get CSRF token
+        function getCSRFToken() {
+            // Try to get from hidden input first (most reliable)
+            const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+            if (tokenInput && tokenInput.value) {
+                return tokenInput.value;
+            }
+            
+            // Try to get from cookie
+            function getCookie(name) {
+                const value = `; ${document.cookie}`;
+                const parts = value.split(`; ${name}=`);
+                if (parts.length === 2) return parts.pop().split(';').shift();
+                return null;
+            }
+            
+            const cookieToken = getCookie('__RequestVerificationToken');
+            if (cookieToken) return cookieToken;
+            
+            // Try meta tag
+            const metaToken = document.querySelector('meta[name="__RequestVerificationToken"]');
+            if (metaToken && metaToken.content) {
+                return metaToken.content;
+            }
+            
+            return '';
+        }
+
+        // Bulk selection
+        const checkboxes = document.querySelectorAll('.notification-checkbox');
+        const bulkActions = document.getElementById('bulkActions');
+        const selectedCount = document.getElementById('selectedCount');
+        
+        function updateBulkActions() {
+            const selected = Array.from(checkboxes).filter(cb => cb.checked);
+            if (selected.length > 0) {
+                bulkActions.classList.remove('hidden');
+                selectedCount.textContent = selected.length;
+            } else {
+                bulkActions.classList.add('hidden');
+            }
+        }
+
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', updateBulkActions);
+        });
+
+        document.getElementById('clearSelection')?.addEventListener('click', () => {
+            checkboxes.forEach(cb => cb.checked = false);
+            updateBulkActions();
+        });
+
+        // Bulk mark as read
+        document.getElementById('bulkMarkRead')?.addEventListener('click', async function() {
+            const selected = Array.from(checkboxes).filter(cb => cb.checked).map(cb => parseInt(cb.value));
+            if (selected.length === 0) return;
+
+            const csrfToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+            const formData = new FormData();
+            formData.append('ids', JSON.stringify(selected));
+            if (csrfToken) formData.append('__RequestVerificationToken', csrfToken);
+
+            try {
+                const response = await fetch('/Notifications/MarkMultipleAsRead', {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'RequestVerificationToken': csrfToken
+                    },
+                    body: formData
+                });
+                const data = await response.json();
+                if (data.success) {
+                    location.reload();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        });
+
+        // Bulk delete
+        document.getElementById('bulkDelete')?.addEventListener('click', async function() {
+            const selected = Array.from(checkboxes).filter(cb => cb.checked).map(cb => parseInt(cb.value));
+            if (selected.length === 0) return;
+            if (!confirm(`Bạn có chắc muốn xóa ${selected.length} thông báo?`)) return;
+
+            const csrfToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+            try {
+                const response = await fetch('/Notifications/DeleteMultiple', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'RequestVerificationToken': csrfToken
+                    },
+                    body: JSON.stringify(selected)
+                });
+                const data = await response.json();
+                if (data.success) {
+                    location.reload();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        });
+
+        // Toggle important
+        document.querySelectorAll('.toggle-important-btn').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const id = this.dataset.id;
+                const isImportant = this.dataset.important === 'true';
+                const endpoint = isImportant ? '/Notifications/UnmarkAsImportant' : '/Notifications/MarkAsImportant';
+                
+                const csrfToken = getCSRFToken();
+                if (!csrfToken) {
+                    console.error('CSRF token not found');
+                    alert('Không tìm thấy token bảo mật. Vui lòng tải lại trang.');
+                    return;
+                }
+                
+                const formData = new FormData();
+                formData.append('id', id);
+                formData.append('__RequestVerificationToken', csrfToken);
+                
+                try {
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'RequestVerificationToken': csrfToken
+                        },
+                        body: formData
+                    });
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error('Error response:', response.status, errorText);
+                        alert('Lỗi khi thay đổi trạng thái quan trọng. Vui lòng thử lại.');
+                        return;
+                    }
+                    
+                    const data = await response.json();
+                    if (data.success) {
+                        // Update UI without reload
+                        const notificationItem = this.closest('[data-notification-id]');
+                        const icon = this.querySelector('i');
+                        const isNowImportant = !isImportant;
+                        
+                        // Update button data attribute
+                        this.dataset.important = isNowImportant.toString();
+                        
+                        // Update icon
+                        if (isNowImportant) {
+                            icon.classList.remove('bi-star');
+                            icon.classList.add('bi-star-fill');
+                        } else {
+                            icon.classList.remove('bi-star-fill');
+                            icon.classList.add('bi-star');
+                        }
+                        
+                        // Update badge if exists
+                        if (notificationItem) {
+                            const badgeContainer = notificationItem.querySelector('.flex.items-center.gap-2.mb-1');
+                            const existingBadge = badgeContainer?.querySelector('.bg-yellow-100');
+                            
+                            if (isNowImportant && !existingBadge && badgeContainer) {
+                                // Add important badge
+                                const newBadge = document.createElement('span');
+                                newBadge.className = 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800';
+                                newBadge.innerHTML = '<i class="bi bi-star-fill text-[10px] me-1"></i> Quan trọng';
+                                badgeContainer.appendChild(newBadge);
+                            } else if (!isNowImportant && existingBadge) {
+                                existingBadge.remove();
+                            }
+                        }
+                    } else {
+                        alert('Không thể thay đổi trạng thái quan trọng. Vui lòng thử lại.');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Đã xảy ra lỗi khi thay đổi trạng thái quan trọng. Vui lòng thử lại.');
+                }
+            });
+        });
+
+        // Delete notification
+        document.querySelectorAll('.delete-notification-btn').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const id = this.dataset.id;
+                if (!confirm('Bạn có chắc muốn xóa thông báo này?')) return;
+
+                const csrfToken = getCSRFToken();
+                if (!csrfToken) {
+                    console.error('CSRF token not found');
+                    alert('Không tìm thấy token bảo mật. Vui lòng tải lại trang.');
+                    return;
+                }
+                
+                const formData = new FormData();
+                formData.append('id', id);
+                formData.append('__RequestVerificationToken', csrfToken);
+                
+                try {
+                    const response = await fetch(`/Notifications/Delete/${id}`, {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'RequestVerificationToken': csrfToken
+                        },
+                        body: formData
+                    });
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error('Delete failed:', response.status, errorText);
+                        alert('Không thể xóa thông báo. Vui lòng thử lại.');
+                        return;
+                    }
+                    
+                    const data = await response.json();
+                    if (data.success) {
+                        // Find notification element to remove
+                        const notificationElement = this.closest('[data-notification-id]');
+                        if (notificationElement) {
+                            notificationElement.style.transition = 'opacity 0.3s';
+                            notificationElement.style.opacity = '0';
+                            setTimeout(() => {
+                                notificationElement.remove();
+                                updateBulkActions();
+                                // Reload if no notifications left
+                                const remainingNotifications = document.querySelectorAll('.notification-checkbox');
+                                if (remainingNotifications.length === 0) {
+                                    location.reload();
+                                }
+                            }, 300);
+                        } else {
+                            location.reload();
+                        }
+                    } else {
+                        alert('Không thể xóa thông báo. Vui lòng thử lại.');
+                    }
+                } catch (error) {
+                    console.error('Error deleting notification:', error);
+                    alert('Đã xảy ra lỗi khi xóa thông báo. Vui lòng thử lại.');
+                }
+            });
+        });
+
+        // AJAX mark as read
+        document.querySelectorAll('.mark-read-form').forEach(form => {
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+                const notificationId = this.dataset.id;
+                
+                try {
+                    const response = await fetch(this.action, {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'RequestVerificationToken': formData.get('__RequestVerificationToken')
+                        },
+                        body: formData
+                    });
+                    
+                    const data = await response.json();
+                    if (data.success) {
+                        const notificationDiv = this.closest('[data-notification-id]');
+                        notificationDiv.classList.remove('bg-blue-50');
+                        notificationDiv.classList.add('bg-white');
+                        const badge = notificationDiv.querySelector('.bg-blue-100');
+                        if (badge) badge.remove();
+                        this.remove();
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            });
+        });
+
+        // Mark all as read
+        const markAllForm = document.getElementById('markAllForm');
+        if (markAllForm) {
+            markAllForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+                
+                try {
+                    const response = await fetch(this.action, {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'RequestVerificationToken': formData.get('__RequestVerificationToken')
+                        },
+                        body: formData
+                    });
+                    
+                    const data = await response.json();
+                    if (data.success) {
+                        location.reload();
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            });
+        }
+    </script>
+}

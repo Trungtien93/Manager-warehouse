@@ -1,0 +1,48 @@
+@model MNBEMART.Models.Supplier
+
+<!-- Modal Thêm Nhà cung cấp -->
+<div class="modal fade" id="createModal" tabindex="-1" aria-labelledby="createModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="createModalLabel">Thêm nhà cung cấp</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+      </div>
+      <form asp-action="Create" method="post">
+        @Html.AntiForgeryToken()
+        <div class="modal-body">
+          <div asp-validation-summary="All" class="text-danger mb-2"></div>
+          
+          <div class="mb-3">
+            <label class="form-label">Tên nhà cung cấp <span class="text-danger">*</span></label>
+            <input asp-for="Name" class="form-control" required />
+            <span asp-validation-for="Name" class="text-danger"></span>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">SĐT</label>
+            <input asp-for="PhoneNumber" class="form-control" />
+            <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input asp-for="Email" class="form-control" type="email" />
+            <span asp-validation-for="Email" class="text-danger"></span>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Địa chỉ</label>
+            <input asp-for="Address" class="form-control" />
+            <span asp-validation-for="Address" class="text-danger"></span>
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Huỷ</button>
+          <button type="submit" class="btn btn-primary">Lưu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

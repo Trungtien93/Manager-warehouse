@@ -30,8 +30,9 @@
     </div>
 
     <div class="mb-3">
-        <label class="form-label">Kho được truy cập</label>
-        <select asp-for="SelectedWarehouseIds" class="form-select" asp-items="ViewBag.WarehouseList" multiple size="6"></select>
+        <label class="form-label">Email</label>
+        <input asp-for="Email" type="email" class="form-control" placeholder="example@email.com" />
+        <span asp-validation-for="Email" class="text-danger"></span>
     </div>
 
     <button class="btn btn-primary">Cập nhật</button>

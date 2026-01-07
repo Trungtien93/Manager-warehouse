@@ -1,0 +1,38 @@
+@model MNBEMART.Models.Warehouse
+
+<div class="modal fade" id="editWarehouseModal-@Model.Id" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-warning">
+        <h5 class="modal-title"><i class="bi bi-pencil-square"></i> Sửa kho hàng</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      
+      <form asp-action="Edit" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
+        
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Tên kho <span class="text-danger">*</span></label>
+            <input asp-for="Name" class="form-control" required />
+            <span asp-validation-for="Name" class="text-danger small"></span>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Địa chỉ</label>
+            <input asp-for="Address" class="form-control" />
+            <span asp-validation-for="Address" class="text-danger small"></span>
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+          <button type="submit" class="btn btn-warning">
+            <i class="bi bi-check-circle"></i> Cập nhật
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

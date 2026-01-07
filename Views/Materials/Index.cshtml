@@ -1,4 +1,4 @@
-@model MaterialIndexVM
+@* @model MaterialIndexVM
 @{
     ViewData["Title"] = "Nguyên liệu";
     var q = Model.Q ?? "";
@@ -91,7 +91,11 @@
     }
 
     <!-- Table -->
-    <div class="bg-white border border-slate-200 rounded-lg shadow-sm overflow-x-auto">
+    <div class="bg-white border border-slate-200 rounded-lg shadow-sm overflow-x-auto relative">
+        <!-- Visual hint nếu cần scroll ngang -->
+        <div class="absolute top-0 right-0 bg-blue-50 text-blue-600 text-xs px-2 py-1 rounded-bl z-10" style="display: none;" id="scrollHint">
+            <i class="bi bi-arrow-left-right"></i> Kéo ngang để xem thêm
+        </div>
         <table class="min-w-full text-sm text-slate-700">
             <thead class="bg-slate-100 text-slate-600 text-xs uppercase">
                 <tr>
@@ -103,6 +107,7 @@
                     <th class="px-3 py-2 text-end">Giá bán</th>
                     <th class="px-3 py-2 text-center">Quy cách</th>
                     <th class="px-3 py-2 text-center">Tồn</th>
+                    <th class="px-3 py-2 text-center" style="min-width: 140px;">Dự đoán nhu cầu</th>
                     <th class="px-3 py-2">Kho</th>
                     <th class="px-3 py-2 text-end">Thao tác</th>
                 </tr>
@@ -137,6 +142,24 @@
                             <span class="px-2 py-1 rounded-full text-xs font-medium @badgeColor">
                                 @((qty % 1m == 0m) ? ((long)qty).ToString() : qty.ToString("0.##"))
                             </span>
+                        </td>
+                        <td class="px-3 py-2 text-center" style="min-width: 140px;">
+                            @{
+                                var warehouseId = row.WhereStock?.FirstOrDefault()?.WarehouseId ?? 0;
+                            }
+                            @if (warehouseId > 0)
+                            {
+                                <div class="forecast-cell" data-material-id="@m.Id" data-warehouse-id="@warehouseId" style="white-space: nowrap;">
+                                    <button type="button" class="btn-forecast btn btn-sm btn-outline-info" title="Xem dự đoán nhu cầu">
+                                        <i class="bi bi-graph-up"></i>
+                                    </button>
+                                    <div class="forecast-result d-none mt-1"></div>
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="text-xs text-slate-400">Chưa có kho</span>
+                            }
                         </td>
                         <td class="px-3 py-2 space-x-1">
                             @if (row.WhereStock != null && row.WhereStock.Count > 0)
@@ -175,113 +198,59 @@
     </div>
 </div>
 
-
-@* @if (!string.IsNullOrWhiteSpace(q) || Model.WarehouseId.HasValue)
-{
-  <div class="mt-2">
-    @if (!string.IsNullOrWhiteSpace(q)) { <span class="chip me-1">Từ khoá: <b>@q</b></span> }
-    @if (Model.WarehouseId.HasValue) {
-        var kw = Model.WarehouseOptions?.FirstOrDefault(o => o.Value == Model.WarehouseId.ToString())?.Text ?? "";
-        <span class="chip">Kho: <b>@kw</b></span>
-    }
-  </div>
-}
-
-<div class="table-responsive mt-2">
-  <table class="table table-sm table-hover align-middle">
-    <thead class="table-light">
-      <tr>
-        <th style="width:44px">Ảnh</th>
-        <th style="width:110px">Mã</th>
-        <th>Tên</th>
-        <th style="width:80px">ĐVT</th>
-        <th style="width:160px">Nhà cung cấp</th>
-        <th style="width:110px" class="text-end">Giá bán</th>
-        <th style="width:10%" class="text-center">Quy cách</th>
-        <th style="width:90px" class="text-center">Tồn</th>
-        <th style="width:160px">Kho</th>
-        <th style="width:120px" class="text-end">Thao tác</th>
-      </tr>
-    </thead>
-    <tbody>
-        @foreach (var row in Model.Items)
-        {
-            var m = row.M;
-            var qty = row.TotalQty;
-            string badgeClass = qty < 0 ? "bg-danger"
-                              : qty == 0 ? "bg-secondary"
-                              : qty <= LowStockThreshold ? "bg-warning text-dark"
-                              : "bg-success";
-            <tr>
-              <td>
-                @if (!string.IsNullOrEmpty(m.ImageUrl)) { <img src="@m.ImageUrl" class="img-ava" alt="img" /> }
-              </td>
-              <td><span class="fw-semibold">@m.Code</span></td>
-              <td>
-                <div class="fw-semibold">@m.Name</div>
-                @if (!string.IsNullOrWhiteSpace(m.Description))
-                { <div class="text-muted small text-trunc-2">@m.Description</div> }
-              </td>
-              <td>@m.Unit</td>
-              <td>@m.Supplier?.Name</td>
-              <td class="text-end">@((m.SellingPrice ?? 0m).ToString("n0")) đ</td>
-              <td class="text-center">@m.Specification</td>
-
-              @{
-                var qtyText = (qty % 1m == 0m) 
-                    ? ((long)qty).ToString()        // 10m -> "10"
-                    : qty.ToString("0.##");         // 10.5 -> "10,5" (theo vi-VN), 10.25 -> "10,25"
-                }
-                
-                <td class="text-center">
-                  <span class="badge @badgeClass">@((qty % 1m == 0m) ? ((long)qty).ToString() : qty.ToString("0.##"))</span>
-                </td>
-                
-
-
-              <td>
-                @if (row.WhereStock != null && row.WhereStock.Count > 0)
-                {
-                    foreach (var w in row.WhereStock)
-                    {
-                        <span class="badge bg-light text-dark border me-1">
-                            @w.WarehouseName <span class="text-muted">(@FQty(w.Qty))</span>
-                        </span>
-                    }
-                }
-                else
-                {  <span class="badge bg-light text-dark border me-1">
-                    <span class="text-muted">Chưa phân kho</span></span>
-                }
-              </td>
-
-
-              <td class="text-end">
-                <div class="btn-group btn-group-sm">
-                
-                  <a  href="#"
-                      class="btn btn-outline-primary btn-sm js-edit"
-                      data-url="@Url.Action("Edit","Materials", new { id = m.Id, modal = 1 })">
-                    Sửa
-                  </a>
-
-                  <a class="btn btn-outline-danger" asp-action="Delete" asp-route-id="@m.Id">Xoá</a>
-                </div>
-              </td>
-            </tr>
-        }
-</tbody> 
-<div id="modal-host"></div>
-
-
-  </table>
-</div>*@
-
 @await Html.PartialAsync("~/Views/Materials/_CreateModal.cshtml", new MNBEMART.Models.Material())
+
+@await Component.InvokeAsync("Pagination", new { 
+    page = Model.Page, 
+    totalPages = Model.TotalPages, 
+    pageSize = Model.PageSize,
+    actionName = "Index",
+    routeValues = new { q = Model.Q, warehouseId = Model.WarehouseId }
+})
 
 @section Scripts{
   <partial name="_ValidationScriptsPartial" />
   <script>
+    // Hiển thị hint nếu table có thể scroll ngang (cho cả 2 table)
+    (function() {
+      const checkTableScroll = (tableWrapper, hintId) => {
+        if (!tableWrapper) return;
+        const hint = document.getElementById(hintId);
+        if (!hint) return;
+        
+        const checkScroll = () => {
+          if (tableWrapper.scrollWidth > tableWrapper.clientWidth) {
+            hint.style.display = 'block';
+          } else {
+            hint.style.display = 'none';
+          }
+        };
+        
+        // Kiểm tra ngay khi load
+        setTimeout(checkScroll, 100);
+        // Kiểm tra khi resize
+        window.addEventListener('resize', checkScroll);
+        // Kiểm tra khi table content thay đổi
+        const observer = new MutationObserver(checkScroll);
+        observer.observe(tableWrapper, { childList: true, subtree: true });
+      };
+      
+      // Check table đầu tiên (nếu có)
+      const tableWrapper1 = document.querySelector('.overflow-x-auto');
+      if (tableWrapper1) {
+        checkTableScroll(tableWrapper1, 'scrollHint');
+      }
+      
+      // Check table thứ 2 (table đang được sử dụng)
+      const tableWrappers = document.querySelectorAll('.overflow-x-auto');
+      if (tableWrappers.length > 1) {
+        checkTableScroll(tableWrappers[1], 'scrollHint2');
+      } else if (tableWrappers.length === 1 && tableWrappers[0].querySelector('#scrollHint2')) {
+        // Nếu chỉ có 1 table nhưng có scrollHint2
+        checkTableScroll(tableWrappers[0], 'scrollHint2');
+      }
+    })();
+
     // Mở modal Edit (load từ server)
     document.addEventListener('click', async (e) => {
       const btn = e.target.closest('.js-edit');
@@ -301,39 +270,53 @@
       bsModal.show();
     });
 
-    // Submit form Edit trong modal bằng AJAX
-    document.addEventListener('submit', async (e) => {
-      const form = e.target;
-      if (form.id !== 'materialEditForm') return;  // chỉ bắt form edit
-
+    // Load forecast on demand
+    document.addEventListener('click', async function(e) {
+      const btn = e.target.closest('.btn-forecast');
+      if (!btn) return;
+      
       e.preventDefault();
-
-      // đảm bảo giữ ?modal=1 ở POST
-      const action = form.action.includes('?') ? form.action + '&modal=1' : form.action + '?modal=1';
-
-      const res = await fetch(action, { method: 'POST', body: new FormData(form) });
-
-      // Lưu thành công: controller RedirectToAction -> res.redirected = true
-      if (res.redirected) {
-        location.reload();  // reload danh sách mà không rời trang index
+      const cell = btn.closest('.forecast-cell');
+      const materialId = cell.getAttribute('data-material-id');
+      const warehouseId = cell.getAttribute('data-warehouse-id');
+      const resultDiv = cell.querySelector('.forecast-result');
+      
+      if (!materialId || warehouseId === '0') {
+        alert('Vui lòng chọn kho trước');
         return;
       }
 
-      // Lỗi validate: server trả lại HTML modal với message -> render lại vào host
-      const ct = res.headers.get('content-type') || '';
-      if (ct.includes('text/html')) {
-        const html = await res.text();
-        const host = document.getElementById('modal-host');
-        host.innerHTML = html;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+      resultDiv.classList.remove('d-none');
+      resultDiv.innerHTML = '<span class="text-xs text-slate-500">Đang tải...</span>';
 
-        const modalEl = host.querySelector('.modal');
-        const bsModal = new bootstrap.Modal(modalEl);
-        bsModal.show();
-      } else {
-        // fallback
-        location.reload();
+      try {
+        const response = await fetch(`/api/Forecasting/forecast/${materialId}/${warehouseId}?monthsAhead=1`);
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Lỗi không xác định' }));
+          throw new Error(errorData.error || `HTTP ${response.status}`);
+        }
+        
+        const forecast = await response.json();
+        if (forecast && forecast.forecastedQuantity !== undefined) {
+          resultDiv.innerHTML = `
+            <div class="text-xs">
+              <div class="font-semibold text-blue-600">${forecast.forecastedQuantity.toFixed(2)}</div>
+              <div class="text-slate-500">Độ tin cậy: ${forecast.confidenceLevel ? forecast.confidenceLevel.toFixed(0) : 'N/A'}%</div>
+            </div>
+          `;
+          btn.style.display = 'none';
+        } else {
+          throw new Error('Dữ liệu dự đoán không hợp lệ');
+        }
+      } catch (error) {
+        resultDiv.innerHTML = `<span class="text-xs text-red-500">Lỗi: ${error.message}</span>`;
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-graph-up"></i>';
       }
     });
+
     // Auto mở modal theo query (nếu cần)
     const qp = new URLSearchParams(location.search);
     if (qp.get('newMaterial') === '1') {
@@ -365,32 +348,1206 @@
 
 
   </script>
+} *@
+@model MaterialIndexVM
+@{
+    ViewData["Title"] = SR["Materials_Title"];
+    var q = Model.Q ?? "";
+    const int LowStockThreshold = 5;
+
+    // Hàm format số lượng
+    string FQty(decimal v) => (v % 1m == 0m) ? ((long)v).ToString() : v.ToString("0.##");
+}
+
+<!-- Tailwind + Icons -->
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+<!-- ============ MAIN WRAPPER ============ -->
+<div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+
+    <!-- Large Header -->
+    @* <div class="mb-6">
+        <h1 class="text-4xl font-black text-slate-900 tracking-tight mb-2">
+            @ViewData["Title"]
+        </h1>
+        <p class="text-lg text-slate-600">
+            @SR["Materials_Subtitle"]
+        </p>
+    </div> *@
+
+    <!-- Toolbar -->
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 mb-6 p-6">
+        <form method="get" class="flex items-center justify-between gap-4">
+            <!-- Search and Filters -->
+            <div class="flex-1 flex items-center gap-3">
+                <div class="relative flex-1 max-w-md">
+                    <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input name="q" value="@q" 
+                           placeholder="Tìm kiếm mã, tên, mô tả..."
+                           class="w-full pl-10 pr-4 py-3 border-2 border-slate-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all shadow-sm hover:border-green-400" />
+            </div>
+                <select name="warehouseId" 
+                        class="border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all shadow-sm hover:border-green-400"
+                        asp-items="Model.WarehouseOptions" onchange="this.form.submit()">
+                    <option value="">-- Tất cả kho --</option>
+                    <option value="-1" selected="@(Model.WarehouseId == -1 ? "selected" : null)">Chưa phân kho</option>
+                </select>
+                <button type="button" class="p-3 border-2 border-slate-300 rounded-xl hover:bg-slate-50 transition">
+                    <i class="bi bi-funnel text-slate-600"></i>
+                </button>
+            </div>
+            
+            <!-- Actions -->
+            <div class="flex items-center gap-3">
+                <button type="button" data-bs-toggle="modal" data-bs-target="#materialCreateModal"
+                        class="px-5 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition flex items-center gap-2">
+                    <i class="bi bi-plus-circle"></i>
+                    Thêm nguyên liệu mới
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div class="bg-gradient-to-br from-green-500 to-emerald-600 border-0 rounded-2xl p-6 shadow-xl text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-green-100 uppercase tracking-wide mb-2">@SR["Materials_Stats_TotalItems"]</p>
+                    <h4 class="text-4xl font-black">@Model.TotalItems</h4>
+            </div>
+                <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
+                    <i class="bi bi-list-check text-white text-3xl"></i>
+            </div>
+            </div>
+        </div>
+        <div class="bg-gradient-to-br from-emerald-500 to-green-600 border-0 rounded-2xl p-6 shadow-xl text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-emerald-100 uppercase tracking-wide mb-2">@SR["Materials_Stats_TotalQty"]</p>
+                    <h4 class="text-4xl font-black">@FQty(Model.TotalStockQty)</h4>
+                </div>
+                <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
+                    <i class="bi bi-box-seam text-white text-3xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-gradient-to-br from-green-600 to-emerald-700 border-0 rounded-2xl p-6 shadow-xl text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-green-100 uppercase tracking-wide mb-2">@SR["Materials_Stats_TotalValue"]</p>
+                    <h4 class="text-4xl font-black">@Model.TotalStockValue.ToString("n0") đ</h4>
+                </div>
+                <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
+                    <i class="bi bi-currency-exchange text-white text-3xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tag filters -->
+    @if (!string.IsNullOrWhiteSpace(q) || Model.WarehouseId.HasValue)
+    {
+        <div class="flex flex-wrap gap-3 mb-6">
+            @if (!string.IsNullOrWhiteSpace(q))
+            { 
+                <span class="px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full text-sm font-semibold shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+                    <i class="bi bi-tag-fill"></i>
+                    @SR["Materials_Tag_Keyword"]: <b>@q</b>
+                    <a href="@Url.Action("Index", new { warehouseId = Model.WarehouseId, pageSize = Model.PageSize })" 
+                       class="ml-1 hover:bg-white/20 rounded-full p-1 transition">
+                        <i class="bi bi-x-circle"></i>
+                    </a>
+                </span> 
+            }
+            @if (Model.WarehouseId.HasValue)
+            {
+                var kw = Model.WarehouseOptions?.FirstOrDefault(o => o.Value == Model.WarehouseId.ToString())?.Text ?? "";
+                <span class="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-full text-sm font-semibold shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+                    <i class="bi bi-building"></i>
+                    @SR["Materials_Tag_Warehouse"]: <b>@kw</b>
+                    <a href="@Url.Action("Index", new { q = q, pageSize = Model.PageSize })" 
+                       class="ml-1 hover:bg-white/20 rounded-full p-1 transition">
+                        <i class="bi bi-x-circle"></i>
+                    </a>
+                </span>
+            }
+        </div>
+    }
+
+    <!-- Table -->
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto max-h-[600px] relative">
+            <table class="min-w-full divide-y divide-slate-200">
+                <thead class="bg-slate-50 sticky top-0 z-10">
+                    <tr>
+                        <th class="px-6 py-4 w-12">
+                            <input type="checkbox" class="rounded border-slate-300 text-green-600 focus:ring-green-500" id="selectAll" />
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition">
+                            @SR["Materials_Table_Image"]
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition">
+                            @SR["Materials_Table_Code"] <i class="bi bi-arrow-down-up text-green-600 ml-1"></i>
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition">
+                            @SR["Materials_Table_Name"] <i class="bi bi-arrow-down-up text-green-600 ml-1"></i>
+                        </th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            @SR["Materials_Table_Unit"]
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            @SR["Materials_Table_Supplier"]
+                        </th>
+                        <th class="px-6 py-4 text-right text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition">
+                            @SR["Materials_Table_SellingPrice"] <i class="bi bi-arrow-down-up text-green-600 ml-1"></i>
+                        </th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            @SR["Materials_Table_Specification"]
+                        </th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition">
+                            @SR["Materials_Table_Stock"] <i class="bi bi-arrow-down-up text-green-600 ml-1"></i>
+                        </th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider" style="min-width: 140px;">
+                            Dự đoán nhu cầu
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            @SR["Materials_Table_Warehouse"]
+                        </th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider w-24">
+                            Thao tác
+                        </th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-slate-200">
+                @foreach (var row in Model.Items)
+                {
+                    var m = row.M;
+                    var qty = row.TotalQty;
+                    string badgeColor = qty < 0 ? "bg-red-100 text-red-700"
+                        : qty == 0 ? "bg-slate-100 text-slate-600"
+                        : qty <= LowStockThreshold ? "bg-amber-100 text-amber-700"
+                        : "bg-emerald-100 text-emerald-700";
+
+                    <tr class="hover:bg-slate-50 transition-colors duration-150">
+                        <td class="px-6 py-4">
+                            <input type="checkbox" class="row-checkbox rounded border-slate-300 text-green-600 focus:ring-green-500" value="@m.Id" />
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            @if (!string.IsNullOrEmpty(m.ImageUrl))
+                            {
+                                <img src="@m.ImageUrl" class="w-12 h-12 rounded-lg object-cover border-2 border-slate-200 shadow-sm" />
+                            }
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="font-mono font-bold text-slate-900">@m.Code</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="font-medium text-slate-900">@m.Name</div>
+                            @if (!string.IsNullOrWhiteSpace(m.Description))
+                            { <div class="text-xs text-slate-500 line-clamp-2 mt-1">@m.Description</div> }
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <span class="text-slate-500">@m.Unit</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="text-slate-700">@m.Supplier?.Name</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            <span class="font-mono font-semibold text-slate-900">@((m.SellingPrice ?? 0m).ToString("n0")) đ</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <span class="text-slate-500">@m.Specification</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <span class="px-3 py-1.5 rounded-full text-xs font-bold shadow-sm @badgeColor">
+                                @FQty(qty)
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center" style="min-width: 140px;">
+                            @{
+                                var warehouseId = row.WhereStock?.FirstOrDefault()?.WarehouseId ?? 0;
+                            }
+                            @if (warehouseId > 0)
+                            {
+                                <div class="forecast-cell" data-material-id="@m.Id" data-warehouse-id="@warehouseId" style="white-space: nowrap;">
+                                    <button type="button" class="btn-forecast btn btn-sm btn-outline-info" title="Xem dự đoán nhu cầu">
+                                        <i class="bi bi-graph-up"></i>
+                                    </button>
+                                    <div class="forecast-result d-none mt-1"></div>
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="text-xs text-slate-400">Chưa có kho</span>
+                            }
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex flex-wrap gap-2">
+                            @if (row.WhereStock != null && row.WhereStock.Count > 0)
+                            {
+                                foreach (var w in row.WhereStock)
+                                {
+                                        <span class="inline-block px-3 py-1 text-xs rounded-full bg-green-50 text-green-700 border border-green-200 font-medium">
+                                            @w.WarehouseName <span class="text-green-500">(@FQty(w.Qty))</span>
+                                    </span>
+                                }
+                            }
+                            else
+                            {
+                                    <span class="inline-block px-3 py-1 text-xs rounded-full bg-slate-100 text-slate-500 border border-slate-200">
+                                    @SR["Materials_Label_NotAssigned"]
+                                </span>
+                            }
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <div class="relative inline-block">
+                                <button type="button" class="action-menu-btn p-2 hover:bg-slate-100 rounded-lg transition"
+                                        data-id="@m.Id">
+                                    <i class="bi bi-three-dots-vertical text-slate-600"></i>
+                                </button>
+                                <div class="action-menu hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-slate-200 z-10">
+                                    <button type="button" data-action="edit" data-id="@m.Id" 
+                                           data-url="@Url.Action("Edit","Materials", new { id = m.Id, modal = 1 })"
+                                           class="js-edit w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-green-50 hover:text-green-700 transition flex items-center gap-2">
+                                        <i class="bi bi-pencil text-green-600"></i> Sửa
+                                    </button>
+                                    <button type="button" data-action="view" data-id="@m.Id"
+                                           class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-green-50 hover:text-green-700 transition flex items-center gap-2">
+                                        <i class="bi bi-eye text-green-600"></i> Xem
+                                    </button>
+                                    <hr class="my-1">
+                                <a asp-action="Delete" asp-route-id="@m.Id"
+                                       class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition flex items-center gap-2">
+                                        <i class="bi bi-trash"></i> Xóa
+                                    </a>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Pagination -->
+    @{
+        var startItem = (Model.Page - 1) * Model.PageSize + 1;
+        var endItem = Math.Min(Model.Page * Model.PageSize, Model.TotalItems);
+    }
+    <div class="flex items-center justify-between mt-6">
+        <div class="text-sm text-slate-600">
+            Hiển thị <span class="font-semibold">@startItem-@endItem</span> trong tổng <span class="font-semibold">@Model.TotalItems</span>
+        </div>
+        <div class="flex items-center gap-2">
+            @if (Model.Page > 1)
+            {
+                <a href="@Url.Action("Index", new { page = Model.Page - 1, q = Model.Q, warehouseId = Model.WarehouseId, pageSize = Model.PageSize })"
+                   class="px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition">
+                    Trước
+                </a>
+            }
+            else
+            {
+                <button disabled class="px-4 py-2 text-sm font-semibold text-slate-400 bg-white border border-slate-200 rounded-lg opacity-50 cursor-not-allowed">
+                    Trước
+                </button>
+            }
+            
+            @if (Model.Page < Model.TotalPages)
+            {
+                <a href="@Url.Action("Index", new { page = Model.Page + 1, q = Model.Q, warehouseId = Model.WarehouseId, pageSize = Model.PageSize })"
+                   class="px-4 py-2 text-sm font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition">
+                    Tiếp theo
+                </a>
+            }
+            else
+            {
+                <button disabled class="px-4 py-2 text-sm font-semibold text-slate-400 bg-slate-200 rounded-lg opacity-50 cursor-not-allowed">
+                    Tiếp theo
+                </button>
+            }
+        </div>
+    </div>
+
+<!-- Modal tạo mới -->
+@section Modals {
+    @await Html.PartialAsync("~/Views/Materials/_CreateModal.cshtml", new MNBEMART.Models.Material())
 }
 
 
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Hiển thị hint nếu table có thể scroll ngang
+        (function() {
+            const checkTableScroll = (tableWrapper, hintId) => {
+                if (!tableWrapper) return;
+                const hint = document.getElementById(hintId);
+                if (!hint) return;
+                
+                const checkScroll = () => {
+                    if (tableWrapper.scrollWidth > tableWrapper.clientWidth) {
+                        hint.style.display = 'block';
+                    } else {
+                        hint.style.display = 'none';
+                    }
+                };
+                
+                // Kiểm tra ngay khi load
+                setTimeout(checkScroll, 100);
+                // Kiểm tra khi resize
+                window.addEventListener('resize', checkScroll);
+                // Kiểm tra khi table content thay đổi
+                const observer = new MutationObserver(checkScroll);
+                observer.observe(tableWrapper, { childList: true, subtree: true });
+            };
+            
+            // Check table với scrollHint2
+            const tableWrapper = document.querySelector('.overflow-x-auto');
+            if (tableWrapper) {
+                checkTableScroll(tableWrapper, 'scrollHint2');
+            }
+        })();
 
+        // Đảm bảo form action được set đúng khi modal Create được mở
+        document.addEventListener('shown.bs.modal', function(e) {
+            const modal = e.target;
+            if (modal.id === 'materialCreateModal') {
+                const form = modal.querySelector('#materialForm');
+                if (form) {
+                    // Đảm bảo form action được set
+                    if (!form.action || form.action === '' || form.action === '#' || form.action === window.location.href) {
+                        const controller = form.getAttribute('data-controller') || 'Materials';
+                        const action = form.getAttribute('data-action') || 'Create';
+                        form.action = `/${controller}/${action}`;
+                        console.log('Set form action on modal show:', form.action);
+                    }
+                }
+            }
+        });
 
-@if (Model.TotalPages > 1)
-{
-  <nav class="d-flex justify-content-end">
-    <ul class="pagination pagination-sm mb-0">
-      @{
-        int prev = Math.Max(1, Model.Page - 1);
-        int next = Math.Min(Model.TotalPages, Model.Page + 1);
-        string qs(string p) => Url.Action("Index", new { q = q, warehouseId = Model.WarehouseId, pageSize = Model.PageSize, page = p })!;
-      }
-      <li class="page-item @(Model.Page==1?"disabled":null)">
-        <a class="page-link" href="@qs(prev.ToString())">&laquo;</a>
-      </li>
-      @for (int i = 1; i <= Model.TotalPages; i++)
-      {
-        <li class="page-item @(i==Model.Page?"active":null)">
-          <a class="page-link" href="@qs(i.ToString())">@i</a>
-        </li>
-      }
-      <li class="page-item @(Model.Page==Model.TotalPages?"disabled":null)">
-        <a class="page-link" href="@qs(next.ToString())">&raquo;</a>
-      </li>
-    </ul>
-  </nav>
+        // Mở modal Edit (AJAX)
+        document.addEventListener('click', async (e) => {
+            const btn = e.target.closest('.js-edit');
+            if (!btn) return;
+            e.preventDefault();
+
+            const url = btn.getAttribute('data-url');
+            const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const html = await res.text();
+
+            const host = document.getElementById('modal-host');
+            host.innerHTML = html;
+
+            // Extract và execute scripts (vì innerHTML không execute scripts)
+            const scripts = host.querySelectorAll('script');
+            scripts.forEach(function(oldScript) {
+                const newScript = document.createElement('script');
+                Array.from(oldScript.attributes).forEach(attr => {
+                    newScript.setAttribute(attr.name, attr.value);
+                });
+                newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                oldScript.parentNode.replaceChild(newScript, oldScript);
+            });
+
+            const modalEl = host.querySelector('.modal');
+            const bsModal = new bootstrap.Modal(modalEl);
+            modalEl.addEventListener('hidden.bs.modal', () => { host.innerHTML = ''; });
+            
+            // Đảm bảo scripts được execute sau khi modal được show
+            modalEl.addEventListener('shown.bs.modal', function() {
+                // Trigger lại initialization nếu có
+                if (typeof loadEditSpecifications === 'function') {
+                    setTimeout(() => loadEditSpecifications(), 100);
+                }
+            });
+            
+            bsModal.show();
+        });
+
+        // Mở modal View/Details (AJAX)
+        document.addEventListener('click', async (e) => {
+            const btn = e.target.closest('button[data-action="view"]');
+            if (!btn) return;
+            e.preventDefault();
+
+            // Đóng action menu
+            const actionMenu = btn.closest('.action-menu');
+            if (actionMenu) {
+                actionMenu.classList.add('hidden');
+            }
+
+            const materialId = btn.getAttribute('data-id');
+            if (!materialId) return;
+
+            const url = `/Materials/Details/${materialId}?modal=1`;
+            
+            try {
+                const res = await fetch(url, { 
+                    headers: { 
+                        'X-Requested-With': 'XMLHttpRequest' 
+                    } 
+                });
+                
+                if (!res.ok) {
+                    console.error('Không thể tải chi tiết nguyên liệu:', res.status);
+                    alert('Không thể tải chi tiết nguyên liệu. Vui lòng thử lại.');
+                    return;
+                }
+
+                const html = await res.text();
+                const host = document.getElementById('modal-host');
+                if (!host) {
+                    console.error('Không tìm thấy modal-host');
+                    return;
+                }
+
+                host.innerHTML = html;
+
+                // Extract và execute scripts
+                const scripts = host.querySelectorAll('script');
+                scripts.forEach(function(oldScript) {
+                    const newScript = document.createElement('script');
+                    Array.from(oldScript.attributes).forEach(attr => {
+                        newScript.setAttribute(attr.name, attr.value);
+                    });
+                    newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                    oldScript.parentNode.replaceChild(newScript, oldScript);
+                });
+
+                const modalEl = host.querySelector('#materialDetailsModal');
+                if (!modalEl) {
+                    console.error('Không tìm thấy materialDetailsModal');
+                    return;
+                }
+
+                const bsModal = new bootstrap.Modal(modalEl);
+                modalEl.addEventListener('hidden.bs.modal', () => { 
+                    host.innerHTML = ''; 
+                });
+                
+                bsModal.show();
+
+                // Xử lý nút Edit trong modal Details (nếu có)
+                modalEl.addEventListener('shown.bs.modal', function() {
+                    const editBtn = modalEl.querySelector('.js-edit');
+                    if (editBtn) {
+                        editBtn.addEventListener('click', async function(e) {
+                            e.preventDefault();
+                            const editUrl = editBtn.getAttribute('data-url');
+                            if (!editUrl) return;
+                            
+                            // Đóng modal Details trước
+                            bsModal.hide();
+                            
+                            // Load modal Edit
+                            const editRes = await fetch(editUrl, { 
+                                headers: { 'X-Requested-With': 'XMLHttpRequest' } 
+                            });
+                            const editHtml = await editRes.text();
+                            host.innerHTML = editHtml;
+                            
+                            // Extract và execute scripts
+                            const editScripts = host.querySelectorAll('script');
+                            editScripts.forEach(function(oldScript) {
+                                const newScript = document.createElement('script');
+                                Array.from(oldScript.attributes).forEach(attr => {
+                                    newScript.setAttribute(attr.name, attr.value);
+                                });
+                                newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                                oldScript.parentNode.replaceChild(newScript, oldScript);
+                            });
+                            
+                            const editModalEl = host.querySelector('.modal');
+                            if (editModalEl) {
+                                const editBsModal = new bootstrap.Modal(editModalEl);
+                                editModalEl.addEventListener('hidden.bs.modal', () => { 
+                                    host.innerHTML = ''; 
+                                });
+                                editBsModal.show();
+                            }
+                        });
+                    }
+                });
+            } catch (error) {
+                console.error('Lỗi khi tải chi tiết nguyên liệu:', error);
+                alert('Lỗi khi tải chi tiết nguyên liệu: ' + error.message);
+            }
+        });
+
+        // Submit form Create trong modal
+        document.addEventListener('submit', async (e) => {
+            const form = e.target;
+            if (form.id !== 'materialForm') return;
+            
+            console.log('Create form submit event triggered');
+            console.log('Form ID:', form.id);
+            console.log('Form action (original):', form.action);
+            
+            e.preventDefault();
+
+            try {
+                // Build action URL - ưu tiên form.action, nếu không có thì build từ attributes
+                let actionUrl = form.action || form.getAttribute('action') || '';
+                console.log('Initial actionUrl:', actionUrl);
+                console.log('Form attributes - data-controller:', form.getAttribute('data-controller'), 'data-action:', form.getAttribute('data-action'));
+                
+                // Nếu actionUrl không hợp lệ, build từ attributes hoặc default
+                if (!actionUrl || actionUrl === '' || actionUrl === window.location.href || actionUrl === '#' || actionUrl.trim() === '') {
+                    // Build URL từ form attributes hoặc sử dụng default
+                    const controller = form.getAttribute('data-controller') || 'Materials';
+                    const action = form.getAttribute('data-action') || 'Create';
+                    actionUrl = `/${controller}/${action}`;
+                    console.log('Built actionUrl from attributes:', actionUrl);
+                    
+                    // Set lại action vào form để đảm bảo
+                    form.action = actionUrl;
+                }
+                
+                // Đảm bảo actionUrl là absolute hoặc relative path đúng
+                if (actionUrl.startsWith('/')) {
+                    // Đã là absolute path, giữ nguyên
+                } else if (!actionUrl.startsWith('http')) {
+                    // Relative path, thêm / nếu cần
+                    if (!actionUrl.startsWith('/')) {
+                        actionUrl = '/' + actionUrl;
+                    }
+                }
+                
+                // Thêm modal parameter (chỉ nếu chưa có)
+                if (!actionUrl.includes('modal=')) {
+                    actionUrl = actionUrl.includes('?') ? actionUrl + '&modal=1' : actionUrl + '?modal=1';
+                }
+                
+                console.log('Final actionUrl:', actionUrl);
+                
+                // Lấy reference đến submit button (chưa disable ngay)
+                const submitBtn = form.querySelector('button[type="submit"]');
+                const originalBtnText = submitBtn ? submitBtn.innerHTML : '';
+
+                // Validate form trước khi submit
+                if (!form.checkValidity()) {
+                    console.warn('Xác thực form thất bại');
+                    form.reportValidity();
+                    return;
+                }
+
+                // Kiểm tra duplicate state trước khi submit
+                if (window.duplicateCheckState && window.duplicateCheckState.isDuplicate === true) {
+                    console.warn('Không thể lưu: Phát hiện nguyên liệu trùng lặp');
+                    if (typeof Toast !== 'undefined') {
+                        Toast.error('Không thể lưu: Nguyên liệu này đã tồn tại trong hệ thống. Vui lòng kiểm tra lại thông tin.');
+                    } else {
+                        alert('Không thể lưu: Nguyên liệu này đã tồn tại trong hệ thống. Vui lòng kiểm tra lại thông tin.');
+                    }
+                    return;
+                }
+
+                // Kiểm tra duplicate một lần nữa trước khi submit (để đảm bảo)
+                const nameInput = form.querySelector('#materialName');
+                const unitInput = form.querySelector('#Unit');
+                const specSelect = form.querySelector('#specificationSelect');
+                
+                if (nameInput && unitInput) {
+                    const name = nameInput.value.trim();
+                    const unit = unitInput.value.trim();
+                    const spec = specSelect ? (specSelect.value || '').trim() : '';
+                    
+                    if (name && unit) {
+                        // Kiểm tra duplicate trước khi submit
+                        try {
+                            const checkResponse = await fetch('/Materials/CheckDuplicateByDetails', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                },
+                                body: JSON.stringify({
+                                    name: name,
+                                    unit: unit,
+                                    specification: spec
+                                })
+                            });
+                            
+                            if (checkResponse.ok) {
+                                const checkResult = await checkResponse.json();
+                                
+                                if (checkResult.isDuplicate && checkResult.duplicateMaterial) {
+                                    console.warn('Không thể lưu: Phát hiện nguyên liệu trùng lặp trong lần kiểm tra cuối');
+                                    if (typeof Toast !== 'undefined') {
+                                        Toast.error(`Không thể lưu: Nguyên liệu này đã tồn tại (Mã: ${checkResult.duplicateMaterial.code}). Vui lòng kiểm tra lại thông tin.`);
+                                    } else {
+                                        alert(`Không thể lưu: Nguyên liệu này đã tồn tại (Mã: ${checkResult.duplicateMaterial.code}). Vui lòng kiểm tra lại thông tin.`);
+                                    }
+                                    
+                                    // Highlight các trường
+                                    if (nameInput) nameInput.classList.add('is-invalid');
+                                    if (unitInput) unitInput.classList.add('is-invalid');
+                                    if (specSelect) specSelect.classList.add('is-invalid');
+                                    
+                                    return;
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Lỗi khi kiểm tra trùng lặp trước khi lưu:', error);
+                            // Nếu có lỗi khi check, vẫn cho phép submit (để server-side validation xử lý)
+                        }
+                    }
+                }
+
+                // Disable submit button để tránh double submit (chỉ disable sau khi đã pass tất cả validation)
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Đang lưu...';
+                }
+
+                const formData = new FormData(form);
+                console.log('FormData created, submitting to:', actionUrl);
+                
+                const res = await fetch(actionUrl, { 
+                    method: 'POST', 
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                console.log('Response status:', res.status, 'redirected:', res.redirected, 'url:', res.url);
+
+                const ct = res.headers.get('content-type') || '';
+                console.log('Response content-type:', ct);
+                console.log('Response ok:', res.ok);
+                console.log('Response status:', res.status);
+                
+                // Đọc response text trước để có thể parse nhiều lần
+                const responseText = await res.text();
+                console.log('Response text (first 500 chars):', responseText.substring(0, 500));
+                
+                // Kiểm tra xem có phải là redirect thành công không
+                // Khi controller RedirectToAction, fetch() follow redirect và trả về HTML của trang Index (full page)
+                // Nếu response là full page HTML (có layout, không chỉ modal), đó là redirect thành công
+                const isFullPageResponse = res.ok && res.status === 200 && ct.includes('text/html') && 
+                    responseText.length > 10000 && // Full page thường > 10KB
+                    (responseText.includes('<!DOCTYPE html>') || responseText.includes('<html')) &&
+                    !responseText.includes('id="materialCreateModal"'); // Không phải modal content
+                
+                const isRedirected = res.redirected || 
+                    (res.url && res.url.includes('/Materials/Index') && !actionUrl.includes('/Materials/Index')) ||
+                    isFullPageResponse;
+                
+                if (isRedirected) { 
+                    console.log('Phát hiện redirect thành công, đóng modal và reload...');
+                    // Đóng modal trước khi reload
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('materialCreateModal'));
+                    if (modal) modal.hide();
+                    // Hiển thị thông báo thành công nếu có Toast
+                    if (typeof Toast !== 'undefined') {
+                        Toast.success('Đã lưu nguyên liệu thành công!');
+                    }
+                    // Reload sau một chút để đảm bảo modal đã đóng
+                    setTimeout(() => {
+                        location.reload(); 
+                    }, 300);
+                    return; 
+                }
+                
+                // Kiểm tra JSON response (cho trường hợp trùng lặp - có thể là 200 OK với JSON)
+                // Kiểm tra cả content-type và nội dung response
+                const isJsonContentType = ct.includes('application/json');
+                const looksLikeJson = responseText.trim().startsWith('{') || responseText.trim().startsWith('[');
+                
+                // Xử lý JSON response trước
+                if (isJsonContentType || (res.ok && looksLikeJson && !ct.includes('text/html'))) {
+                    try {
+                        const jsonData = JSON.parse(responseText);
+                        console.log('Parsed JSON response:', jsonData);
+                        
+                        if (jsonData.success === false && jsonData.error) {
+                            console.log('Phát hiện trùng lặp! Lỗi:', jsonData.error);
+                            
+                            // Hiển thị toast notification cho lỗi trùng lặp
+                            if (typeof Toast !== 'undefined') {
+                                console.log('Đang hiển thị thông báo...');
+                                Toast.error(jsonData.error);
+                            } else {
+                                console.warn('Toast không được định nghĩa, sử dụng alert thay thế');
+                                alert(jsonData.error);
+                            }
+                            
+                            if (submitBtn) {
+                                submitBtn.disabled = false;
+                                submitBtn.innerHTML = originalBtnText;
+                            }
+                            return;
+                        } else if (jsonData.success === true) {
+                            // Success case - có thể là response khác
+                            console.log('Phản hồi JSON cho thấy thành công');
+                        }
+                    } catch (e) {
+                        console.error('Lỗi khi phân tích phản hồi JSON:', e);
+                        console.log('Phản hồi không phải JSON hợp lệ, sẽ xử lý như HTML');
+                    }
+                }
+                
+                // Kiểm tra response status cho các lỗi khác
+                if (!res.ok) {
+                    console.error('Yêu cầu thất bại với mã trạng thái:', res.status);
+                    console.error('Phản hồi lỗi:', responseText);
+                    
+                    // Thử parse JSON nếu có
+                    try {
+                        const errorJson = JSON.parse(responseText);
+                        if (errorJson.success === false && errorJson.error) {
+                            // Hiển thị toast notification cho lỗi trùng lặp
+                            if (typeof Toast !== 'undefined') {
+                                Toast.error(errorJson.error);
+                            } else {
+                                alert(errorJson.error);
+                            }
+                        } else {
+                            alert('Có lỗi xảy ra khi lưu. Vui lòng thử lại.');
+                        }
+                    } catch (e) {
+                        alert('Có lỗi xảy ra khi lưu. Vui lòng thử lại.');
+                    }
+                    
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalBtnText;
+                    }
+                    return;
+                }
+                
+                // Xử lý HTML response (nếu không phải JSON hoặc JSON không có success: false)
+                if (ct.includes('text/html') || (!isJsonContentType && !looksLikeJson)) {
+                    const html = responseText;
+                    console.log('Received HTML response, length:', html.length);
+                    
+                    // Parse response HTML để kiểm tra
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    
+                    // Tìm modal trong response (có thể là full page hoặc chỉ modal)
+                    let newModal = doc.querySelector('#materialCreateModal');
+                    if (!newModal) {
+                        // Nếu không tìm thấy trong body, thử tìm trong toàn bộ document
+                        newModal = doc.getElementById('materialCreateModal');
+                    }
+                    if (!newModal && doc.body) {
+                        // Thử tìm trong body
+                        newModal = doc.body.querySelector('#materialCreateModal');
+                    }
+                    
+                    // Nếu không tìm thấy modal và response là full page HTML lớn, đó là redirect thành công
+                    if (!newModal && html.length > 10000 && (html.includes('<!DOCTYPE html>') || html.includes('<html'))) {
+                        console.log('Response là full page HTML không có modal - redirect thành công');
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('materialCreateModal'));
+                        if (modal) modal.hide();
+                        if (typeof Toast !== 'undefined') {
+                            Toast.success('Đã lưu nguyên liệu thành công!');
+                        }
+                        setTimeout(() => {
+                            location.reload(); 
+                        }, 300);
+                        return;
+                    }
+                    
+                    // Thay thế nội dung modal hiện tại
+                    const existingModal = document.getElementById('materialCreateModal');
+                    if (existingModal) {
+                        if (newModal) {
+                            // Thay thế toàn bộ modal
+                            existingModal.outerHTML = newModal.outerHTML;
+                            
+                            // Re-get modal element sau khi thay thế
+                            const updatedModal = document.getElementById('materialCreateModal');
+                            if (updatedModal) {
+                                // Extract và execute scripts từ modal mới
+                                const scripts = updatedModal.querySelectorAll('script');
+                                scripts.forEach(function(oldScript) {
+                                    const newScript = document.createElement('script');
+                                    Array.from(oldScript.attributes).forEach(attr => {
+                                        newScript.setAttribute(attr.name, attr.value);
+                                    });
+                                    newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                                    oldScript.parentNode.replaceChild(newScript, oldScript);
+                                });
+                                
+                                // Re-initialize form sau khi scripts được execute
+                                setTimeout(() => {
+                                    if (typeof initializeMaterialForm === 'function') {
+                                        initializeMaterialForm();
+                                    }
+                                    if (typeof loadSpecifications === 'function') {
+                                        loadSpecifications();
+                                    }
+                                }, 100);
+                                
+                                // Re-show modal nếu đã bị đóng
+                                const bsModal = bootstrap.Modal.getInstance(updatedModal);
+                                if (!bsModal) {
+                                    new bootstrap.Modal(updatedModal).show();
+                                } else if (!updatedModal.classList.contains('show')) {
+                                    bsModal.show();
+                                }
+                            }
+                        } else {
+                            console.warn('Không tìm thấy #materialCreateModal trong HTML phản hồi');
+                            // Thử reload nếu không tìm thấy modal
+                            location.reload();
+                        }
+                    } else {
+                        console.warn('Không tìm thấy materialCreateModal trong DOM');
+                        location.reload();
+                    }
+                } else {
+                    console.log('Phản hồi không phải HTML, đang tải lại trang');
+                    location.reload();
+                }
+            } catch (error) {
+                console.error('Lỗi khi gửi form:', error);
+                alert('Lỗi kết nối: ' + error.message);
+                const submitBtn = form.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    const originalBtnText = submitBtn.getAttribute('data-original-text') || 'Lưu';
+                    submitBtn.innerHTML = originalBtnText;
+                }
+            }
+        });
+
+        // Submit form Edit trong modal
+        document.addEventListener('submit', async (e) => {
+            const form = e.target;
+            if (form.id !== 'materialEditForm') return;
+            
+            console.log('Edit form submit event triggered');
+            console.log('Form ID:', form.id);
+            console.log('Form action (original):', form.action);
+            
+            e.preventDefault();
+
+            try {
+                // Build action URL - ưu tiên form.action
+                let actionUrl = form.action;
+                if (!actionUrl || actionUrl === '' || actionUrl === window.location.href || actionUrl === '#') {
+                    // Build từ form attributes hoặc route
+                    const formAction = form.getAttribute('action');
+                    if (formAction && formAction !== '#' && formAction !== '') {
+                        actionUrl = formAction;
+                    } else {
+                        // Fallback: build từ hidden input Id hoặc URL hiện tại
+                        const idInput = form.querySelector('input[name="Id"]');
+                        if (idInput && idInput.value) {
+                            actionUrl = `/Materials/Edit/${idInput.value}`;
+                        } else {
+                            const urlParts = window.location.pathname.split('/');
+                            if (urlParts.length >= 3) {
+                                actionUrl = `/${urlParts[1]}/Edit/${urlParts[2]}`;
+                            } else {
+                                actionUrl = '/Materials/Edit';
+                            }
+                        }
+                    }
+                }
+                
+                // Đảm bảo actionUrl là absolute hoặc relative path đúng
+                if (actionUrl.startsWith('/')) {
+                    // Đã là absolute path, giữ nguyên
+                } else if (!actionUrl.startsWith('http')) {
+                    // Relative path, thêm / nếu cần
+                    if (!actionUrl.startsWith('/')) {
+                        actionUrl = '/' + actionUrl;
+                    }
+                }
+                
+                // Thêm modal parameter (chỉ nếu chưa có)
+                if (!actionUrl.includes('modal=')) {
+                    actionUrl = actionUrl.includes('?') ? actionUrl + '&modal=1' : actionUrl + '?modal=1';
+                }
+                
+                console.log('Submitting Edit form to:', actionUrl);
+                
+                // Disable submit button
+                const submitBtn = form.querySelector('button[type="submit"]');
+                const originalBtnText = submitBtn ? submitBtn.innerHTML : '';
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Đang lưu...';
+                }
+
+                // Validate form trước khi submit
+                if (!form.checkValidity()) {
+                    console.warn('Xác thực form chỉnh sửa thất bại');
+                    form.reportValidity();
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalBtnText;
+                    }
+                    return;
+                }
+
+                const formData = new FormData(form);
+                console.log('Edit FormData created, submitting to:', actionUrl);
+                
+                const res = await fetch(actionUrl, { 
+                    method: 'POST', 
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                console.log('Edit response status:', res.status, 'redirected:', res.redirected);
+
+                // Lưu thành công
+                if (res.redirected) { 
+                    location.reload(); 
+                    return; 
+                }
+
+                // Kiểm tra response status
+                if (!res.ok) {
+                    console.error('Yêu cầu chỉnh sửa thất bại với mã trạng thái:', res.status);
+                    const errorText = await res.text();
+                    console.error('Phản hồi lỗi:', errorText);
+                    alert('Có lỗi xảy ra khi lưu. Vui lòng thử lại.');
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalBtnText;
+                    }
+                    return;
+                }
+
+                const ct = res.headers.get('content-type') || '';
+                if (ct.includes('text/html')) {
+                    const html = await res.text();
+                    const host = document.getElementById('modal-host');
+                    if (!host) {
+                        console.error('Không tìm thấy modal-host');
+                        location.reload();
+                        return;
+                    }
+                    
+                    // Parse HTML để tìm modal
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    
+                    // Tìm modal trong response (có thể là full page hoặc chỉ modal)
+                    let modalEl = doc.querySelector('#materialEditModal');
+                    if (!modalEl) {
+                        modalEl = doc.querySelector('.modal');
+                    }
+                    if (!modalEl && doc.body) {
+                        modalEl = doc.body.querySelector('#materialEditModal') || doc.body.querySelector('.modal');
+                    }
+                    
+                    if (modalEl) {
+                        // Thay thế nội dung modal-host
+                        host.innerHTML = modalEl.outerHTML;
+                        
+                        // Re-get modal element sau khi inject
+                        const injectedModal = host.querySelector('#materialEditModal') || host.querySelector('.modal');
+                        if (injectedModal) {
+                            // Extract và execute scripts (vì innerHTML không execute scripts)
+                            const scripts = injectedModal.querySelectorAll('script');
+                            scripts.forEach(function(oldScript) {
+                                const newScript = document.createElement('script');
+                                Array.from(oldScript.attributes).forEach(attr => {
+                                    newScript.setAttribute(attr.name, attr.value);
+                                });
+                                newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                                oldScript.parentNode.replaceChild(newScript, oldScript);
+                            });
+
+                            // Tạo hoặc lấy modal instance
+                            let bsModal = bootstrap.Modal.getInstance(injectedModal);
+                            if (!bsModal) {
+                                bsModal = new bootstrap.Modal(injectedModal);
+                            }
+                            
+                            // Đảm bảo scripts được execute sau khi modal được show
+                            injectedModal.addEventListener('shown.bs.modal', function() {
+                                if (typeof loadEditSpecifications === 'function') {
+                                    setTimeout(() => loadEditSpecifications(), 100);
+                                }
+                            });
+                            
+                            bsModal.show();
+                        } else {
+                            console.error('Không thể tìm thấy modal sau khi chèn');
+                            location.reload();
+                        }
+                    } else {
+                        // Nếu không tìm thấy modal, thử inject toàn bộ HTML
+                        host.innerHTML = html;
+                        const injectedModal = host.querySelector('#materialEditModal') || host.querySelector('.modal');
+                        if (injectedModal) {
+                            const scripts = injectedModal.querySelectorAll('script');
+                            scripts.forEach(function(oldScript) {
+                                const newScript = document.createElement('script');
+                                Array.from(oldScript.attributes).forEach(attr => {
+                                    newScript.setAttribute(attr.name, attr.value);
+                                });
+                                newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                                oldScript.parentNode.replaceChild(newScript, oldScript);
+                            });
+                            
+                            let bsModal = bootstrap.Modal.getInstance(injectedModal);
+                            if (!bsModal) {
+                                bsModal = new bootstrap.Modal(injectedModal);
+                            }
+                            bsModal.show();
+                        } else {
+                            console.error('Không tìm thấy phần tử modal trong phản hồi');
+                            location.reload();
+                        }
+                    }
+                } else {
+                    console.log('Phản hồi không phải HTML, đang tải lại trang');
+                    location.reload();
+                }
+            } catch (error) {
+                console.error('Lỗi khi gửi form chỉnh sửa:', error);
+                alert('Lỗi kết nối: ' + error.message);
+                const submitBtn = form.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    const originalBtnText = submitBtn.getAttribute('data-original-text') || 'Lưu';
+                    submitBtn.innerHTML = originalBtnText;
+                }
+            }
+        });
+
+        // Load forecast on demand
+        document.addEventListener('click', async function(e) {
+            const btn = e.target.closest('.btn-forecast');
+            if (!btn) return;
+            
+            e.preventDefault();
+            const cell = btn.closest('.forecast-cell');
+            if (!cell) return;
+            
+            const materialId = cell.getAttribute('data-material-id');
+            const warehouseId = cell.getAttribute('data-warehouse-id');
+            const resultDiv = cell.querySelector('.forecast-result');
+            
+            if (!materialId || !warehouseId || warehouseId === '0') {
+                alert('Vui lòng chọn kho trước');
+                return;
+            }
+
+            // Disable button and show loading
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+            if (resultDiv) {
+                resultDiv.classList.remove('d-none');
+                resultDiv.innerHTML = '<span class="text-xs text-slate-500">Đang tải...</span>';
+            }
+
+            try {
+                const response = await fetch(`/api/Forecasting/forecast/${materialId}/${warehouseId}?monthsAhead=1`);
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: 'Lỗi không xác định' }));
+                    throw new Error(errorData.error || `HTTP ${response.status}`);
+                }
+                
+                const forecast = await response.json();
+                if (forecast && forecast.forecastedQuantity !== undefined) {
+                    if (resultDiv) {
+                        resultDiv.innerHTML = `
+                            <div class="text-xs">
+                                <div class="font-semibold text-blue-600">${forecast.forecastedQuantity.toFixed(2)}</div>
+                                <div class="text-slate-500">Độ tin cậy: ${forecast.confidenceLevel ? forecast.confidenceLevel.toFixed(0) : 'N/A'}%</div>
+                            </div>
+                        `;
+                    }
+                    btn.style.display = 'none';
+                } else {
+                    throw new Error('Dữ liệu dự đoán không hợp lệ');
+                }
+            } catch (error) {
+                if (resultDiv) {
+                    resultDiv.innerHTML = `<span class="text-xs text-red-500">Lỗi: ${error.message}</span>`;
+                }
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-graph-up"></i>';
+            }
+        });
+
+        // Preview ảnh
+        (function () {
+            const file = document.getElementById('materialImageFile');
+            const img = document.getElementById('materialImagePreview');
+            if (!file || !img) return;
+            file.addEventListener('change', () => {
+                const f = file.files?.[0];
+                if (!f) { img.classList.add('d-none'); img.src = '#'; return; }
+                const fr = new FileReader();
+                fr.onload = e => { img.src = e.target.result; img.classList.remove('d-none'); }
+                fr.readAsDataURL(f);
+            });
+        })();
+
+        // Action menu toggle
+        document.querySelectorAll('.action-menu-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const menu = this.nextElementSibling;
+                const isHidden = menu.classList.contains('hidden');
+                
+                // Close all other menus
+                document.querySelectorAll('.action-menu').forEach(m => {
+                    if (m !== menu) {
+                        m.classList.add('hidden');
+                    }
+                });
+                
+                // Toggle current menu
+                if (isHidden) {
+                    menu.classList.remove('hidden');
+                } else {
+                    menu.classList.add('hidden');
+                }
+            });
+        });
+
+        // Close menus when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.action-menu-btn') && !e.target.closest('.action-menu')) {
+                document.querySelectorAll('.action-menu').forEach(menu => {
+                    menu.classList.add('hidden');
+                });
+            }
+        });
+
+        // Select all checkbox
+        const selectAll = document.getElementById('selectAll');
+        const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+        
+        if (selectAll) {
+            selectAll.addEventListener('change', function() {
+                rowCheckboxes.forEach(checkbox => {
+                    checkbox.checked = this.checked;
+                });
+            });
+        }
+
+        // Update select all when individual checkboxes change
+        rowCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const allChecked = Array.from(rowCheckboxes).every(cb => cb.checked);
+                const someChecked = Array.from(rowCheckboxes).some(cb => cb.checked);
+                
+                if (selectAll) {
+                    selectAll.checked = allChecked;
+                    selectAll.indeterminate = someChecked && !allChecked;
+                }
+            });
+        });
+    </script>
 }

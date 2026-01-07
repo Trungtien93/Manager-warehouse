@@ -1,0 +1,55 @@
+@model MNBEMART.Models.User
+
+<div class="modal fade" id="editUserModal-@Model.Id" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header bg-warning">
+        <h5 class="modal-title"><i class="bi bi-pencil-square"></i> Sửa người dùng</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      
+      <form asp-action="Edit" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="Id" value="@Model.Id" />
+        
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Họ và tên</label>
+            <input name="FullName" value="@Model.FullName" class="form-control" required />
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Tài khoản</label>
+            <input name="Username" value="@Model.Username" class="form-control" required />
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Mật khẩu mới</label>
+            <input name="Password" type="password" class="form-control" placeholder="Để trống nếu không đổi" />
+            <small class="text-muted">Chỉ nhập khi muốn thay đổi mật khẩu</small>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Quyền</label>
+            <select name="Role" class="form-select">
+              <option value="User" selected="@(Model.Role == "User" ? "selected" : null)">User</option>
+              <option value="Admin" selected="@(Model.Role == "Admin" ? "selected" : null)">Admin</option>
+            </select>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Email</label>
+            <input name="Email" type="email" value="@Model.Email" class="form-control" placeholder="example@email.com" />
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+          <button type="submit" class="btn btn-warning">
+            <i class="bi bi-check-circle"></i> Cập nhật
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MNBEMART")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+306e0d7d86b3f5089227833db7355c553ec5fb38")]
 [assembly: System.Reflection.AssemblyProductAttribute("MNBEMART")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MNBEMART")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

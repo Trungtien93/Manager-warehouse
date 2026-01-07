@@ -1,0 +1,278 @@
+@{
+    ViewData["Title"] = "Cảnh báo hết hạn";
+    var expired = ViewBag.Expired as List<dynamic>;
+    var expiringSoon = ViewBag.ExpiringSoon as List<dynamic>;
+    int expiredCount = ViewBag.ExpiredCount;
+    int expiringSoonCount = ViewBag.ExpiringSoonCount;
+}
+
+<div class="max-w-[1600px] mx-auto px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-black text-slate-900 tracking-tight">
+                    <i class="bi bi-exclamation-triangle-fill text-red-600 me-2"></i>
+                    Cảnh báo hết hạn
+                </h1>
+                <p class="text-slate-600 mt-2">Danh sách lô hàng đã hết hạn và sắp hết hạn (30 ngày tới)</p>
+            </div>
+            <a asp-action="Index" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium px-5 py-2.5 rounded-lg transition flex items-center gap-2">
+                <i class="bi bi-arrow-left"></i>
+                Quay lại
+            </a>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+            <div class="bg-gradient-to-br from-red-50 to-rose-50 border-2 border-red-200 rounded-2xl p-6">
+                <div class="flex items-center gap-4">
+                    <div class="flex-shrink-0 w-16 h-16 bg-red-500 rounded-xl flex items-center justify-center">
+                        <i class="bi bi-x-circle-fill text-white text-3xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold text-red-700 uppercase">Đã hết hạn</p>
+                        <p class="text-4xl font-black text-red-900 mt-1">@expiredCount</p>
+                        <p class="text-xs text-red-600 mt-1 font-medium">Cần xử lý ngay</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 rounded-2xl p-6">
+                <div class="flex items-center gap-4">
+                    <div class="flex-shrink-0 w-16 h-16 bg-amber-500 rounded-xl flex items-center justify-center">
+                        <i class="bi bi-clock-fill text-white text-3xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold text-amber-700 uppercase">Sắp hết hạn</p>
+                        <p class="text-4xl font-black text-amber-900 mt-1">@expiringSoonCount</p>
+                        <p class="text-xs text-amber-600 mt-1 font-medium">Trong 30 ngày tới</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Expired Section -->
+    @if (expired != null && expired.Any())
+    {
+        <div class="mb-8">
+            <div class="bg-red-50 border-l-4 border-red-600 rounded-lg p-4 mb-4">
+                <div class="flex items-center">
+                    <i class="bi bi-exclamation-triangle-fill text-red-600 text-xl me-3"></i>
+                    <div>
+                        <h3 class="text-lg font-bold text-red-900">Đã hết hạn (@expiredCount lô)</h3>
+                        <p class="text-sm text-red-700">Các lô hàng sau đã hết hạn sử dụng. Cần kiểm tra và xử lý ngay.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-200">
+                        <thead class="bg-red-50">
+                            <tr>
+                                <th class="px-6 py-4 text-left text-xs font-bold text-red-900 uppercase tracking-wider">Mã NL</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold text-red-900 uppercase tracking-wider">Tên nguyên liệu</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold text-red-900 uppercase tracking-wider">Số lô</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold text-red-900 uppercase tracking-wider">Kho</th>
+                                <th class="px-6 py-4 text-right text-xs font-bold text-red-900 uppercase tracking-wider">Tồn</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold text-red-900 uppercase tracking-wider">NSX</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold text-red-900 uppercase tracking-wider">HSD</th>
+                                <th class="px-6 py-4 text-center text-xs font-bold text-red-900 uppercase tracking-wider">Quá hạn</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-slate-200">
+                            @foreach (var item in expired)
+                            {
+                                <tr class="hover:bg-red-50 transition">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="font-mono text-sm font-semibold text-slate-900">@item.MaterialCode</span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="text-sm font-medium text-slate-900">@item.MaterialName</div>
+                                        @if (!string.IsNullOrEmpty(item.SupplierName))
+                                        {
+                                            <div class="text-xs text-slate-500">NCC: @item.SupplierName</div>
+                                        }
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-800">
+                                            @item.LotNumber
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
+                                        @item.WarehouseName
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-right">
+                                        <span class="text-sm font-semibold text-slate-900">@item.Quantity.ToString("N2")</span>
+                                        <span class="text-xs text-slate-500 ms-1">@item.Unit</span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                                        @(item.ManufacturedDate != null ? ((DateTime)item.ManufacturedDate).ToString("dd/MM/yyyy") : "-")
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="text-sm font-bold text-red-700">
+                                            @(item.ExpiryDate != null ? ((DateTime)item.ExpiryDate).ToString("dd/MM/yyyy") : "-")
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800">
+                                            @Math.Abs((int)item.DaysRemaining) ngày
+                                        </span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Expiring Soon Section -->
+    @if (expiringSoon != null && expiringSoon.Any())
+    {
+        <div>
+            <div class="bg-amber-50 border-l-4 border-amber-500 rounded-lg p-4 mb-4">
+                <div class="flex items-center">
+                    <i class="bi bi-clock-fill text-amber-600 text-xl me-3"></i>
+                    <div>
+                        <h3 class="text-lg font-bold text-amber-900">Sắp hết hạn (@expiringSoonCount lô)</h3>
+                        <p class="text-sm text-amber-700">Các lô hàng này sẽ hết hạn trong vòng 30 ngày tới.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-200">
+                        <thead class="bg-amber-50">
+                            <tr>
+                                <th class="px-6 py-4 text-left text-xs font-bold text-amber-900 uppercase tracking-wider">Mã NL</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold text-amber-900 uppercase tracking-wider">Tên nguyên liệu</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold text-amber-900 uppercase tracking-wider">Số lô</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold text-amber-900 uppercase tracking-wider">Kho</th>
+                                <th class="px-6 py-4 text-right text-xs font-bold text-amber-900 uppercase tracking-wider">Tồn</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold text-amber-900 uppercase tracking-wider">NSX</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold text-amber-900 uppercase tracking-wider">HSD</th>
+                                <th class="px-6 py-4 text-center text-xs font-bold text-amber-900 uppercase tracking-wider">Còn lại</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-slate-200">
+                            @foreach (var item in expiringSoon)
+                            {
+                                int daysLeft = (int)item.DaysRemaining;
+                                string bgClass = daysLeft <= 7 ? "bg-orange-50" : daysLeft <= 15 ? "bg-yellow-50" : "bg-white";
+                                string badgeClass = daysLeft <= 7 ? "bg-orange-100 text-orange-800" : daysLeft <= 15 ? "bg-yellow-100 text-yellow-800" : "bg-amber-100 text-amber-800";
+                                
+                                <tr class="@bgClass hover:bg-amber-50 transition">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="font-mono text-sm font-semibold text-slate-900">@item.MaterialCode</span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="text-sm font-medium text-slate-900">@item.MaterialName</div>
+                                        @if (!string.IsNullOrEmpty(item.SupplierName))
+                                        {
+                                            <div class="text-xs text-slate-500">NCC: @item.SupplierName</div>
+                                        }
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-800">
+                                            @item.LotNumber
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
+                                        @item.WarehouseName
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-right">
+                                        <span class="text-sm font-semibold text-slate-900">@item.Quantity.ToString("N2")</span>
+                                        <span class="text-xs text-slate-500 ms-1">@item.Unit</span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                                        @(item.ManufacturedDate != null ? ((DateTime)item.ManufacturedDate).ToString("dd/MM/yyyy") : "-")
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="text-sm font-bold text-amber-700">
+                                            @(item.ExpiryDate != null ? ((DateTime)item.ExpiryDate).ToString("dd/MM/yyyy") : "-")
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold @badgeClass">
+                                            @daysLeft ngày
+                                        </span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if ((expired == null || !expired.Any()) && (expiringSoon == null || !expiringSoon.Any()))
+    {
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-12 text-center">
+            <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 mb-4">
+                <i class="bi bi-check-circle-fill text-green-600 text-4xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900 mb-2">Không có cảnh báo hết hạn</h3>
+            <p class="text-slate-600">Tất cả các lô hàng đang trong tình trạng tốt.</p>
+        </div>
+    }
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

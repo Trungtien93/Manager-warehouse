@@ -176,8 +176,9 @@ namespace MNBEMART.Services
         {
             "StockReceipt"    => "PN",
             "StockIssue"      => "PX",
+            "StockIssueReference" => "CTX",
             "StockTransfer"   => "CK",
-            "StockAdjustment" => "DC",
+            // "StockAdjustment" => "DC", // Đã bị vô hiệu hóa - chức năng không còn sử dụng
             _                 => "CT"
         };
 

@@ -1,0 +1,374 @@
+@model MNBEMART.Models.Material
+@using MNBEMART.Models
+@{
+    var stocksList = ViewBag.Stocks as IEnumerable<dynamic> ?? new List<dynamic>();
+    var totalStock = ViewBag.TotalStock as decimal? ?? 0m;
+    var stockLots = ViewBag.StockLots as List<StockLot> ?? new List<StockLot>();
+    string FQty(decimal v) => (v % 1m == 0m) ? ((long)v).ToString() : v.ToString("0.##");
+    
+    var today = DateTime.Today;
+}
+
+<div class="modal fade" id="materialDetailsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content" style="max-height: 90vh; display: flex; flex-direction: column;">
+      <div class="modal-header" style="flex-shrink: 0;">
+        <h5 class="modal-title fw-bold">
+          <i class="bi bi-info-circle me-2"></i>Chi tiết nguyên liệu
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+      </div>
+
+      <div class="modal-body" style="overflow-y: auto; flex: 1;">
+        <div class="row g-4">
+          <!-- Left Column: Main Information -->
+          <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+              <div class="card-body">
+                <h6 class="card-title mb-4 text-primary">
+                  <i class="bi bi-box-seam me-2"></i>Thông tin cơ bản
+                </h6>
+                
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <label class="form-label fw-semibold text-muted">Mã nguyên liệu</label>
+                    <div class="form-control-plaintext fw-bold text-primary">@Model.Code</div>
+                  </div>
+                  
+                  <div class="col-md-8">
+                    <label class="form-label fw-semibold text-muted">Tên nguyên liệu</label>
+                    <div class="form-control-plaintext fw-semibold">@Model.Name</div>
+                  </div>
+                  
+                  <div class="col-md-3">
+                    <label class="form-label fw-semibold text-muted">Đơn vị</label>
+                    <div class="form-control-plaintext">@Model.Unit</div>
+                  </div>
+                  
+                  <div class="col-md-3">
+                    <label class="form-label fw-semibold text-muted">Quy cách</label>
+                    <div class="form-control-plaintext">@(Model.Specification ?? "-")</div>
+                  </div>
+                  
+                  <div class="col-md-3">
+                    <label class="form-label fw-semibold text-muted">Giá nhập</label>
+                    <div class="form-control-plaintext">
+                      @if (Model.PurchasePrice.HasValue)
+                      {
+                        <span class="text-success">@Model.PurchasePrice.Value.ToString("n0") đ</span>
+                      }
+                      else
+                      {
+                        <span class="text-muted">-</span>
+                      }
+                    </div>
+                  </div>
+                  
+                  <div class="col-md-3">
+                    <label class="form-label fw-semibold text-muted">Giá bán</label>
+                    <div class="form-control-plaintext">
+                      @if (Model.SellingPrice.HasValue)
+                      {
+                        <span class="text-info">@Model.SellingPrice.Value.ToString("n0") đ</span>
+                      }
+                      else
+                      {
+                        <span class="text-muted">-</span>
+                      }
+                    </div>
+                  </div>
+                  
+                  <div class="col-md-6">
+                    <label class="form-label fw-semibold text-muted">Nhà cung cấp</label>
+                    <div class="form-control-plaintext">@(Model.Supplier?.Name ?? "-")</div>
+                  </div>
+                  
+                  <div class="col-md-6">
+                    <label class="form-label fw-semibold text-muted">Kho mặc định</label>
+                    <div class="form-control-plaintext">@(Model.Warehouse?.Name ?? "Chưa phân kho")</div>
+                  </div>
+                  
+                  <div class="col-md-6">
+                    <label class="form-label fw-semibold text-muted">Phương pháp tính giá xuất kho</label>
+                    <div class="form-control-plaintext">
+                      @if (Model.CostingMethod.HasValue)
+                      {
+                        <span>@(Model.CostingMethod == CostingMethod.WeightedAverage ? "Bình quân gia quyền" : "FIFO")</span>
+                      }
+                      else
+                      {
+                        <span class="text-muted">-</span>
+                      }
+                    </div>
+                  </div>
+                  
+                  @if (!string.IsNullOrWhiteSpace(Model.Description))
+                  {
+                    <div class="col-12">
+                      <label class="form-label fw-semibold text-muted">Mô tả</label>
+                      <div class="form-control-plaintext border rounded p-3 bg-light" style="min-height: 80px;">
+                        @Model.Description
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <!-- Auto Ordering Settings -->
+            @if (Model.MinimumStock.HasValue || Model.MaximumStock.HasValue || Model.ReorderQuantity.HasValue)
+            {
+              <div class="card border-0 shadow-sm mt-3">
+                <div class="card-body">
+                  <h6 class="card-title mb-3 text-primary">
+                    <i class="bi bi-lightning-charge me-2"></i>Đặt hàng tự động
+                  </h6>
+                  
+                  <div class="row g-3">
+                    <div class="col-md-4">
+                      <label class="form-label fw-semibold text-muted">Tồn tối thiểu</label>
+                      <div class="form-control-plaintext">
+                        @if (Model.MinimumStock.HasValue && Model.MinimumStock.Value > 0)
+                        {
+                          <span class="badge bg-warning text-dark">@FQty(Model.MinimumStock.Value) @(Model.Specification ?? Model.Unit)</span>
+                        }
+                        else
+                        {
+                          <span class="text-muted">-</span>
+                        }
+                      </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                      <label class="form-label fw-semibold text-muted">Tồn tối đa</label>
+                      <div class="form-control-plaintext">
+                        @if (Model.MaximumStock.HasValue && Model.MaximumStock.Value > 0)
+                        {
+                          <span class="badge bg-info text-dark">@FQty(Model.MaximumStock.Value) @(Model.Specification ?? Model.Unit)</span>
+                        }
+                        else
+                        {
+                          <span class="text-muted">-</span>
+                        }
+                      </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                      <label class="form-label fw-semibold text-muted">Số lượng đặt lại</label>
+                      <div class="form-control-plaintext">
+                        @if (Model.ReorderQuantity.HasValue && Model.ReorderQuantity.Value > 0)
+                        {
+                          <span class="badge bg-primary">@FQty(Model.ReorderQuantity.Value) @(Model.Specification ?? Model.Unit)</span>
+                        }
+                        else
+                        {
+                          <span class="text-muted">-</span>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            }
+
+            <!-- Danh sách lô hàng -->
+            <div class="card border-0 shadow-sm mt-3">
+              <div class="card-body">
+                <h6 class="card-title mb-3 text-primary">
+                  <i class="bi bi-boxes me-2"></i>Danh sách lô hàng
+                  @if (stockLots.Any())
+                  {
+                    <span class="badge bg-secondary ms-2">@stockLots.Count lô</span>
+                  }
+                </h6>
+                
+                @if (stockLots.Any())
+                {
+                  <div class="table-responsive">
+                    <table class="table table-sm table-bordered table-hover mb-0">
+                      <thead class="table-light">
+                        <tr>
+                          <th style="width: 15%">Số lô</th>
+                          <th style="width: 15%">Kho</th>
+                          <th style="width: 12%">NSX</th>
+                          <th style="width: 12%">HSD</th>
+                          <th style="width: 12%" class="text-end">Số lượng</th>
+                          <th style="width: 12%" class="text-end">Giá nhập</th>
+                          <th style="width: 20%">Trạng thái</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @foreach (var lot in stockLots)
+                        {
+                          var isExpired = lot.ExpiryDate.HasValue && lot.ExpiryDate < today;
+                          var isExpiringSoon = lot.ExpiryDate.HasValue && lot.ExpiryDate >= today && lot.ExpiryDate <= today.AddDays(30);
+                          var expiryDateClass = isExpired ? "text-danger fw-bold" : isExpiringSoon ? "text-warning fw-semibold" : "";
+                          
+                          <tr class="@(isExpired ? "table-danger" : isExpiringSoon ? "table-warning" : "")">
+                            <td>
+                              <div class="font-mono small fw-semibold">@(lot.LotNumber ?? "-")</div>
+                              @if (!string.IsNullOrEmpty(lot.ParentLotId))
+                              {
+                                <small class="text-muted">
+                                  <i class="bi bi-diagram-3"></i> Từ @lot.ParentLotId
+                                </small>
+                              }
+                            </td>
+                            <td>@lot.Warehouse?.Name</td>
+                            <td>
+                              @if (lot.ManufactureDate.HasValue)
+                              {
+                                <span>@lot.ManufactureDate.Value.ToString("dd/MM/yyyy")</span>
+                              }
+                              else
+                              {
+                                <span class="text-muted">-</span>
+                              }
+                            </td>
+                            <td class="@expiryDateClass">
+                              @if (lot.ExpiryDate.HasValue)
+                              {
+                                <span>@lot.ExpiryDate.Value.ToString("dd/MM/yyyy")</span>
+                              }
+                              else
+                              {
+                                <span class="text-muted">-</span>
+                              }
+                            </td>
+                            <td class="text-end fw-semibold">@FQty(lot.Quantity) @Model.Unit</td>
+                            <td class="text-end">
+                              @if (lot.UnitPrice.HasValue)
+                              {
+                                <span>@lot.UnitPrice.Value.ToString("n0") đ</span>
+                              }
+                              else
+                              {
+                                <span class="text-muted">-</span>
+                              }
+                            </td>
+                            <td>
+                              <div class="d-flex flex-wrap gap-1">
+                                @if (lot.IsReserved)
+                                {
+                                  <span class="badge bg-amber text-dark">
+                                    <i class="bi bi-lock-fill me-1"></i>Đặt trước
+                                  </span>
+                                }
+                                @if (isExpired)
+                                {
+                                  <span class="badge bg-danger">
+                                    <i class="bi bi-x-circle me-1"></i>Hết hạn
+                                  </span>
+                                }
+                                else if (isExpiringSoon)
+                                {
+                                  <span class="badge bg-warning text-dark">
+                                    <i class="bi bi-exclamation-triangle me-1"></i>Sắp hết hạn
+                                  </span>
+                                }
+                                @if (!lot.IsReserved && !isExpired && !isExpiringSoon)
+                                {
+                                  <span class="badge bg-success">
+                                    <i class="bi bi-check-circle me-1"></i>Khả dụng
+                                  </span>
+                                }
+                              </div>
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
+                else
+                {
+                  <div class="alert alert-info mb-0">
+                    <i class="bi bi-info-circle me-1"></i>Chưa có lô hàng nào
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Image and Stock Info -->
+          <div class="col-lg-4">
+            <div class="sticky-top" style="top: 1rem;">
+              <!-- Image -->
+              <div class="card border-0 shadow-sm mb-3">
+                <div class="card-body text-center">
+                  <label class="form-label fw-semibold mb-3">
+                    <i class="bi bi-image me-1"></i>Ảnh nguyên liệu
+                  </label>
+                  @if (!string.IsNullOrEmpty(Model.ImageUrl))
+                  {
+                    <img src="@Model.ImageUrl" alt="@Model.Name" class="img-fluid rounded border shadow-sm mb-2" style="max-height: 300px; object-fit: contain;" />
+                    <div>
+                      <a href="@Model.ImageUrl" target="_blank" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-arrows-fullscreen me-1"></i>Xem ảnh gốc
+                      </a>
+                    </div>
+                  }
+                  else
+                  {
+                    <div class="text-muted p-5">
+                      <i class="bi bi-image" style="font-size: 3rem;"></i>
+                      <p class="mt-2 mb-0">Chưa có ảnh</p>
+                    </div>
+                  }
+                </div>
+              </div>
+
+              <!-- Stock Information -->
+              <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                  <h6 class="card-title mb-3 text-primary">
+                    <i class="bi bi-box-seam me-2"></i>Thông tin tồn kho
+                  </h6>
+                  
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold text-muted">Tổng số lượng tồn</label>
+                    <div class="h4 fw-bold text-primary mb-0">@FQty(totalStock) @(Model.Specification ?? Model.Unit)</div>
+                  </div>
+                  
+                  @if (stocksList != null && stocksList.Any())
+                  {
+                    <div>
+                      <label class="form-label fw-semibold text-muted mb-2">Phân bổ theo kho</label>
+                      <div class="list-group list-group-flush">
+                        @foreach (dynamic stock in stocksList)
+                        {
+                          <div class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                            <span class="fw-medium">@stock.WarehouseName</span>
+                            <span class="badge bg-primary">@FQty((decimal)stock.Quantity)</span>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
+                  else
+                  {
+                    <div class="alert alert-info mb-0">
+                      <i class="bi bi-info-circle me-1"></i>Chưa có tồn kho
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="flex-shrink: 0; border-top: 1px solid #dee2e6; padding: 1rem;">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+          <i class="bi bi-x-lg me-1"></i>Đóng
+        </button>
+        <a href="@Url.Action("Edit", "Materials", new { id = Model.Id, modal = 1 })" 
+           class="btn btn-primary js-edit"
+           data-url="@Url.Action("Edit", "Materials", new { id = Model.Id, modal = 1 })">
+          <i class="bi bi-pencil me-1"></i>Sửa
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+

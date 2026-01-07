@@ -1,34 +1,3 @@
-@* @model IEnumerable<MNBEMART.Models.Stock>
-
-@{
-    ViewData["Title"] = "Tồn kho";
-}
-
-<h2>Tồn kho hiện tại</h2>
-
-<table class="table table-bordered table-striped">
-    <thead class="table-dark">
-        <tr>
-            <th>Kho</th>
-            <th>Mã nguyên liệu</th>
-            <th>Tên nguyên liệu</th>
-            <th>Đơn vị</th>
-            <th class="text-end">Số lượng</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var stock in Model)
-        {
-            <tr>
-                <td>@stock.Warehouse?.Name</td>
-                <td>@stock.Material?.Code</td>
-                <td>@stock.Material?.Name</td>
-                <td>@stock.Material?.Unit</td>
-                <td class="text-end">@stock.Quantity</td>
-            </tr>
-        }
-    </tbody>
-</table> *@
 @model IEnumerable<MNBEMART.Models.Stock>
 @using Microsoft.AspNetCore.Mvc.Rendering
 @{
@@ -41,48 +10,142 @@
     int totalItems = ViewBag.TotalItems as int? ?? Model.Count();
     int totalPages = ViewBag.TotalPages as int? ?? 1;
     decimal totalQty = ViewBag.TotalQty as decimal? ?? 0m;
+    string costingMethod = (ViewBag.CostingMethod as string) ?? "periodic";
+    decimal totalValue = ViewBag.TotalValue as decimal? ?? 0m;
+    var stockValues = ViewBag.StockValues as Dictionary<(int WarehouseId, int MaterialId), (decimal UnitPrice, decimal Value)> ?? new Dictionary<(int, int), (decimal, decimal)>();
     var whOpts = (ViewBag.WarehouseOptions as SelectList) ?? new SelectList(Enumerable.Empty<SelectListItem>());
 
     string FQty(decimal v) => (v % 1m == 0m) ? ((long)v).ToString() : v.ToString("0.##");
+    string FMoney(decimal v) => v.ToString("N0") + " đ";
+    bool showValue = costingMethod == "fifo" || costingMethod == "weighted";
 }
 
-<!-- Thêm Tailwind và Bootstrap icons -->
+<!-- Tailwind và Bootstrap icons -->
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
-<div class="min-h-screen bg-slate-50 text-slate-700 p-8 space-y-8">
+<style>
+    /* Animations */
+    @@keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @@keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+    
+    .animate-fade-in-up {
+        animation: fadeInUp 0.5s ease-out;
+    }
+    
+    .animate-slide-in {
+        animation: slideIn 0.3s ease-out;
+    }
+    
+    /* Table improvements */
+    .stock-table thead {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    
+    .stock-table tbody tr {
+        transition: all 0.2s ease;
+    }
+    
+    .stock-table tbody tr:hover {
+        background-color: #f8fafc;
+        transform: translateX(2px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    /* Stats card hover effect */
+    .stat-card {
+        transition: all 0.3s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    }
+</style>
 
+<div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
     <!-- Header -->
-    <div>
-        <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
-            <i class="bi bi-archive text-blue-600"></i> @ViewData["Title"]
-        </h1>
-        <p class="text-sm text-slate-500">Tổng hợp số lượng nguyên liệu hiện có trong các kho hàng</p>
-    </div>
+    @* <div class="mb-8 animate-fade-in-up">
+        <div class="bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl shadow-lg p-8 text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-4xl font-black tracking-tight mb-2 flex items-center gap-3">
+                        <div class="bg-white/20 backdrop-blur-sm rounded-xl p-3">
+                            <i class="bi bi-archive-fill text-3xl"></i>
+                        </div>
+                        Tồn kho
+                    </h1>
+                    <p class="text-green-100 text-lg mt-2">Tổng hợp số lượng nguyên liệu hiện có trong các kho hàng</p>
+                </div>
+            </div>
+        </div>
+    </div> *@
 
     <!-- Toolbar -->
-    <div class="bg-white border border-slate-200 rounded-lg shadow-sm p-6 space-y-4">
-        <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 mb-6 p-6 lg:p-8 animate-fade-in-up" style="animation-delay: 0.1s">
+        <form method="get" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+            <input type="hidden" name="page" value="1" />
+            <input type="hidden" name="pageSize" value="@pageSize" />
             <div>
-                <label class="text-sm font-medium text-slate-600 mb-1 block">Tìm kiếm</label>
+                <label class="text-sm font-semibold text-slate-700 mb-2 block flex items-center gap-2">
+                    <i class="bi bi-search text-green-600"></i>Tìm kiếm
+                </label>
                 <input name="q" value="@q"
                        placeholder="Mã / Tên NL / Tên kho..."
-                       class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500" />
+                       class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all shadow-sm hover:border-green-400" />
             </div>
 
             <div>
-                <label class="text-sm font-medium text-slate-600 mb-1 block">Kho</label>
+                <label class="text-sm font-semibold text-slate-700 mb-2 block flex items-center gap-2">
+                    <i class="bi bi-building text-green-600"></i>Kho
+                </label>
                 <select name="warehouseId"
-                        class="w-full border border-slate-300 rounded-md px-2 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                        class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all shadow-sm hover:border-green-400"
                         asp-items="whOpts" onchange="this.form.submit()">
                     <option value="">-- Tất cả kho --</option>
                 </select>
             </div>
 
             <div>
-                <label class="text-sm font-medium text-slate-600 mb-1 block">Hiển thị</label>
+                <label class="text-sm font-semibold text-slate-700 mb-2 block flex items-center gap-2">
+                    <i class="bi bi-calculator text-green-600"></i>Phương pháp tính
+                </label>
+                <select name="costingMethod"
+                        class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all shadow-sm hover:border-green-400"
+                        onchange="this.form.submit()">
+                    <option value="periodic" selected="@(costingMethod=="periodic"?"selected":null)">Kiểm tra định kỳ</option>
+                    <option value="fifo" selected="@(costingMethod=="fifo"?"selected":null)">FIFO</option>
+                    <option value="weighted" selected="@(costingMethod=="weighted"?"selected":null)">Bình quân gia quyền</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="text-sm font-semibold text-slate-700 mb-2 block flex items-center gap-2">
+                    <i class="bi bi-list-ul text-green-600"></i>Hiển thị
+                </label>
                 <select name="pageSize"
-                        class="w-full border border-slate-300 rounded-md px-2 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                        class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all shadow-sm hover:border-green-400"
                         onchange="this.form.submit()">
                     @foreach (var s in new[]{20,50,100,200})
                     {
@@ -91,91 +154,284 @@
                 </select>
             </div>
 
-            <div class="flex items-end justify-end gap-2">
+            <div class="flex items-end justify-end gap-3 flex-wrap lg:col-span-5">
+                <a href="@Url.Action("ExportPdf", "Stocks", new { q = q, warehouseId = wid, costingMethod = costingMethod })"
+                   class="px-5 py-3 text-sm font-semibold rounded-xl border-2 border-red-300 text-red-700 hover:bg-red-50 hover:border-red-400 transition-all shadow-sm hover:shadow-md flex items-center gap-2 whitespace-nowrap"
+                   target="_blank">
+                    <i class="bi bi-file-pdf text-lg"></i>
+                    Xuất PDF
+                </a>
                 <a href="@Url.Action("Index","Stocks")"
-                   class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:bg-slate-100">Bỏ lọc</a>
-                <button class="px-3 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700" type="submit">
-                    <i class="bi bi-filter"></i> Lọc
+                   class="px-5 py-3 text-sm font-semibold rounded-xl border-2 border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all shadow-sm hover:shadow-md flex items-center gap-2 whitespace-nowrap">
+                    <i class="bi bi-x-circle"></i>
+                    Bỏ lọc
+                </a>
+                <button class="px-5 py-3 text-sm font-semibold rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg flex items-center gap-2 whitespace-nowrap" type="submit">
+                    <i class="bi bi-funnel-fill"></i>
+                    Lọc
                 </button>
             </div>
         </form>
 
-        <!-- Mini Stats -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
-            <div class="bg-slate-50 border border-slate-200 rounded-md p-4">
-                <p class="text-xs text-slate-500">Tổng dòng</p>
-                <h4 class="text-lg font-semibold text-slate-800">@totalItems</h4>
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 @(showValue ? "md:grid-cols-3" : "md:grid-cols-2") gap-6 mt-6">
+            <div class="stat-card bg-gradient-to-br from-green-500 to-emerald-600 border-0 rounded-2xl p-6 shadow-xl text-white">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-semibold text-green-100 uppercase tracking-wide mb-2">Tổng dòng</p>
+                        <h4 class="text-4xl font-black">@totalItems</h4>
+                    </div>
+                    <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
+                        <i class="bi bi-list-check text-white text-3xl"></i>
+                    </div>
+                </div>
             </div>
-            <div class="bg-slate-50 border border-slate-200 rounded-md p-4">
-                <p class="text-xs text-slate-500">Tổng SL tồn</p>
-                <h4 class="text-lg font-semibold text-slate-800">@FQty(totalQty)</h4>
+            <div class="stat-card bg-gradient-to-br from-emerald-500 to-green-600 border-0 rounded-2xl p-6 shadow-xl text-white">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-semibold text-emerald-100 uppercase tracking-wide mb-2">Tổng SL tồn</p>
+                        <h4 class="text-4xl font-black">@FQty(totalQty)</h4>
+                    </div>
+                    <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
+                        <i class="bi bi-box-seam text-white text-3xl"></i>
+                    </div>
+                </div>
             </div>
+            @if (showValue)
+            {
+                <div class="stat-card bg-gradient-to-br from-green-600 to-emerald-700 border-0 rounded-2xl p-6 shadow-xl text-white">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-semibold text-green-100 uppercase tracking-wide mb-2">Tổng giá trị</p>
+                            <h4 class="text-4xl font-black">@FMoney(totalValue)</h4>
+                        </div>
+                        <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
+                            <i class="bi bi-currency-exchange text-white text-3xl"></i>
+                        </div>
+                    </div>
+                </div>
+            }
         </div>
     </div>
 
     <!-- Filter Chips -->
-    @if (!string.IsNullOrWhiteSpace(q) || wid.HasValue)
+    @if (!string.IsNullOrWhiteSpace(q) || wid.HasValue || costingMethod != "periodic")
     {
-        <div class="flex flex-wrap gap-2">
+        <div class="flex flex-wrap gap-3 mb-6 animate-fade-in-up" style="animation-delay: 0.2s">
             @if (!string.IsNullOrWhiteSpace(q))
-            { <span class="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm">Từ khoá: <b>@q</b></span> }
+            { 
+                <span class="px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full text-sm font-semibold shadow-md hover:shadow-lg transition-all flex items-center gap-2 animate-slide-in">
+                    <i class="bi bi-tag-fill"></i>
+                    Từ khoá: <b>@q</b>
+                    <a href="@Url.Action("Index", new { warehouseId = wid, costingMethod = costingMethod, page = page, pageSize = pageSize })" 
+                       class="ml-1 hover:bg-white/20 rounded-full p-1 transition">
+                        <i class="bi bi-x-circle"></i>
+                    </a>
+                </span> 
+            }
             @if (wid.HasValue)
             {
                 var kw = whOpts.FirstOrDefault(o => o.Value == wid.ToString())?.Text ?? "";
-                <span class="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-sm">Kho: <b>@kw</b></span>
+                <span class="px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-full text-sm font-semibold shadow-md hover:shadow-lg transition-all flex items-center gap-2 animate-slide-in">
+                    <i class="bi bi-building"></i>
+                    Kho: <b>@kw</b>
+                    <a href="@Url.Action("Index", new { q = q, costingMethod = costingMethod, page = page, pageSize = pageSize })" 
+                       class="ml-1 hover:bg-white/20 rounded-full p-1 transition">
+                        <i class="bi bi-x-circle"></i>
+                    </a>
+                </span>
+            }
+            @if (costingMethod != "periodic")
+            {
+                var methodName = costingMethod == "fifo" ? "FIFO" : "Bình quân gia quyền";
+                <span class="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-full text-sm font-semibold shadow-md hover:shadow-lg transition-all flex items-center gap-2 animate-slide-in">
+                    <i class="bi bi-calculator"></i>
+                    Phương pháp: <b>@methodName</b>
+                    <a href="@Url.Action("Index", new { q = q, warehouseId = wid, page = page, pageSize = pageSize })" 
+                       class="ml-1 hover:bg-white/20 rounded-full p-1 transition">
+                        <i class="bi bi-x-circle"></i>
+                    </a>
+                </span>
             }
         </div>
     }
 
     <!-- Table -->
-    <div class="bg-white border border-slate-200 rounded-lg shadow-sm overflow-x-auto">
-        <table class="min-w-full text-sm text-left text-slate-700">
-            <thead class="bg-slate-100 text-slate-600 text-xs uppercase">
-                <tr>
-                    <th class="px-3 py-2 w-1/4">Kho</th>
-                    <th class="px-3 py-2 w-[120px]">Mã NL</th>
-                    <th class="px-3 py-2 w-1/4">Tên nguyên liệu</th>
-                    <th class="px-3 py-2 w-[90px] text-center">ĐVT</th>
-                    <th class="px-3 py-2 w-[120px] text-right">Số lượng</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-                @foreach (var s in Model)
-                {
-                    <tr class="hover:bg-slate-50 transition">
-                        <td class="px-3 py-2 font-medium text-slate-800">@s.Warehouse?.Name</td>
-                        <td class="px-3 py-2 font-mono text-blue-800">@s.Material?.Code</td>
-                        <td class="px-3 py-2">@s.Material?.Name</td>
-                        <td class="px-3 py-2 text-center">@s.Material?.Unit</td>
-                        <td class="px-3 py-2 text-right font-semibold">
-                            @FQty(s.Quantity)
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
-
-    <!-- Pagination -->
-    @if (totalPages > 1)
+    @if (Model.Any())
     {
-        <div class="flex justify-end mt-4">
-            <nav class="flex items-center gap-1">
-                @{
-                    int prev = Math.Max(1, page - 1);
-                    int next = Math.Min(totalPages, page + 1);
-                    string qs(int p) => Url.Action("Index", new { q = q, warehouseId = wid, page = p, pageSize = pageSize })!;
-                }
-                <a href="@qs(prev)"
-                   class="px-3 py-1 text-sm rounded-md border border-slate-300 text-slate-600 hover:bg-slate-100 @(page==1?"opacity-40 pointer-events-none":"")">&laquo;</a>
-                @for (int i = 1; i <= totalPages; i++)
-                {
-                    <a href="@qs(i)"
-                       class="px-3 py-1 text-sm rounded-md border @(i==page?"bg-blue-600 text-white border-blue-600":"border-slate-300 text-slate-600 hover:bg-slate-100")">@i</a>
-                }
-                <a href="@qs(next)"
-                   class="px-3 py-1 text-sm rounded-md border border-slate-300 text-slate-600 hover:bg-slate-100 @(page==totalPages?"opacity-40 pointer-events-none":"")">&raquo;</a>
-            </nav>
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden animate-fade-in-up" style="animation-delay: 0.3s">
+            <div class="overflow-x-auto max-h-[70vh]">
+                <table class="stock-table min-w-full divide-y divide-slate-200">
+                    <thead class="bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                <div class="flex items-center gap-2">
+                                    <i class="bi bi-building text-green-600"></i>Kho
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                <div class="flex items-center gap-2">
+                                    <i class="bi bi-upc-scan text-green-600"></i>Mã NL
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                <div class="flex items-center gap-2">
+                                    <i class="bi bi-box text-green-600"></i>Tên nguyên liệu
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                <div class="flex items-center justify-center gap-2">
+                                    <i class="bi bi-rulers text-green-600"></i>ĐVT
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 text-right text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                <div class="flex items-center justify-end gap-2">
+                                    <i class="bi bi-123 text-green-600"></i>Số lượng
+                                </div>
+                            </th>
+                            @if (showValue)
+                            {
+                                <th class="px-6 py-4 text-right text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                    <div class="flex items-center justify-end gap-2">
+                                        <i class="bi bi-currency-exchange text-green-600"></i>Đơn giá
+                                    </div>
+                                </th>
+                                <th class="px-6 py-4 text-right text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                    <div class="flex items-center justify-end gap-2">
+                                        <i class="bi bi-cash-stack text-green-600"></i>Giá trị
+                                    </div>
+                                </th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-slate-100">
+                        @foreach (var s in Model)
+                        {
+                            var key = (s.WarehouseId, s.MaterialId);
+                            var hasValue = stockValues.TryGetValue(key, out var valueInfo);
+                            <tr class="border-b border-slate-100">
+                                <td class="px-6 py-5 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0 h-10 w-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center mr-3 shadow-md">
+                                            <i class="bi bi-building text-white text-base"></i>
+                                        </div>
+                                        <div class="font-bold text-slate-900 text-base">@s.Warehouse?.Name</div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-5 whitespace-nowrap">
+                                    <span class="font-mono text-sm font-bold text-green-700 bg-gradient-to-r from-green-50 to-emerald-100 px-3 py-1.5 rounded-lg border border-green-200 shadow-sm">
+                                        @s.Material?.Code
+                                    </span>
+                                </td>
+                                <td class="px-6 py-5">
+                                    <div class="text-base font-semibold text-slate-900">@s.Material?.Name</div>
+                                </td>
+                                <td class="px-6 py-5 whitespace-nowrap text-center">
+                                    <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-slate-100 to-slate-200 text-slate-800 border border-slate-300 shadow-sm">
+                                        @s.Material?.Unit
+                                    </span>
+                                </td>
+                                <td class="px-6 py-5 whitespace-nowrap text-right">
+                                    <span class="text-xl font-black text-slate-900 bg-slate-50 px-3 py-1.5 rounded-lg inline-block">
+                                        @FQty(s.Quantity)
+                                    </span>
+                                </td>
+                                @if (showValue)
+                                {
+                                    <td class="px-6 py-5 whitespace-nowrap text-right">
+                                        @if (hasValue && valueInfo.UnitPrice > 0)
+                                        {
+                                            <span class="text-base font-bold text-slate-700 bg-slate-50 px-3 py-1.5 rounded-lg inline-block">
+                                                @FMoney(valueInfo.UnitPrice)
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-sm text-slate-400">-</span>
+                                        }
+                                    </td>
+                                    <td class="px-6 py-5 whitespace-nowrap text-right">
+                                        @if (hasValue && valueInfo.Value > 0)
+                                        {
+                                            <span class="text-xl font-black text-purple-700 bg-gradient-to-r from-purple-50 to-purple-100 px-3 py-1.5 rounded-lg inline-block border border-purple-200 shadow-sm">
+                                                @FMoney(valueInfo.Value)
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-sm text-slate-400">-</span>
+                                        }
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        @if (totalPages > 1)
+        {
+            var startItem = (page - 1) * pageSize + 1;
+            var endItem = Math.Min(page * pageSize, totalItems);
+            <div class="flex items-center justify-between mt-6">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 px-6 py-3 text-sm">
+                    <span class="text-slate-500">Tổng dòng:</span> <b class="text-slate-900">@totalItems</b>
+                    <span class="mx-3 text-slate-400">|</span>
+                    <span class="text-slate-500">Tổng SL tồn:</span> <b class="text-green-600">@FQty(totalQty)</b>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="text-sm text-slate-600 mr-4">
+                        Showing <span class="font-semibold">@startItem-@endItem</span> from <span class="font-semibold">@totalItems</span>
+                    </div>
+                    @if (page > 1)
+                    {
+                        <a href="@Url.Action("Index", new { page = page - 1, q = q, warehouseId = wid, costingMethod = costingMethod, pageSize = pageSize })"
+                           class="px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition">
+                            Previous
+                        </a>
+                    }
+                    else
+                    {
+                        <button disabled class="px-4 py-2 text-sm font-semibold text-slate-400 bg-white border border-slate-200 rounded-lg opacity-50 cursor-not-allowed">
+                            Previous
+                        </button>
+                    }
+                    
+                    @if (page < totalPages)
+                    {
+                        <a href="@Url.Action("Index", new { page = page + 1, q = q, warehouseId = wid, costingMethod = costingMethod, pageSize = pageSize })"
+                           class="px-4 py-2 text-sm font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition">
+                            Next
+                        </a>
+                    }
+                    else
+                    {
+                        <button disabled class="px-4 py-2 text-sm font-semibold text-slate-400 bg-slate-200 rounded-lg opacity-50 cursor-not-allowed">
+                            Next
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <!-- Empty State -->
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 p-16 text-center animate-fade-in-up">
+            <div class="inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 mb-6 shadow-lg">
+                <i class="bi bi-inbox text-slate-500 text-5xl"></i>
+            </div>
+            <h3 class="text-2xl font-black text-slate-900 mb-3">Chưa có dữ liệu tồn kho</h3>
+            <p class="text-slate-600 mb-6 text-lg">Không tìm thấy nguyên liệu nào phù hợp với bộ lọc hiện tại</p>
+            @if (!string.IsNullOrWhiteSpace(q) || wid.HasValue)
+            {
+                <a href="@Url.Action("Index")" class="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-xl transition-all shadow-md hover:shadow-lg">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                    Xóa bộ lọc
+                </a>
+            }
         </div>
     }
 </div>

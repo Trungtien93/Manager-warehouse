@@ -43,8 +43,22 @@
             <p class="text-sm text-slate-500 mt-1">Hệ thống quản lý kho nguyên vật liệu</p>
         </div>
 
+        <!-- Error/Success Messages -->
+        @if (ViewBag.Error != null)
+        {
+            <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                <i class="bi bi-exclamation-circle me-2"></i>@ViewBag.Error
+            </div>
+        }
+        @if (ViewBag.Success != null)
+        {
+            <div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+                <i class="bi bi-check-circle me-2"></i>@ViewBag.Success
+            </div>
+        }
+
         <!-- Register Form -->
-        <form method="post" action="/Account/Register" class="space-y-5">
+        <form method="post" action="/Account/Register" class="space-y-5" id="registerForm">
             <div>
                 <label for="fullname" class="block text-sm font-medium text-slate-600 mb-1">Họ và tên</label>
                 <input type="text" id="fullname" name="FullName"
@@ -60,10 +74,19 @@
             </div>
 
             <div>
+                <label for="email" class="block text-sm font-medium text-slate-600 mb-1">Email</label>
+                <input type="email" id="email" name="Email"
+                       class="w-full rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition p-3 text-sm"
+                       placeholder="email@example.com" required />
+                <p class="text-xs text-slate-500 mt-1">Email dùng để nhận thông báo và đặt lại mật khẩu</p>
+            </div>
+
+            <div>
                 <label for="password" class="block text-sm font-medium text-slate-600 mb-1">Mật khẩu</label>
                 <input type="password" id="password" name="Password"
                        class="w-full rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition p-3 text-sm"
                        placeholder="Nhập mật khẩu" required />
+                <p class="text-xs text-slate-500 mt-1">Tối thiểu 8 ký tự, có chữ hoa, chữ thường và số</p>
             </div>
 
             <div>
@@ -73,9 +96,12 @@
                        placeholder="Nhập lại mật khẩu" required />
             </div>
 
-            <button type="submit"
+            <button type="submit" id="submitBtn"
                     class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg shadow-sm transition duration-150">
-                Đăng ký
+                <span id="submitText">Đăng ký</span>
+                <span id="submitLoading" class="hidden">
+                    <i class="bi bi-hourglass-split me-2"></i>Đang xử lý...
+                </span>
             </button>
 
             <div class="text-center mt-4 text-sm">
@@ -89,5 +115,44 @@
     <p class="text-slate-400 text-xs mt-10">
         © @DateTime.Now.Year BEMART – Hệ thống quản lý kho. 
     </p>
+
+    <script>
+        document.getElementById('registerForm')?.addEventListener('submit', function(e) {
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm').value;
+            
+            // Validate password strength
+            if (password.length < 8) {
+                e.preventDefault();
+                alert('Mật khẩu phải có ít nhất 8 ký tự');
+                return false;
+            }
+            
+            const hasUpper = /[A-Z]/.test(password);
+            const hasLower = /[a-z]/.test(password);
+            const hasDigit = /[0-9]/.test(password);
+            
+            if (!hasUpper || !hasLower || !hasDigit) {
+                e.preventDefault();
+                alert('Mật khẩu phải có ít nhất 1 chữ hoa, 1 chữ thường và 1 số');
+                return false;
+            }
+            
+            // Validate password match
+            if (password !== confirmPassword) {
+                e.preventDefault();
+                alert('Mật khẩu xác nhận không khớp');
+                return false;
+            }
+            
+            // Show loading state
+            const submitBtn = document.getElementById('submitBtn');
+            const submitText = document.getElementById('submitText');
+            const submitLoading = document.getElementById('submitLoading');
+            submitBtn.disabled = true;
+            submitText.classList.add('hidden');
+            submitLoading.classList.remove('hidden');
+        });
+    </script>
 </body>
 </html>

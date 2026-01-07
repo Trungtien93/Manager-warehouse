@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline - BEMART</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 500px;
+        }
+        .icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            font-size: 32px;
+            margin-bottom: 16px;
+        }
+        p {
+            font-size: 18px;
+            opacity: 0.9;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        .btn {
+            display: inline-block;
+            background: white;
+            color: #667eea;
+            padding: 12px 30px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .features {
+            margin-top: 40px;
+            text-align: left;
+        }
+        .feature {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+            opacity: 0.9;
+        }
+        .feature-icon {
+            width: 24px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">📡</div>
+        <h1>Không có kết nối mạng</h1>
+        <p>Bạn đang offline. Vui lòng kiểm tra kết nối internet và thử lại.</p>
+        
+        <a href="/" class="btn" onclick="window.location.reload()">Thử lại</a>
+
+        <div class="features">
+            <div class="feature">
+                <div class="feature-icon">✓</div>
+                <div>Một số tính năng vẫn hoạt động offline</div>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">✓</div>
+                <div>Dữ liệu đã xem được lưu trong bộ nhớ cache</div>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">✓</div>
+                <div>Tự động đồng bộ khi có mạng trở lại</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Auto-reload when back online
+        window.addEventListener('online', () => {
+            window.location.reload();
+        });
+    </script>
+</body>
+</html>
+
+
+

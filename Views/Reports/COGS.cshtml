@@ -1,0 +1,319 @@
+@model List<MNBEMART.ViewModels.COGSRowVM>
+@using System.Globalization
+@using Microsoft.AspNetCore.Mvc.Rendering
+
+@{
+    ViewData["Title"] = "Báo cáo Giá vốn hàng bán (COGS)";
+
+    dynamic f = ViewBag.Filter;
+    DateTime displayFrom = (f?.From as DateTime?)?.Date ?? new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+    DateTime displayTo   = (f?.To as DateTime?)?.Date   ?? new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).AddMonths(1).AddDays(-1);
+    int? warehouseId = f?.WarehouseId as int?;
+
+    decimal totalCOGS = ViewBag.TotalCOGS is decimal tc ? tc : Model.Sum(x => x.TotalCOGS);
+    decimal totalQty = ViewBag.TotalQty is decimal tq ? tq : Model.Sum(x => x.Quantity);
+
+    string TrimDec(decimal v, int maxDecimals = 2) {
+        var fmt = "0." + new string('#', maxDecimals);
+        return v.ToString(fmt, CultureInfo.InvariantCulture);
+    }
+
+    string FormatMoney(decimal v) {
+        // Format số tiền với dấu chấm phân cách hàng nghìn (chuẩn VN), không có số thập phân, thêm " đ"
+        var viCulture = new CultureInfo("vi-VN");
+        return v.ToString("N0", viCulture) + " đ";
+    }
+
+    string FormatMoneySmart(decimal v) {
+        // Format số tiền thông minh: tự động loại bỏ ,00 nếu là số nguyên, thêm " đ"
+        var viCulture = new CultureInfo("vi-VN");
+        // Kiểm tra nếu là số nguyên
+        if (v % 1 == 0) {
+            return v.ToString("N0", viCulture) + " đ";
+        } else {
+            // Format với pattern tự động loại bỏ số 0 thừa
+            var formatted = v.ToString("#,##0.##", viCulture);
+            return formatted + " đ";
+        }
+    }
+}
+
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+<style>
+    /* Animations */
+    @@keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @@keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+    
+    .animate-fade-in-up {
+        animation: fadeInUp 0.5s ease-out;
+    }
+    
+    .animate-slide-in {
+        animation: slideIn 0.3s ease-out;
+    }
+    
+    /* Table improvements */
+    .cogs-table thead {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    
+    .cogs-table tbody tr {
+        transition: all 0.2s ease;
+    }
+    
+    .cogs-table tbody tr:hover {
+        background-color: #f8fafc !important;
+        transform: translateX(2px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    /* Stats card hover effect */
+    .stat-card {
+        transition: all 0.3s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    }
+</style>
+
+<div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+    <!-- Header -->
+    @* <div class="mb-8 animate-fade-in-up">
+        <div class="bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl shadow-lg p-8 text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-4xl font-black tracking-tight mb-2 flex items-center gap-3">
+                        <div class="bg-white/20 backdrop-blur-sm rounded-xl p-3">
+                            <i class="bi bi-calculator text-3xl"></i>
+                        </div>
+                        Báo cáo Giá vốn hàng bán (COGS)
+                    </h1>
+                    <p class="text-green-100 text-lg mt-2">Chi tiết giá vốn hàng bán theo từng lần xuất kho</p>
+                </div>
+            </div>
+        </div>
+    </div> *@
+
+    <!-- Filter Section -->
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 mb-6 p-6 lg:p-8 animate-fade-in-up" style="animation-delay: 0.1s">
+        <form method="get" asp-controller="Reports" asp-action="COGS">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div>
+                    <label class="text-sm font-semibold text-slate-700 mb-2 block flex items-center gap-2">
+                        <i class="bi bi-calendar-event text-green-600"></i>Từ ngày
+                    </label>
+                    <input type="date" name="From" value="@displayFrom.ToString("yyyy-MM-dd")"
+                           class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all shadow-sm hover:border-green-400" />
+                </div>
+
+                <div>
+                    <label class="text-sm font-semibold text-slate-700 mb-2 block flex items-center gap-2">
+                        <i class="bi bi-calendar-check text-green-600"></i>Đến ngày
+                    </label>
+                    <input type="date" name="To" value="@displayTo.ToString("yyyy-MM-dd")"
+                           class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all shadow-sm hover:border-green-400" />
+                </div>
+
+                <div>
+                    <label class="text-sm font-semibold text-slate-700 mb-2 block flex items-center gap-2">
+                        <i class="bi bi-building text-green-600"></i>Kho hàng
+                    </label>
+                    @Html.DropDownList("WarehouseId", ViewBag.Warehouses as SelectList, "Tất cả kho", 
+                        new { @class = "w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all shadow-sm hover:border-green-400" })
+                </div>
+
+                <div class="flex items-end gap-3">
+                    <button type="submit" 
+                            class="flex-1 px-5 py-3 text-sm font-semibold rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2">
+                        <i class="bi bi-funnel-fill"></i>
+                        Lọc
+                    </button>
+                    <a href="@Url.Action("COGS")" 
+                       class="px-4 py-3 text-sm font-semibold rounded-xl border-2 border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all shadow-sm hover:shadow-md flex items-center justify-center">
+                        <i class="bi bi-arrow-clockwise text-lg"></i>
+                    </a>
+                </div>
+            </div>
+            <div class="flex justify-end">
+                <a class="px-5 py-3 text-sm font-semibold rounded-xl bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-700 hover:to-red-800 transition-all shadow-md hover:shadow-lg flex items-center gap-2 whitespace-nowrap"
+                   asp-controller="Reports" asp-action="ExportPdfCOGS" asp-route-From="@displayFrom.ToString("yyyy-MM-dd")" asp-route-To="@displayTo.ToString("yyyy-MM-dd")" asp-route-WarehouseId="@warehouseId">
+                    <i class="bi bi-file-earmark-pdf text-lg"></i>
+                    Xuất PDF
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div class="stat-card bg-gradient-to-br from-green-500 to-emerald-600 border-0 rounded-2xl p-6 shadow-xl text-white animate-fade-in-up" style="animation-delay: 0.2s">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-green-100 uppercase tracking-wide mb-2">Tổng số lượng xuất</p>
+                    <h4 class="text-3xl font-black font-mono">@TrimDec(totalQty, 2)</h4>
+                    <p class="text-xs text-green-100 mt-2 font-medium">Đơn vị</p>
+                </div>
+                <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
+                    <i class="bi bi-box-arrow-up text-white text-3xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card bg-gradient-to-br from-emerald-500 to-green-600 border-0 rounded-2xl p-6 shadow-xl text-white animate-fade-in-up" style="animation-delay: 0.3s">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-emerald-100 uppercase tracking-wide mb-2">Tổng giá vốn (COGS)</p>
+                    <h4 class="text-3xl font-black font-mono">@FormatMoney(totalCOGS)</h4>
+                </div>
+                <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
+                    <i class="bi bi-cash-stack text-white text-3xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table Section -->
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden animate-fade-in-up" style="animation-delay: 0.4s">
+        <div class="p-6 lg:p-8 border-b border-slate-200">
+            <div class="flex items-center justify-between">
+                <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-3">
+                    <div class="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl p-2 text-white">
+                        <i class="bi bi-table text-xl"></i>
+                    </div>
+                    Chi tiết giá vốn hàng bán
+                </h2>
+                <span class="px-4 py-2 bg-purple-50 text-purple-700 rounded-full text-sm font-semibold border border-purple-200">
+                    <i class="bi bi-list-ul mr-2"></i>@Model.Count dòng
+                </span>
+            </div>
+        </div>
+        <div class="overflow-x-auto max-h-[600px]">
+            <table class="cogs-table min-w-full divide-y divide-slate-200">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            <i class="bi bi-calendar-event text-green-600"></i> Ngày xuất
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            <i class="bi bi-receipt text-green-600"></i> Số phiếu
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            <i class="bi bi-hash text-green-600"></i> Mã
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            <i class="bi bi-box text-green-600"></i> Tên vật tư
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            <i class="bi bi-rulers text-green-600"></i> ĐVT
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            <i class="bi bi-building text-green-600"></i> Kho
+                        </th>
+                        <th class="px-6 py-4 text-right text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            <i class="bi bi-123 text-green-600"></i> Số lượng
+                        </th>
+                        <th class="px-6 py-4 text-right text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            <i class="bi bi-cash text-green-600"></i> Giá vốn
+                        </th>
+                        <th class="px-6 py-4 text-right text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            <i class="bi bi-calculator text-purple-600"></i> Tổng COGS
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-slate-200">
+                    @if (Model.Any())
+                    {
+                        @foreach (var item in Model)
+                        {
+                            <tr class="hover:bg-slate-50 transition-colors duration-150">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="text-slate-700">@item.IssueDate.ToString("dd/MM/yyyy")</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="text-slate-600 font-medium">@item.IssueNumber</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="font-mono font-bold text-slate-900">@item.MaterialCode</span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span class="font-medium text-slate-900">@item.MaterialName</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="text-slate-500">@item.Unit</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="text-slate-500">@(item.WarehouseName ?? "-")</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right">
+                                    <span class="font-mono font-semibold text-slate-700">@TrimDec(item.Quantity, 2)</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right">
+                                    <span class="font-mono text-slate-600">@FormatMoneySmart(item.CostPrice)</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right">
+                                    <span class="font-mono font-bold text-lg text-purple-600">@FormatMoney(item.TotalCOGS)</span>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="9" class="px-6 py-12 text-center">
+                                <div class="flex flex-col items-center justify-center">
+                                    <i class="bi bi-inbox text-5xl text-slate-300 mb-4"></i>
+                                    <p class="text-slate-500 text-lg font-medium">Không có dữ liệu</p>
+                                    <p class="text-slate-400 text-sm mt-2">Vui lòng chọn khoảng thời gian khác để xem báo cáo</p>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                @if (Model.Any())
+                {
+                    <tfoot class="bg-slate-50">
+                        <tr class="font-bold">
+                            <td class="px-6 py-4 text-right text-slate-700 uppercase tracking-wide" colspan="6">
+                                <span class="text-sm">TỔNG CỘNG</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right">
+                                <span class="font-mono text-slate-900">@TrimDec(totalQty, 2)</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right">
+                                <span class="text-slate-400">-</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right">
+                                <span class="font-mono text-lg text-purple-600">@FormatMoney(totalCOGS)</span>
+                            </td>
+                        </tr>
+                    </tfoot>
+                }
+            </table>
+        </div>
+    </div>
+</div>

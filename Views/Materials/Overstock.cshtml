@@ -1,0 +1,157 @@
+@{
+    ViewData["Title"] = "Cảnh báo vượt tồn tối đa";
+    var overstockData = ViewBag.OverstockData as List<dynamic>;
+    int overstockCount = ViewBag.OverstockCount ?? 0;
+}
+
+<div class="max-w-[1600px] mx-auto px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-black text-slate-900 tracking-tight">
+                    <i class="bi bi-exclamation-triangle-fill text-purple-600 me-2"></i>
+                    Cảnh báo vượt tồn tối đa
+                </h1>
+                <p class="text-slate-600 mt-2">Danh sách nguyên liệu có tồn kho vượt quá mức tối đa cho phép</p>
+            </div>
+            <a asp-action="Index" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium px-5 py-2.5 rounded-lg transition flex items-center gap-2">
+                <i class="bi bi-arrow-left"></i>
+                Quay lại
+            </a>
+        </div>
+
+        <!-- Stats Card -->
+        <div class="mt-6">
+            <div class="bg-gradient-to-br from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-2xl p-6">
+                <div class="flex items-center gap-4">
+                    <div class="flex-shrink-0 w-16 h-16 bg-purple-500 rounded-xl flex items-center justify-center">
+                        <i class="bi bi-box-seam text-white text-3xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold text-purple-700 uppercase">Vượt tồn tối đa</p>
+                        <p class="text-4xl font-black text-purple-900 mt-1">@overstockCount</p>
+                        <p class="text-xs text-purple-600 mt-1 font-medium">Nguyên liệu cần xử lý</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overstock Table -->
+    @if (overstockData != null && overstockData.Any())
+    {
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-200">
+                    <thead class="bg-purple-50">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase tracking-wider">Mã NL</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase tracking-wider">Tên nguyên liệu</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase tracking-wider">Kho</th>
+                            <th class="px-6 py-4 text-right text-xs font-bold text-purple-900 uppercase tracking-wider">Tồn hiện tại</th>
+                            <th class="px-6 py-4 text-right text-xs font-bold text-purple-900 uppercase tracking-wider">Tồn tối đa</th>
+                            <th class="px-6 py-4 text-right text-xs font-bold text-purple-900 uppercase tracking-wider">Vượt</th>
+                            <th class="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">% Vượt</th>
+                            <th class="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-slate-200">
+                        @foreach (var item in overstockData)
+                        {
+                            decimal overstockPercent = (decimal)item.OverstockPercent;
+                            string rowClass = overstockPercent > 50 ? "bg-red-50" : overstockPercent > 25 ? "bg-orange-50" : "bg-yellow-50";
+                            string badgeClass = overstockPercent > 50 ? "bg-red-100 text-red-800" : overstockPercent > 25 ? "bg-orange-100 text-orange-800" : "bg-yellow-100 text-yellow-800";
+                            
+                            <tr class="@rowClass hover:bg-purple-50 transition">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="font-mono text-sm font-semibold text-slate-900">@item.MaterialCode</span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="text-sm font-medium text-slate-900">@item.MaterialName</div>
+                                    @if (!string.IsNullOrEmpty(item.SupplierName))
+                                    {
+                                        <div class="text-xs text-slate-500">NCC: @item.SupplierName</div>
+                                    }
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
+                                    @item.WarehouseName
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right">
+                                    <span class="text-sm font-semibold text-slate-900">@item.Quantity.ToString("N2")</span>
+                                    <span class="text-xs text-slate-500 ms-1">@item.Unit</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right">
+                                    <span class="text-sm text-slate-600">@item.MaximumStock.ToString("N2")</span>
+                                    <span class="text-xs text-slate-500 ms-1">@item.Unit</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right">
+                                    <span class="text-sm font-bold text-purple-700">
+                                        +@item.OverstockAmount.ToString("N2")
+                                    </span>
+                                    <span class="text-xs text-slate-500 ms-1">@item.Unit</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center">
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold @badgeClass">
+                                        +@overstockPercent.ToString("N1")%
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center">
+                                    <a asp-action="Edit" asp-route-id="@item.MaterialId" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                                        <i class="bi bi-pencil"></i> Sửa
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-12 text-center">
+            <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 mb-4">
+                <i class="bi bi-check-circle-fill text-green-600 text-4xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900 mb-2">Không có cảnh báo vượt tồn</h3>
+            <p class="text-slate-600">Tất cả nguyên liệu đang trong giới hạn tồn tối đa.</p>
+        </div>
+    }
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

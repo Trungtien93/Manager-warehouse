@@ -1,0 +1,186 @@
+@model MNBEMART.Models.PurchaseRequest
+@{
+    ViewData["Title"] = "Tạo đề xuất đặt hàng";
+}
+
+<div class="max-w-5xl mx-auto px-6 py-8">
+    <div class="mb-8">
+        <h1 class="text-3xl font-black text-slate-900 tracking-tight mb-2">
+            <i class="bi bi-cart-plus-fill text-blue-600 me-2"></i>
+            Tạo đề xuất đặt hàng
+        </h1>
+        <p class="text-slate-600">Tạo yêu cầu đặt hàng vật tư mới</p>
+    </div>
+
+    <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h3 class="text-sm font-bold text-blue-900">
+                    <i class="bi bi-lightbulb me-1"></i> Gợi ý
+                </h3>
+                <p class="text-sm text-blue-800 mt-1">
+                    Sử dụng nút "Kiểm tra tồn thấp" để tự động tạo đề xuất cho các vật tư dưới mức tồn tối thiểu
+                </p>
+            </div>
+            <form asp-controller="PurchaseRequests" asp-action="CheckLowStock" method="post">
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg transition">
+                    <i class="bi bi-lightning-charge-fill me-1"></i> Kiểm tra tồn thấp
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <form method="post" class="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+        <!-- Notes -->
+        <div class="mb-6">
+            <label class="block text-sm font-semibold text-slate-700 mb-2">Ghi chú</label>
+            <textarea asp-for="Notes" rows="3" 
+                      class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
+        </div>
+
+        <!-- Materials -->
+        <div class="mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold text-slate-900">Danh sách vật tư</h3>
+                <button type="button" onclick="addMaterialRow()" 
+                        class="bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 rounded-lg transition text-sm">
+                    <i class="bi bi-plus-circle me-1"></i> Thêm vật tư
+                </button>
+            </div>
+
+            <div id="materialsContainer" class="space-y-3">
+                <!-- Material rows will be added here -->
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex gap-3">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition">
+                <i class="bi bi-check-circle me-1"></i> Tạo đề xuất
+            </button>
+            <a asp-action="Index" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold px-6 py-3 rounded-lg transition">
+                Hủy
+            </a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        let rowCounter = 0;
+
+        function addMaterialRow() {
+            const container = document.getElementById('materialsContainer');
+            const row = document.createElement('div');
+            row.className = 'grid grid-cols-12 gap-3 p-4 bg-slate-50 rounded-lg';
+            row.id = `row-${rowCounter}`;
+            
+            row.innerHTML = `
+                <div class="col-span-5">
+                    <select name="details[${rowCounter}].MaterialId" required
+                            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            onchange="loadMaterialInfo(this, ${rowCounter})">
+                        <option value="">-- Chọn vật tư --</option>
+                        @foreach (var m in ViewBag.Materials as SelectList)
+                        {
+                            <option value="@m.Value" data-code="@m.Text">@m.Text</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-span-2">
+                    <input type="number" name="details[${rowCounter}].RequestedQuantity" 
+                           step="0.01" min="0.01" required placeholder="Số lượng"
+                           class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div class="col-span-4">
+                    <select name="details[${rowCounter}].PreferredSupplierId"
+                            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="">-- Nhà cung cấp --</option>
+                        @foreach (var s in ViewBag.Suppliers as SelectList)
+                        {
+                            <option value="@s.Value">@s.Text</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-span-1 flex items-center justify-center">
+                    <button type="button" onclick="removeRow(${rowCounter})" 
+                            class="text-red-600 hover:text-red-900">
+                        <i class="bi bi-trash text-xl"></i>
+                    </button>
+                </div>
+            `;
+            
+            container.appendChild(row);
+            rowCounter++;
+        }
+
+        function removeRow(id) {
+            const row = document.getElementById(`row-${id}`);
+            if (row) row.remove();
+        }
+
+        function loadMaterialInfo(select, rowId) {
+            // Could fetch material details via AJAX if needed
+            console.log('Material selected:', select.value);
+        }
+
+        // Add initial row
+        window.addEventListener('DOMContentLoaded', function() {
+            addMaterialRow();
+        });
+    </script>
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
